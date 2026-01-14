@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "108435262492",
+    "project_id": "music-system-421ee",
+    "storage_bucket": "music-system-421ee.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:108435262492:android:b0c39a2d1753a3567923d9",
+        "android_client_info": {
+          "package_name": "com.musicapp.music_system"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyARVsr5FXg1DZh3v_j4APvEvt_uYaIzM6k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

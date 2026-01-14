@@ -1,0 +1,25 @@
+﻿Analyzing music_system...                                       
+
+   info - The type parameter name 'Type' matches a visible type name - lib\core\usecases\usecase.dart:5:24 - avoid_types_as_parameter_names
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\auth\presentation\pages\login_page.dart:60:45 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\auth\presentation\pages\login_page.dart:72:45 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\auth\presentation\pages\profile_page.dart:59:47 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\auth\presentation\pages\profile_page.dart:70:47 - deprecated_member_use
+warning - Unused import: '../../domain/entities/song.dart' - lib\features\client_menu\presentation\bloc\repertoire_menu_event.dart:2:8 - unused_import
+   info - The private field _showTitleInAppBar could be 'final' - lib\features\client_menu\presentation\pages\client_menu_page.dart:22:8 - prefer_final_fields
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\client_menu\presentation\pages\client_menu_page.dart:96:45 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\client_menu\presentation\pages\client_menu_page.dart:179:51 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\client_menu\presentation\pages\client_menu_page.dart:179:82 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\client_menu\presentation\pages\client_menu_page.dart:219:53 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\client_menu\presentation\pages\client_menu_page.dart:264:59 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\client_menu\presentation\widgets\song_card.dart:217:37 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\client_menu\presentation\widgets\song_card.dart:296:63 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\musician_dashboard\presentation\pages\musician_dashboard_page.dart:147:54 - deprecated_member_use
+   info - The import of 'dart:typed_data' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/services.dart' - lib\features\musician_dashboard\presentation\pages\share_page.dart:2:8 - unnecessary_import
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\features\musician_dashboard\presentation\pages\share_page.dart:48:13 - deprecated_member_use
+   info - 'shareXFiles' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\features\musician_dashboard\presentation\pages\share_page.dart:48:19 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\musician_dashboard\presentation\pages\share_page.dart:161:47 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\musician_dashboard\presentation\pages\share_page.dart:205:41 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\musician_dashboard\presentation\pages\share_page.dart:299:37 - deprecated_member_use
+warning - Unused import: '../../../../core/usecases/usecase.dart' - lib\features\song_requests\domain\usecases\stream_requests.dart:3:8 - unused_import
+
