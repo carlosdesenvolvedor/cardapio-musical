@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/entities/user_profile.dart';
 
 class UserProfileModel extends UserProfile {
@@ -13,6 +14,10 @@ class UserProfileModel extends UserProfile {
     super.facebookUrl,
     super.galleryUrls,
     super.fcmToken,
+    super.followersCount = 0,
+    super.followingCount = 0,
+    super.isLive = false,
+    super.lastActiveAt,
   });
 
   factory UserProfileModel.fromJson(Map<String, dynamic> json, String id) {
@@ -26,8 +31,16 @@ class UserProfileModel extends UserProfile {
       instagramUrl: json['instagramUrl'],
       youtubeUrl: json['youtubeUrl'],
       facebookUrl: json['facebookUrl'],
-      galleryUrls: json['galleryUrls'] != null ? List<String>.from(json['galleryUrls']) : null,
+      galleryUrls: json['galleryUrls'] != null
+          ? List<String>.from(json['galleryUrls'])
+          : null,
       fcmToken: json['fcmToken'],
+      followersCount: json['followersCount'] ?? 0,
+      followingCount: json['followingCount'] ?? 0,
+      isLive: json['isLive'] ?? false,
+      lastActiveAt: json['lastActiveAt'] != null
+          ? (json['lastActiveAt'] as Timestamp).toDate()
+          : null,
     );
   }
 
@@ -43,6 +56,12 @@ class UserProfileModel extends UserProfile {
       'facebookUrl': facebookUrl,
       'galleryUrls': galleryUrls,
       'fcmToken': fcmToken,
+      'followersCount': followersCount,
+      'followingCount': followingCount,
+      'isLive': isLive,
+      'lastActiveAt': lastActiveAt != null
+          ? Timestamp.fromDate(lastActiveAt!)
+          : null,
     };
   }
 }

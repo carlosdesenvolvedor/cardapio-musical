@@ -1,7 +1,7 @@
 # 🎵 Cardápio Musical & Gestão de Pedidos
 
 ![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen)
-![Version](https://img.shields.io/badge/Version-16-gold)
+![Version](https://img.shields.io/badge/Version-19-gold)
 ![Flutter](https://img.shields.io/badge/Made%20with-Flutter-blue)
 ![Firebase](https://img.shields.io/badge/Backend-Firebase-orange)
 
@@ -26,8 +26,9 @@ Este projeto é uma plataforma PWA (Progressive Web App) e Mobile que moderniza 
     *   Adicionar/Editar/Remover músicas.
     *   **Magic Cover:** Busca automágica de capas de alta resolução na API da Deezer.
     *   Importação em massa (Excel).
-*   **Smart Lyrics:** Visualização de cifras/letras (Integração Cifra Club - Stub).
-*   **Rede Social:** Feed de postagens e Stories para engajar o público.
+*   **Smart Lyrics:** Visualização de cifras/letras com rolagem automática e busca inteligente (Integração Cifra Club).
+*   **Rede Social:** Feed de postagens, Stories e Chat em tempo real para engajar o público.
+*   **Notificações:** Alertas de seguidores, curtidas, comentários e mensagens.
 
 ---
 
@@ -68,7 +69,7 @@ flutter run -d chrome
 ### Build & Deploy
 ```bash
 # Gerar versão Web
-flutter build web
+flutter build web --release
 
 # Deploy no Firebase Hosting
 firebase deploy --only hosting
@@ -85,12 +86,14 @@ firebase deploy --only hosting
 ---
 
 ## 📝 Status do Projeto
-**Versão Atual:** 16
+**Versão Atual:** 19
 *   [x] Login e Perfil de Músico
 *   [x] Integração Deezer (Search & Covers)
 *   [x] Cardápio do Cliente (Design Final)
+*   [x] Chat em Tempo Real
+*   [x] Sistema de Notificações (Curtidas, Comentários, Seguidores)
+*   [x] Smart Lyrics (Rolagem Automática e Busca Resiliente)
 *   [ ] Integração Real de Pagamentos (Em Breve)
-*   [ ] Chat em Tempo Real (Em Breve)
 
 ---
 Desenvolvido com ❤️ e muita música.

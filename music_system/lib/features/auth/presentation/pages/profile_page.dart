@@ -3,11 +3,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../bloc/auth_bloc.dart';
+import '../bloc/profile_view_bloc.dart';
 import '../../domain/entities/user_profile.dart';
 import 'package:music_system/core/services/storage_service.dart';
 import 'package:music_system/core/services/cloudinary_service.dart';
 import '../../../../injection_container.dart';
+import 'package:music_system/features/community/domain/repositories/post_repository.dart';
+import 'package:music_system/features/community/presentation/widgets/artist_feed_card.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:dartz/dartz.dart' hide State;
+import 'package:music_system/core/error/failures.dart';
 
 class ProfilePage extends StatefulWidget {
   final String userId;
@@ -47,8 +52,7 @@ class _ProfilePageState extends State<ProfilePage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-    context.read<AuthBloc>().add(ProfileRequested(widget.userId));
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -63,8 +67,166 @@ class _ProfilePageState extends State<ProfilePage>
     super.dispose();
   }
 
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) =>
+          sl<ProfileViewBloc>()..add(LoadProfileRequested(widget.userId)),
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        appBar: widget.showAppBar
+            ? AppBar(
+                title: const Text('Perfil'),
+                backgroundColor: Colors.black,
+                actions: [
+                  if (_isOwner)
+                    TextButton(
+                      onPressed: _isUploadingImage ? null : _saveProfile,
+                      child: const Text(
+                        'Salvar',
+                        style: TextStyle(
+                          color: Color(0xFFE5B80B),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  if (_isOwner)
+                    IconButton(
+                      icon: const Icon(Icons.logout),
+                      onPressed: () {
+                        context.read<AuthBloc>().add(SignOutRequested());
+                        Navigator.of(
+                          context,
+                        ).popUntil((route) => route.isFirst);
+                      },
+                    ),
+                ],
+              )
+            : null,
+        body: BlocConsumer<ProfileViewBloc, ProfileViewState>(
+          listener: (context, state) {
+            if (state is ProfileViewError) {
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(state.message)));
+            }
+            if (state is ProfileViewLoaded) {
+              if (_artisticNameController.text.isEmpty) {
+                _artisticNameController.text = state.profile.artisticName;
+                _bioController.text = state.profile.bio ?? '';
+                _pixKeyController.text = state.profile.pixKey;
+                _instagramController.text = state.profile.instagramUrl ?? '';
+                _youtubeController.text = state.profile.youtubeUrl ?? '';
+                _facebookController.text = state.profile.facebookUrl ?? '';
+                _currentPhotoUrl = state.profile.photoUrl;
+                _galleryUrls = state.profile.galleryUrls ?? [];
+              }
+            }
+          },
+          builder: (context, state) {
+            if (state is ProfileViewLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (state is ProfileViewLoaded) {
+              return NestedScrollView(
+                headerSliverBuilder: (context, innerBoxIsScrolled) {
+                  return [
+                    SliverToBoxAdapter(child: _buildHeader()),
+                    SliverToBoxAdapter(
+                      child: Container(
+                        color: Colors.black,
+                        child: TabBar(
+                          controller: _tabController,
+                          indicatorColor: const Color(0xFFE5B80B),
+                          labelColor: const Color(0xFFE5B80B),
+                          unselectedLabelColor: Colors.grey,
+                          tabs: const [
+                            Tab(text: 'Sobre'),
+                            Tab(text: 'Posts'),
+                            Tab(text: 'Social'),
+                            Tab(text: 'Galeria'),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ];
+                },
+                body: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildAboutTab(),
+                    _buildPostsTab(),
+                    _buildSocialTab(),
+                    _buildGalleryTab(),
+                  ],
+                ),
+              );
+            }
+            return const Center(child: Text('Carregando...'));
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPostsTab() {
+    return FutureBuilder<Either<Failure, PostResponse>>(
+      future: sl<PostRepository>().getPostsByUser(userId: widget.userId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Erro ao carregar posts: ${snapshot.error}',
+              style: const TextStyle(color: Colors.white),
+            ),
+          );
+        }
+
+        if (!snapshot.hasData) {
+          return const Center(
+            child: Text(
+              'Nenhuma publicação.',
+              style: TextStyle(color: Colors.white),
+            ),
+          );
+        }
+
+        return snapshot.data!.fold(
+          (failure) => Center(
+            child: Text(
+              'Erro: ${failure.message}',
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+          (response) {
+            if (response.posts.isEmpty) {
+              return const Center(
+                child: Text(
+                  'Nenhuma publicação ainda.',
+                  style: TextStyle(color: Colors.white),
+                ),
+              );
+            }
+            return ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              itemCount: response.posts.length,
+              itemBuilder: (context, index) {
+                return ArtistFeedCard(
+                  post: response.posts[index],
+                  currentUserId: FirebaseAuth.instance.currentUser?.uid ?? '',
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _pickAndUploadImage({bool isGallery = false}) async {
-    // Diagnostic feedback - Safari Mobile needs a direct user gesture
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -83,37 +245,13 @@ class _ProfilePageState extends State<ProfilePage>
 
       if (image != null) {
         setState(() => _isUploadingImage = true);
-
         final bytes = await image.readAsBytes();
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Enviando imagem... Por favor, aguarde.'),
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
-
         String? url;
-
-        // --- MÉTODO 1: CLOUDINARY (Prioridade conforme solicitado) ---
         try {
           url = await sl<CloudinaryService>().uploadImage(bytes, image.name);
           if (url == null) throw Exception('Cloudinary retornou nulo');
         } catch (e) {
-          debugPrint('Falha no Cloudinary, tentando fallback Firebase: $e');
-
-          // --- MÉTODO 2: FIREBASE STORAGE (Fallback) ---
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Servidor 1 ocupado, tentando servidor 2...'),
-                backgroundColor: Colors.orange,
-              ),
-            );
-          }
-
           url = await sl<StorageService>().uploadImage(bytes, image.name);
         }
 
@@ -125,15 +263,7 @@ class _ProfilePageState extends State<ProfilePage>
               _currentPhotoUrl = url;
             }
           });
-          _showToast(
-            isGallery
-                ? 'Foto adicionada à galeria!'
-                : 'Foto de perfil atualizada!',
-          );
-        } else {
-          throw Exception(
-            'Não foi possível fazer o upload em nenhum servidor.',
-          );
+          _showToast(isGallery ? 'Foto adicionada!' : 'Perfil atualizado!');
         }
       }
     } catch (e) {
@@ -169,89 +299,8 @@ class _ProfilePageState extends State<ProfilePage>
           youtubeUrl: _youtubeController.text,
           facebookUrl: _facebookController.text,
           galleryUrls: _galleryUrls,
-          fcmToken: _fcmToken, // Preserve the token!
+          fcmToken: _fcmToken,
         ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: widget.showAppBar
-          ? AppBar(
-              title: Text(_isOwner ? 'Editar Perfil' : 'Perfil'),
-              actions: [
-                if (_isOwner)
-                  TextButton(
-                    onPressed: _isUploadingImage ? null : _saveProfile,
-                    child: const Text(
-                      'Salvar',
-                      style: TextStyle(
-                        color: Color(0xFFE5B80B),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-              ],
-            )
-          : null,
-      body: BlocConsumer<AuthBloc, AuthState>(
-        listener: (context, state) {
-          if (state is ProfileLoaded) {
-            _artisticNameController.text = state.profile.artisticName;
-            _pixKeyController.text = state.profile.pixKey;
-            _bioController.text = state.profile.bio ?? '';
-            _instagramController.text = state.profile.instagramUrl ?? '';
-            _youtubeController.text = state.profile.youtubeUrl ?? '';
-            _facebookController.text = state.profile.facebookUrl ?? '';
-            _currentPhotoUrl = state.profile.photoUrl;
-            _fcmToken = state.profile.fcmToken; // Store it
-            _galleryUrls = List<String>.from(state.profile.galleryUrls ?? []);
-            setState(() {});
-          } else if (state is AuthError) {
-            _showError(state.message);
-          }
-        },
-        builder: (context, state) {
-          return Stack(
-            children: [
-              Column(
-                children: [
-                  _buildHeader(),
-                  TabBar(
-                    controller: _tabController,
-                    indicatorColor: const Color(0xFFE5B80B),
-                    labelColor: const Color(0xFFE5B80B),
-                    unselectedLabelColor: Colors.grey,
-                    tabs: const [
-                      Tab(text: 'Sobre'),
-                      Tab(text: 'Social'),
-                      Tab(text: 'Galeria'),
-                    ],
-                  ),
-                  Expanded(
-                    child: TabBarView(
-                      controller: _tabController,
-                      children: [
-                        _buildAboutTab(),
-                        _buildSocialTab(),
-                        _buildGalleryTab(),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              if (state is AuthLoading && !_isUploadingImage)
-                Container(
-                  color: Colors.black54,
-                  child: const Center(
-                    child: CircularProgressIndicator(color: Color(0xFFE5B80B)),
-                  ),
-                ),
-            ],
-          );
-        },
       ),
     );
   }
@@ -265,43 +314,21 @@ class _ProfilePageState extends State<ProfilePage>
             onTap: _isOwner
                 ? () => _pickAndUploadImage(isGallery: false)
                 : null,
-            borderRadius: BorderRadius.circular(50),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: const Color(0xFFE5B80B),
-                      width: 2,
-                    ),
-                  ),
-                  child: CircleAvatar(
-                    radius: 50,
-                    backgroundColor: Colors.grey[900],
-                    backgroundImage: _currentPhotoUrl != null
-                        ? CachedNetworkImageProvider(_currentPhotoUrl!)
-                        : null,
-                    child: _currentPhotoUrl == null
-                        ? const Icon(
-                            Icons.person,
-                            size: 50,
-                            color: Colors.white24,
-                          )
-                        : null,
-                  ),
-                ),
-                if (_isUploadingImage)
-                  const CircularProgressIndicator(color: Color(0xFFE5B80B)),
-              ],
+            child: CircleAvatar(
+              radius: 50,
+              backgroundColor: Colors.grey[900],
+              backgroundImage: _currentPhotoUrl != null
+                  ? CachedNetworkImageProvider(_currentPhotoUrl!)
+                  : null,
+              child: _currentPhotoUrl == null
+                  ? const Icon(Icons.person, size: 50, color: Colors.white24)
+                  : null,
             ),
           ),
           const SizedBox(height: 12),
           Text(
             _artisticNameController.text.isEmpty
-                ? 'Nome do Artista'
+                ? 'Artista'
                 : _artisticNameController.text,
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
@@ -321,21 +348,20 @@ class _ProfilePageState extends State<ProfilePage>
       children: [
         _buildTextField(
           controller: _artisticNameController,
-          label: 'Nome Artístico / Grupo',
+          label: 'Nome Artístico',
           icon: Icons.star,
         ),
         const SizedBox(height: 16),
         _buildTextField(
           controller: _bioController,
-          label: 'Sobre o Artista',
-          hint: 'Conte sua história, estilo musical, etc.',
-          icon: Icons.info_outline,
+          label: 'Sobre',
+          icon: Icons.info,
           maxLines: 5,
         ),
         const SizedBox(height: 16),
         _buildTextField(
           controller: _pixKeyController,
-          label: 'Chave PIX (Para Gorjetas)',
+          label: 'PIX',
           icon: Icons.pix,
         ),
       ],
@@ -348,19 +374,19 @@ class _ProfilePageState extends State<ProfilePage>
       children: [
         _buildTextField(
           controller: _instagramController,
-          label: 'Instagram (@usuario)',
+          label: 'Instagram',
           icon: Icons.camera_alt,
         ),
         const SizedBox(height: 16),
         _buildTextField(
           controller: _youtubeController,
-          label: 'Canal do YouTube (URL)',
-          icon: Icons.play_circle_fill,
+          label: 'YouTube',
+          icon: Icons.play_circle,
         ),
         const SizedBox(height: 16),
         _buildTextField(
           controller: _facebookController,
-          label: 'Facebook (URL)',
+          label: 'Facebook',
           icon: Icons.facebook,
         ),
       ],
@@ -369,7 +395,7 @@ class _ProfilePageState extends State<ProfilePage>
 
   Widget _buildGalleryTab() {
     return Padding(
-      padding: const EdgeInsets.all(12.0),
+      padding: const EdgeInsets.all(12),
       child: Column(
         children: [
           if (_isOwner)
@@ -377,7 +403,7 @@ class _ProfilePageState extends State<ProfilePage>
               onPressed: () => _pickAndUploadImage(isGallery: true),
               icon: const Icon(Icons.add_a_photo, color: Colors.black),
               label: const Text(
-                'Adicionar Foto à Galeria',
+                'Adicionar Foto',
                 style: TextStyle(color: Colors.black),
               ),
               style: ElevatedButton.styleFrom(
@@ -393,44 +419,13 @@ class _ProfilePageState extends State<ProfilePage>
                 mainAxisSpacing: 8,
               ),
               itemCount: _galleryUrls.length,
-              itemBuilder: (context, index) {
-                return Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: CachedNetworkImage(
-                        imageUrl: _galleryUrls[index],
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) =>
-                            Container(color: Colors.white10),
-                      ),
-                    ),
-                    _isOwner
-                        ? Positioned(
-                            top: 4,
-                            right: 4,
-                            child: GestureDetector(
-                              onTap: () =>
-                                  setState(() => _galleryUrls.removeAt(index)),
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(
-                                  color: Colors.black54,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.close,
-                                  size: 16,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          )
-                        : const SizedBox.shrink(),
-                  ],
-                );
-              },
+              itemBuilder: (context, index) => ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: CachedNetworkImage(
+                  imageUrl: _galleryUrls[index],
+                  fit: BoxFit.cover,
+                ),
+              ),
             ),
           ),
         ],
@@ -442,7 +437,6 @@ class _ProfilePageState extends State<ProfilePage>
     required TextEditingController controller,
     required String label,
     required IconData icon,
-    String? hint,
     int maxLines = 1,
   }) {
     return TextField(
@@ -451,18 +445,14 @@ class _ProfilePageState extends State<ProfilePage>
       readOnly: !_isOwner,
       decoration: InputDecoration(
         labelText: label,
-        hintText: hint,
         prefixIcon: Icon(icon, color: const Color(0xFFE5B80B)),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.05),
+        fillColor: Colors.white10,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
       ),
-      onChanged: (val) {
-        if (label == 'Nome Artístico / Grupo') setState(() {});
-      },
     );
   }
 }

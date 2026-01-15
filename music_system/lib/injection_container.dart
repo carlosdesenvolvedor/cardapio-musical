@@ -37,28 +37,52 @@ import 'features/song_requests/presentation/bloc/song_request_bloc.dart';
 
 import 'features/song_requests/domain/usecases/notify_musician.dart';
 import 'features/song_requests/domain/usecases/delete_request.dart';
-import 'features/community/data/services/community_service.dart';
+import 'features/community/domain/repositories/post_repository.dart';
+import 'features/community/data/repositories/post_repository_impl.dart';
+import 'features/auth/presentation/bloc/profile_view_bloc.dart';
+import 'features/community/domain/repositories/social_graph_repository.dart';
+import 'features/community/data/repositories/social_graph_repository_impl.dart';
+import 'features/community/domain/usecases/get_community_feed.dart';
+import 'features/community/domain/usecases/follow_user.dart';
+import 'features/community/domain/usecases/unfollow_user.dart';
+import 'features/community/domain/repositories/story_repository.dart';
+import 'features/community/data/repositories/story_repository_impl.dart';
+import 'features/community/domain/usecases/get_active_stories.dart';
+import 'features/community/domain/usecases/mark_story_as_viewed.dart';
+import 'features/community/domain/repositories/chat_repository.dart';
+import 'features/community/data/repositories/chat_repository_impl.dart';
+import 'features/community/domain/usecases/send_message.dart';
+import 'features/community/domain/usecases/stream_messages.dart';
+import 'features/community/domain/usecases/stream_conversations.dart';
+import 'features/community/domain/repositories/notification_repository.dart';
+import 'features/community/data/repositories/notification_repository_impl.dart';
+import 'features/community/presentation/bloc/notifications_bloc.dart';
+import 'features/community/presentation/bloc/chat_bloc.dart';
+import 'features/community/presentation/bloc/conversations_bloc.dart';
+import 'features/community/presentation/bloc/community_bloc.dart';
 
 final sl = GetIt.instance;
 
 Future<void> init() async {
   //! Features - Auth
-  sl.registerFactory(() => AuthBloc(
-        repository: sl(),
-        notificationService: sl(),
-      ));
+  sl.registerFactory(
+    () => AuthBloc(repository: sl(), notificationService: sl()),
+  );
+  sl.registerFactory(() => ProfileViewBloc(repository: sl()));
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(firebaseAuth: sl(), firestore: sl()),
   );
 
   //! Features - Song Requests
-  sl.registerFactory(() => SongRequestBloc(
-        createRequest: sl(),
-        streamRequests: sl(),
-        updateRequestStatus: sl(),
-        notifyMusician: sl(),
-        deleteRequest: sl(),
-      ));
+  sl.registerFactory(
+    () => SongRequestBloc(
+      createRequest: sl(),
+      streamRequests: sl(),
+      updateRequestStatus: sl(),
+      notifyMusician: sl(),
+      deleteRequest: sl(),
+    ),
+  );
   sl.registerLazySingleton(() => CreateRequest(sl()));
   sl.registerLazySingleton(() => StreamRequests(sl()));
   sl.registerLazySingleton(() => UpdateRequestStatus(sl()));
@@ -76,13 +100,15 @@ Future<void> init() async {
   );
 
   //! Features - Repertoire
-  sl.registerFactory(() => RepertoireBloc(
-        importRepertoire: sl(),
-        addSongToRepertoire: sl(),
-        getMusicianSongs: sl(),
-        updateSong: sl(),
-        deleteSong: sl(),
-      ));
+  sl.registerFactory(
+    () => RepertoireBloc(
+      importRepertoire: sl(),
+      addSongToRepertoire: sl(),
+      getMusicianSongs: sl(),
+      updateSong: sl(),
+      deleteSong: sl(),
+    ),
+  );
   sl.registerLazySingleton(() => ImportRepertoire(sl()));
   sl.registerLazySingleton(() => AddSongToRepertoire(sl()));
   sl.registerLazySingleton(() => GetMusicianSongs(sl()));
@@ -112,8 +138,55 @@ Future<void> init() async {
     () => LyricsRemoteDataSourceImpl(dio: sl()),
   );
 
+  //! Features - Community
+  sl.registerLazySingleton<PostRepository>(
+    () => PostRepositoryImpl(firestore: sl(), notificationRepository: sl()),
+  );
+  sl.registerLazySingleton<SocialGraphRepository>(
+    () => SocialGraphRepositoryImpl(
+      firestore: sl(),
+      notificationRepository: sl(),
+    ),
+  );
+  sl.registerLazySingleton(() => GetCommunityFeed(sl()));
+  sl.registerLazySingleton(() => FollowUser(sl()));
+  sl.registerLazySingleton(() => UnfollowUser(sl()));
+
+  sl.registerLazySingleton<StoryRepository>(
+    () => StoryRepositoryImpl(firestore: sl()),
+  );
+  sl.registerLazySingleton(() => GetActiveStories(sl()));
+  sl.registerLazySingleton(() => MarkStoryAsViewed(sl()));
+
+  //! Chat
+  sl.registerLazySingleton<NotificationRepository>(
+    () => NotificationRepositoryImpl(firestore: sl()),
+  );
+
+  sl.registerFactory(() => NotificationsBloc(repository: sl()));
+
+  sl.registerLazySingleton<ChatRepository>(
+    () => ChatRepositoryImpl(firestore: sl(), notificationRepository: sl()),
+  );
+  sl.registerLazySingleton(() => SendMessage(sl()));
+  sl.registerLazySingleton(() => StreamMessages(sl()));
+  sl.registerLazySingleton(() => StreamConversations(sl()));
+
+  sl.registerFactory(
+    () => CommunityBloc(
+      getCommunityFeed: sl(),
+      postRepository: sl(),
+      getActiveStories: sl(),
+      notificationRepository: sl(),
+    ),
+  );
+
+  sl.registerFactory(() => ChatBloc(sendMessage: sl(), streamMessages: sl()));
+  sl.registerFactory(
+    () => ConversationsBloc(streamConversations: sl(), authRepository: sl()),
+  );
+
   //! External
-  sl.registerLazySingleton(() => CommunityService());
   sl.registerLazySingleton(() => StorageService());
   sl.registerLazySingleton(() => CloudinaryService());
   sl.registerLazySingleton(() => PushNotificationService());

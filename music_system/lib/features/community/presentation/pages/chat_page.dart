@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
-import 'package:music_system/injection_container.dart';
-import 'package:music_system/features/community/data/services/community_service.dart';
+import 'package:music_system/features/auth/presentation/bloc/auth_bloc.dart';
+import '../../../../injection_container.dart';
+import '../bloc/chat_bloc.dart';
+import '../bloc/chat_event.dart';
+import '../bloc/chat_state.dart';
 
 class ChatPage extends StatefulWidget {
   final String currentUserId;
@@ -26,75 +29,89 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final CommunityService _communityService = sl<CommunityService>();
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
+    return BlocProvider(
+      create: (context) => sl<ChatBloc>()
+        ..add(
+          ChatStarted(
+            senderId: widget.currentUserId,
+            receiverId: widget.targetUserId,
+          ),
+        ),
+      child: Scaffold(
         backgroundColor: Colors.black,
-        elevation: 1,
-        title: Row(
+        appBar: AppBar(
+          backgroundColor: Colors.black,
+          elevation: 1,
+          title: Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundImage:
+                    widget.targetUserPhoto != null &&
+                        widget.targetUserPhoto!.isNotEmpty
+                    ? CachedNetworkImageProvider(widget.targetUserPhoto!)
+                    : null,
+                child:
+                    (widget.targetUserPhoto == null ||
+                        widget.targetUserPhoto!.isEmpty)
+                    ? const Icon(Icons.person, size: 18)
+                    : null,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  widget.targetUserName,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        body: Column(
           children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundImage: widget.targetUserPhoto != null
-                  ? CachedNetworkImageProvider(widget.targetUserPhoto!)
-                  : null,
-              child: widget.targetUserPhoto == null
-                  ? const Icon(Icons.person, size: 18)
-                  : null,
-            ),
-            const SizedBox(width: 10),
             Expanded(
-              child: Text(
-                widget.targetUserName,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              child: BlocBuilder<ChatBloc, ChatState>(
+                builder: (context, state) {
+                  if (state.status == ChatStatus.loading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  final messages = state.messages;
+
+                  return ListView.builder(
+                    controller: _scrollController,
+                    reverse: true,
+                    padding: const EdgeInsets.all(16),
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      final message = messages[index];
+                      final isMe = message.senderId == widget.currentUserId;
+
+                      return _buildMessageBubble(
+                        message.text,
+                        isMe,
+                        message.createdAt,
+                      );
+                    },
+                  );
+                },
               ),
             ),
+            _buildMessageInput(),
           ],
         ),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: _communityService.getMessages(widget.currentUserId, widget.targetUserId),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                final messages = snapshot.data?.docs ?? [];
-
-                return ListView.builder(
-                  controller: _scrollController,
-                  reverse: true,
-                  padding: const EdgeInsets.all(16),
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final data = messages[index].data() as Map<String, dynamic>;
-                    final isMe = data['senderId'] == widget.currentUserId;
-                    final text = data['text'] ?? '';
-                    final timestamp = data['createdAt'] as Timestamp?;
-                    
-                    return _buildMessageBubble(text, isMe, timestamp);
-                  },
-                );
-              },
-            ),
-          ),
-          _buildMessageInput(),
-        ],
       ),
     );
   }
 
-  Widget _buildMessageBubble(String text, bool isMe, Timestamp? timestamp) {
-    final timeStr = timestamp != null
-        ? DateFormat('HH:mm').format(timestamp.toDate())
-        : '';
+  Widget _buildMessageBubble(String text, bool isMe, DateTime createdAt) {
+    final timeStr = DateFormat('HH:mm').format(createdAt);
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -114,7 +131,9 @@ class _ChatPageState extends State<ChatPage> {
           maxWidth: MediaQuery.of(context).size.width * 0.75,
         ),
         child: Column(
-          crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: isMe
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
           children: [
             Text(
               text,
@@ -138,42 +157,61 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget _buildMessageInput() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.grey[900],
-        border: const Border(top: BorderSide(color: Colors.white10)),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.camera_alt, color: Color(0xFFE5B80B)),
-            onPressed: () {},
+    return Builder(
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.grey[900],
+            border: const Border(top: BorderSide(color: Colors.white10)),
           ),
-          Expanded(
-            child: TextField(
-              controller: _messageController,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                hintText: 'Digite uma mensagem...',
-                hintStyle: TextStyle(color: Colors.white38),
-                border: InputBorder.none,
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.camera_alt, color: Color(0xFFE5B80B)),
+                onPressed: () {},
               ),
-            ),
+              Expanded(
+                child: TextField(
+                  controller: _messageController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    hintText: 'Digite uma mensagem...',
+                    hintStyle: TextStyle(color: Colors.white38),
+                    border: InputBorder.none,
+                  ),
+                  onSubmitted: (val) => _sendMessage(context),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.send, color: Color(0xFFE5B80B)),
+                onPressed: () => _sendMessage(context),
+              ),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.send, color: Color(0xFFE5B80B)),
-            onPressed: _sendMessage,
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  void _sendMessage() {
+  void _sendMessage(BuildContext context) {
     final text = _messageController.text.trim();
     if (text.isNotEmpty) {
-      _communityService.sendMessage(widget.currentUserId, widget.targetUserId, text);
+      final authState = context.read<AuthBloc>().state;
+      String? senderName;
+      String? senderPhoto;
+      if (authState is ProfileLoaded) {
+        senderName = authState.profile.artisticName;
+        senderPhoto = authState.profile.photoUrl;
+      }
+
+      context.read<ChatBloc>().add(
+        MessageSentRequested(
+          text,
+          senderName: senderName,
+          senderPhoto: senderPhoto,
+        ),
+      );
       _messageController.clear();
     }
   }

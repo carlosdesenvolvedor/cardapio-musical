@@ -12,6 +12,12 @@ import 'features/musician_dashboard/presentation/bloc/repertoire_bloc.dart';
 import 'features/smart_lyrics/presentation/bloc/lyrics_bloc.dart';
 import 'features/client_menu/presentation/bloc/repertoire_menu_bloc.dart';
 import 'features/song_requests/presentation/bloc/song_request_bloc.dart';
+import 'features/community/presentation/bloc/community_bloc.dart';
+import 'features/community/presentation/bloc/conversations_bloc.dart';
+import 'features/community/presentation/bloc/chat_bloc.dart';
+import 'features/community/presentation/bloc/notifications_bloc.dart';
+import 'features/community/presentation/bloc/notifications_event.dart';
+import 'features/community/presentation/bloc/conversations_event.dart';
 import 'firebase_options.dart';
 import 'injection_container.dart' as di;
 import 'features/community/presentation/pages/artist_network_page.dart';
@@ -55,18 +61,34 @@ class MusicSystemApp extends StatelessWidget {
         BlocProvider(create: (_) => di.sl<RepertoireBloc>()),
         BlocProvider(create: (_) => di.sl<LyricsBloc>()),
         BlocProvider(create: (_) => di.sl<RepertoireMenuBloc>()),
+        BlocProvider(create: (_) => di.sl<CommunityBloc>()),
+        BlocProvider(create: (_) => di.sl<ConversationsBloc>()),
+        BlocProvider(create: (_) => di.sl<ChatBloc>()),
+        BlocProvider(create: (_) => di.sl<NotificationsBloc>()),
       ],
       child: MaterialApp(
         title: 'MusicRequest System',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.darkTheme,
-        builder: (context, child) => ResponsiveBreakpoints.builder(
-          child: child ?? const SizedBox(),
-          breakpoints: [
-            const Breakpoint(start: 0, end: 450, name: MOBILE),
-            const Breakpoint(start: 451, end: 800, name: TABLET),
-            const Breakpoint(start: 801, end: 1920, name: DESKTOP),
-          ],
+        builder: (context, child) => BlocListener<AuthBloc, AuthState>(
+          listener: (context, state) {
+            if (state is ProfileLoaded) {
+              context.read<NotificationsBloc>().add(
+                NotificationsStarted(state.profile.id),
+              );
+              context.read<ConversationsBloc>().add(
+                ConversationsStarted(state.profile.id),
+              );
+            }
+          },
+          child: ResponsiveBreakpoints.builder(
+            child: child ?? const SizedBox(),
+            breakpoints: [
+              const Breakpoint(start: 0, end: 450, name: MOBILE),
+              const Breakpoint(start: 451, end: 800, name: TABLET),
+              const Breakpoint(start: 801, end: 1920, name: DESKTOP),
+            ],
+          ),
         ),
         initialRoute: '/',
         onGenerateRoute: (settings) {

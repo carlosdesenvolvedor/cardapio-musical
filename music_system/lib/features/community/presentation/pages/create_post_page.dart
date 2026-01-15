@@ -4,8 +4,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:music_system/core/services/cloudinary_service.dart';
 import 'package:music_system/core/services/storage_service.dart';
 import 'package:music_system/injection_container.dart';
-import 'package:music_system/features/community/data/services/community_service.dart';
-import 'package:music_system/features/community/data/models/post_model.dart';
+import 'package:music_system/features/community/domain/repositories/post_repository.dart';
+import 'package:music_system/features/community/domain/entities/post_entity.dart';
 import 'package:music_system/features/auth/domain/entities/user_profile.dart';
 
 class CreatePostPage extends StatefulWidget {
@@ -70,7 +70,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
       }
 
       if (url != null) {
-        final post = Post(
+        final post = PostEntity(
           id: '',
           authorId: widget.profile.id,
           authorName: widget.profile.artisticName,
@@ -81,7 +81,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
           createdAt: DateTime.now(),
         );
 
-        await sl<CommunityService>().createPost(post);
+        await sl<PostRepository>().createPost(post);
         if (mounted) {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(

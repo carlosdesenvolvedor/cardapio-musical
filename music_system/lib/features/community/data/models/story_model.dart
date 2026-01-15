@@ -1,29 +1,29 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../domain/entities/post_entity.dart';
+import '../../domain/entities/story_entity.dart';
 
-class PostModel extends PostEntity {
-  const PostModel({
+class StoryModel extends StoryEntity {
+  const StoryModel({
     required super.id,
     required super.authorId,
     required super.authorName,
     super.authorPhotoUrl,
     required super.imageUrl,
-    required super.caption,
-    required super.likes,
     required super.createdAt,
+    required super.expiresAt,
+    required super.viewers,
   });
 
-  factory PostModel.fromFirestore(DocumentSnapshot doc) {
+  factory StoryModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
-    return PostModel(
+    return StoryModel(
       id: doc.id,
       authorId: data['authorId'] ?? '',
       authorName: data['authorName'] ?? '',
       authorPhotoUrl: data['authorPhotoUrl'],
       imageUrl: data['imageUrl'] ?? '',
-      caption: data['caption'] ?? '',
-      likes: List<String>.from(data['likes'] ?? []),
       createdAt: (data['createdAt'] as Timestamp).toDate(),
+      expiresAt: (data['expiresAt'] as Timestamp).toDate(),
+      viewers: List<String>.from(data['viewers'] ?? []),
     );
   }
 
@@ -33,9 +33,9 @@ class PostModel extends PostEntity {
       'authorName': authorName,
       'authorPhotoUrl': authorPhotoUrl,
       'imageUrl': imageUrl,
-      'caption': caption,
-      'likes': likes,
       'createdAt': Timestamp.fromDate(createdAt),
+      'expiresAt': Timestamp.fromDate(expiresAt),
+      'viewers': viewers,
     };
   }
 }

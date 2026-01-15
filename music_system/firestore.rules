@@ -3,10 +3,31 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Permissivo para desenvolvimento e rede social
     
-    // Regras para Usuários (Permitindo que outros usuários atualizem seguidores)
+    // Regras para Usuários
     match /users/{userId} {
       allow read: if true;
       allow write: if request.auth != null; 
+      
+      match /notifications/{notificationId} {
+        allow read, update, delete: if request.auth != null && request.auth.uid == userId;
+        allow create: if request.auth != null;
+      }
+      
+      match /following/{followingId} {
+        allow read: if true;
+        allow write: if request.auth != null;
+      }
+      
+      match /followers/{followerId} {
+        allow read: if true;
+        allow write: if request.auth != null;
+      }
+    }
+    
+    // Regras para Stories
+    match /stories/{storyId} {
+      allow read: if true;
+      allow write: if request.auth != null;
     }
     
     // Regras para Posts e Comentários

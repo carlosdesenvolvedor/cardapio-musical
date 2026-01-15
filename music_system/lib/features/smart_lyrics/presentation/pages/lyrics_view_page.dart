@@ -25,10 +25,9 @@ class _LyricsViewPageState extends State<LyricsViewPage> {
   void initState() {
     super.initState();
     _scrollController = ScrollController();
-    context.read<LyricsBloc>().add(FetchLyricsEvent(
-          songName: widget.songName,
-          artist: widget.artist,
-        ));
+    context.read<LyricsBloc>().add(
+      FetchLyricsEvent(songName: widget.songName, artist: widget.artist),
+    );
   }
 
   void _toggleAutoScroll() {
@@ -41,9 +40,22 @@ class _LyricsViewPageState extends State<LyricsViewPage> {
   }
 
   void _startScrolling() async {
-    while (_isAutoScrolling && _scrollController.hasClients) {
+    while (_isAutoScrolling) {
+      if (!mounted) {
+        _isAutoScrolling = false;
+        break;
+      }
+
       await Future.delayed(const Duration(milliseconds: 50));
-      if (!_isAutoScrolling) break;
+
+      if (!mounted || !_isAutoScrolling) break;
+
+      if (!_scrollController.hasClients) {
+        // Controller lost clients (e.g., navigated away or view rebuilt), stop scrolling
+        _isAutoScrolling = false;
+        break;
+      }
+
       final double maxScroll = _scrollController.position.maxScrollExtent;
       final double currentScroll = _scrollController.offset;
       if (currentScroll < maxScroll) {
@@ -106,16 +118,25 @@ class _LyricsViewPageState extends State<LyricsViewPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                    const Icon(
+                      Icons.error_outline,
+                      size: 48,
+                      color: Colors.red,
+                    ),
                     const SizedBox(height: 16),
-                    Text('Erro ao buscar cifra: ${state.message}', textAlign: TextAlign.center),
+                    Text(
+                      'Erro ao buscar cifra: ${state.message}',
+                      textAlign: TextAlign.center,
+                    ),
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () {
-                        context.read<LyricsBloc>().add(FetchLyricsEvent(
-                              songName: widget.songName,
-                              artist: widget.artist,
-                            ));
+                        context.read<LyricsBloc>().add(
+                          FetchLyricsEvent(
+                            songName: widget.songName,
+                            artist: widget.artist,
+                          ),
+                        );
                       },
                       child: const Text('Tentar Novamente'),
                     ),

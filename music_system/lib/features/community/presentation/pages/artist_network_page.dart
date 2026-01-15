@@ -5,15 +5,22 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:music_system/features/auth/domain/entities/user_profile.dart';
 import 'package:music_system/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:music_system/config/theme/app_theme.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:music_system/features/community/presentation/pages/create_post_page.dart';
-import 'package:music_system/features/community/data/models/post_model.dart';
-import 'package:music_system/features/community/data/services/community_service.dart';
-import 'package:music_system/injection_container.dart';
+import 'package:music_system/features/community/domain/entities/story_entity.dart';
+import 'package:music_system/features/community/presentation/bloc/community_bloc.dart';
+import 'package:music_system/features/community/presentation/bloc/community_event.dart';
+import 'package:music_system/features/community/presentation/bloc/community_state.dart';
+import 'package:music_system/features/community/presentation/widgets/artist_avatar.dart';
 import 'package:music_system/features/auth/presentation/pages/profile_page.dart';
-import 'package:music_system/features/community/presentation/pages/chat_page.dart';
 import 'package:music_system/features/auth/presentation/pages/login_page.dart';
+import 'package:music_system/features/community/presentation/pages/story_player_page.dart';
+import 'package:music_system/features/community/presentation/pages/create_story_page.dart';
+import 'package:music_system/features/community/presentation/pages/conversations_page.dart';
+import 'package:music_system/features/community/presentation/pages/activity_page.dart';
 import 'package:music_system/core/services/deezer_service.dart';
+import 'package:music_system/features/community/presentation/bloc/notifications_bloc.dart';
+import 'package:music_system/features/community/presentation/bloc/notifications_state.dart';
+import 'package:music_system/features/community/presentation/widgets/artist_feed_card.dart';
 
 class ArtistNetworkPage extends StatefulWidget {
   const ArtistNetworkPage({super.key});
@@ -24,7 +31,6 @@ class ArtistNetworkPage extends StatefulWidget {
 
 class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
   int _currentIndex = 0;
-  final CommunityService _communityService = sl<CommunityService>();
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   int _searchTab = 0; // 0 for Artists, 1 for Musics
@@ -32,13 +38,37 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
   List<DeezerSong> _deezerMusicResults = [];
   bool _isSearchingMusic = false;
 
+  final ScrollController _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
-    final state = context.read<AuthBloc>().state;
-    if (state is Authenticated) {
-      context.read<AuthBloc>().add(ProfileRequested(state.user.id));
+    _scrollController.addListener(_onScroll);
+    final authState = context.read<AuthBloc>().state;
+    if (authState is Authenticated) {
+      context.read<AuthBloc>().add(ProfileRequested(authState.user.id));
+      // Inicializa o feed
+      context.read<CommunityBloc>().add(const FetchFeedStarted());
     }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_isBottom) {
+      context.read<CommunityBloc>().add(const LoadMorePostsRequested());
+    }
+  }
+
+  bool get _isBottom {
+    if (!_scrollController.hasClients) return false;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.offset;
+    return currentScroll >= (maxScroll * 0.9);
   }
 
   @override
@@ -95,11 +125,63 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
                 }
               },
             ),
+            BlocBuilder<NotificationsBloc, NotificationsState>(
+              builder: (context, state) {
+                final hasUnread = state.notifications.any((n) => !n.isRead);
+                return IconButton(
+                  icon: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(Icons.favorite_border, color: Colors.white),
+                      if (hasUnread)
+                        Positioned(
+                          right: -2,
+                          top: -2,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 8,
+                              minHeight: 8,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  onPressed: () {
+                    if (currentUser != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ActivityPage(userId: currentUser!.id),
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Faça login para ver atividades!'),
+                        ),
+                      );
+                    }
+                  },
+                );
+              },
+            ),
             IconButton(
               icon: const Icon(Icons.chat_bubble_outline, color: Colors.white),
               onPressed: () {
                 if (currentUser != null) {
-                  _showUserChatPicker(context, currentUser.id);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          ConversationsPage(userId: currentUser!.id),
+                    ),
+                  );
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Faça login para conversar!')),
@@ -128,10 +210,10 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
                 : const Center(child: Text('Faça login para ver seu perfil')))
           : _currentIndex == 1
           ? _buildSearchPage()
-          : StreamBuilder<List<Post>>(
-              stream: _communityService.getPosts(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+          : BlocBuilder<CommunityBloc, CommunityState>(
+              builder: (context, state) {
+                if (state.status == CommunityStatus.loading &&
+                    state.posts.isEmpty) {
                   return const Center(
                     child: CircularProgressIndicator(
                       color: AppTheme.primaryColor,
@@ -139,131 +221,211 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
                   );
                 }
 
-                final posts = snapshot.data ?? [];
+                final posts = state.posts;
 
-                return CustomScrollView(
-                  slivers: [
-                    // Stories section (Artists)
-                    SliverToBoxAdapter(
-                      child: StreamBuilder<QuerySnapshot>(
-                        stream: FirebaseFirestore.instance
-                            .collection('users')
-                            .snapshots(),
-                        builder: (context, userSnapshot) {
-                          if (!userSnapshot.hasData) return const SizedBox();
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    context.read<CommunityBloc>().add(
+                      const FetchFeedStarted(isRefresh: true),
+                    );
+                  },
+                  color: AppTheme.primaryColor,
+                  child: CustomScrollView(
+                    controller: _scrollController,
+                    slivers: [
+                      // Stories section (Artists)
+                      SliverToBoxAdapter(
+                        child: StreamBuilder<QuerySnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection('users')
+                              .snapshots(),
+                          builder: (context, userSnapshot) {
+                            if (!userSnapshot.hasData) return const SizedBox();
 
-                          final allUsers = userSnapshot.data!.docs;
-                          // Separate current user (me) from others
-                          List<DocumentSnapshot> otherUsers = [];
-                          DocumentSnapshot? me;
-                          final currentUserId = currentUser?.id;
+                            final allUsers = userSnapshot.data!.docs;
+                            final currentUserId = currentUser?.id;
 
-                          for (var doc in allUsers) {
-                            if (currentUserId != null &&
-                                doc.id == currentUserId) {
-                              me = doc;
-                            } else {
-                              otherUsers.add(doc);
+                            // Group state.stories by authorId
+                            final Map<String, List<StoryEntity>>
+                            groupedStories = {};
+                            for (var story in state.stories) {
+                              groupedStories
+                                  .putIfAbsent(story.authorId, () => [])
+                                  .add(story);
                             }
-                          }
 
-                          // The first item is RESERVED for the user (Logged or Guest)
-                          final int itemCount = otherUsers.length + 1;
+                            // Identify users with stories
+                            final usersWithStories = allUsers
+                                .where((u) => groupedStories.containsKey(u.id))
+                                .toList();
+                            final usersWithoutStories = allUsers
+                                .where(
+                                  (u) =>
+                                      !groupedStories.containsKey(u.id) &&
+                                      u.id != currentUserId,
+                                )
+                                .toList();
 
-                          return Container(
-                            height: 110,
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: itemCount,
-                              itemBuilder: (context, index) {
-                                // Index 0 is always the RESERVED slot
-                                if (index == 0) {
-                                  if (me != null) {
-                                    // Me Logged In
-                                    final userData =
-                                        me.data() as Map<String, dynamic>;
-                                    return _buildStoryItem(
+                            DocumentSnapshot? me;
+                            try {
+                              me = allUsers.firstWhere(
+                                (u) => u.id == currentUserId,
+                              );
+                            } catch (_) {}
+
+                            return Container(
+                              height: 110,
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: ListView(
+                                scrollDirection: Axis.horizontal,
+                                children: [
+                                  // 1. Me Logged or Guest
+                                  if (me != null)
+                                    _buildStoryItem(
                                       'Você',
-                                      userData['photoUrl'],
+                                      (me.data()
+                                          as Map<String, dynamic>)['photoUrl'],
                                       isMe: true,
-                                      onTap: () =>
-                                          setState(() => _currentIndex = 4),
-                                    );
-                                  } else {
-                                    // Guest Mode
-                                    return _buildStoryItem(
+                                      hasStories: groupedStories.containsKey(
+                                        currentUserId,
+                                      ),
+                                      onTap: () {
+                                        if (groupedStories.containsKey(
+                                          currentUserId,
+                                        )) {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => StoryPlayerPage(
+                                                stories:
+                                                    groupedStories[currentUserId]!,
+                                              ),
+                                            ),
+                                          );
+                                        } else {
+                                          final authState = context
+                                              .read<AuthBloc>()
+                                              .state;
+                                          if (authState is ProfileLoaded) {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    CreateStoryPage(
+                                                      profile:
+                                                          authState.profile,
+                                                    ),
+                                              ),
+                                            );
+                                          }
+                                        }
+                                      },
+                                    )
+                                  else
+                                    _buildStoryItem(
                                       'Entrar',
                                       null,
-                                      isMe: false,
                                       isGuest: true,
+                                      onTap: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const LoginPage(),
+                                        ),
+                                      ),
+                                    ),
+
+                                  // 2. Artists with Stories
+                                  ...usersWithStories.map((user) {
+                                    final userData =
+                                        user.data() as Map<String, dynamic>;
+                                    return _buildStoryItem(
+                                      userData['artisticName'] ?? 'Artista',
+                                      userData['photoUrl'],
+                                      hasStories: true,
+                                      isLive: userData['isLive'] ?? false,
                                       onTap: () {
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
                                             builder: (context) =>
-                                                const LoginPage(),
+                                                StoryPlayerPage(
+                                                  stories:
+                                                      groupedStories[user.id]!,
+                                                ),
                                           ),
                                         );
                                       },
                                     );
-                                  }
-                                }
+                                  }),
 
-                                // Other artists
-                                final otherIndex = index - 1;
-                                final userData =
-                                    otherUsers[otherIndex].data()
-                                        as Map<String, dynamic>;
-                                final artisticName =
-                                    userData['artisticName'] ?? 'Artista';
-                                final photoUrl = userData['photoUrl'];
-                                final targetUserId = otherUsers[otherIndex].id;
-
-                                return _buildStoryItem(
-                                  artisticName,
-                                  photoUrl,
-                                  isMe: false,
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => ProfilePage(
-                                          userId: targetUserId,
-                                          email: '',
-                                          showAppBar: true,
-                                        ),
-                                      ),
+                                  // 3. Other artists (discovery)
+                                  ...usersWithoutStories.map((user) {
+                                    final userData =
+                                        user.data() as Map<String, dynamic>;
+                                    return _buildStoryItem(
+                                      userData['artisticName'] ?? 'Artista',
+                                      userData['photoUrl'],
+                                      isLive: userData['isLive'] ?? false,
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => ProfilePage(
+                                              userId: user.id,
+                                              email: '',
+                                              showAppBar: true,
+                                            ),
+                                          ),
+                                        );
+                                      },
                                     );
-                                  },
-                                );
-                              },
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SliverToBoxAdapter(
-                      child: Divider(color: Colors.white10, height: 1),
-                    ),
-
-                    // Feed section (Posts)
-                    if (posts.isEmpty)
-                      const SliverFillRemaining(
-                        child: Center(
-                          child: Text('Nenhuma publicação na rede ainda.'),
+                                  }),
+                                ],
+                              ),
+                            );
+                          },
                         ),
-                      )
-                    else
-                      SliverList(
-                        delegate: SliverChildBuilderDelegate((context, index) {
-                          return ArtistFeedCard(
-                            post: posts[index],
-                            currentUserId: currentUser?.id ?? '',
-                          );
-                        }, childCount: posts.length),
                       ),
-                  ],
+                      const SliverToBoxAdapter(
+                        child: Divider(color: Colors.white10, height: 1),
+                      ),
+
+                      // Feed section (Posts)
+                      if (posts.isEmpty &&
+                          state.status == CommunityStatus.success)
+                        const SliverFillRemaining(
+                          child: Center(
+                            child: Text('Nenhuma publicação na rede ainda.'),
+                          ),
+                        )
+                      else
+                        SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              if (index >= posts.length) {
+                                return const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 32),
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                      color: AppTheme.primaryColor,
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                );
+                              }
+                              return ArtistFeedCard(
+                                post: posts[index],
+                                currentUserId: currentUser?.id ?? '',
+                              );
+                            },
+                            childCount: state.hasReachedMax
+                                ? posts.length
+                                : posts.length + 1,
+                          ),
+                        ),
+                    ],
+                  ),
                 );
               },
             ),
@@ -494,132 +656,33 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
     );
   }
 
-  void _showUserChatPicker(BuildContext context, String currentUserId) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.grey[900],
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('users').snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData)
-            return const Center(child: CircularProgressIndicator());
-          final users = snapshot.data!.docs;
-          return Container(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                const Text(
-                  'Conversar com...',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                ),
-                const Divider(color: Colors.white10),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: users.length,
-                    itemBuilder: (context, index) {
-                      final userData =
-                          users[index].data() as Map<String, dynamic>;
-                      final userId = users[index].id;
-                      if (userId == currentUserId) return const SizedBox();
-                      return ListTile(
-                        leading: CircleAvatar(
-                          backgroundImage: userData['photoUrl'] != null
-                              ? CachedNetworkImageProvider(userData['photoUrl'])
-                              : null,
-                          child: userData['photoUrl'] == null
-                              ? const Icon(Icons.person)
-                              : null,
-                        ),
-                        title: Text(userData['artisticName'] ?? 'Artista'),
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ChatPage(
-                                currentUserId: currentUserId,
-                                targetUserId: userId,
-                                targetUserName:
-                                    userData['artisticName'] ?? 'Artista',
-                                targetUserPhoto: userData['photoUrl'],
-                              ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   Widget _buildStoryItem(
     String name,
     String? photoUrl, {
     required VoidCallback onTap,
     bool isMe = false,
     bool isGuest = false,
+    bool isLive = false,
+    bool hasStories = false,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: (isMe || isGuest)
-                    ? null
-                    : LinearGradient(
-                        colors: [
-                          AppTheme.primaryColor,
-                          Colors.orange,
-                          AppTheme.primaryColor.withOpacity(0.5),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                color: isMe
-                    ? Colors.greenAccent
-                    : (isGuest ? Colors.white24 : null),
-              ),
-              child: Container(
-                padding: const EdgeInsets.all(2),
-                decoration: const BoxDecoration(
-                  color: Colors.black,
-                  shape: BoxShape.circle,
-                ),
-                child: CircleAvatar(
-                  radius: 30,
-                  backgroundImage: photoUrl != null
-                      ? CachedNetworkImageProvider(photoUrl)
-                      : null,
-                  child: photoUrl == null
-                      ? Icon(
-                          isGuest ? Icons.add : Icons.person,
-                          color: Colors.white24,
-                        )
-                      : null,
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              name.split(' ')[0],
-              style: const TextStyle(fontSize: 12, color: Colors.white70),
-            ),
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Column(
+        children: [
+          ArtistAvatar(
+            photoUrl: photoUrl,
+            isMe: isMe,
+            isLive: isLive,
+            hasStories: hasStories,
+            onTap: onTap,
+            radius: 30,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            name.split(' ')[0],
+            style: const TextStyle(fontSize: 12, color: Colors.white70),
+          ),
+        ],
       ),
     );
   }
@@ -650,318 +713,6 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
           label: 'Profile',
         ),
       ],
-    );
-  }
-}
-
-class ArtistFeedCard extends StatefulWidget {
-  final Post post;
-  final String currentUserId;
-
-  const ArtistFeedCard({
-    super.key,
-    required this.post,
-    required this.currentUserId,
-  });
-
-  @override
-  State<ArtistFeedCard> createState() => _ArtistFeedCardState();
-}
-
-class _ArtistFeedCardState extends State<ArtistFeedCard> {
-  bool get _isLiked => widget.post.likes.contains(widget.currentUserId);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ProfilePage(
-                          userId: widget.post.authorId,
-                          email: '', // Not needed for viewing
-                          showAppBar: true,
-                        ),
-                      ),
-                    );
-                  },
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 16,
-                        backgroundImage: widget.post.authorPhotoUrl != null
-                            ? CachedNetworkImageProvider(
-                                widget.post.authorPhotoUrl!,
-                              )
-                            : null,
-                        child: widget.post.authorPhotoUrl == null
-                            ? const Icon(Icons.person, size: 16)
-                            : null,
-                      ),
-                      const SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.post.authorName,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const Text(
-                            'Música & Arte',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.white54,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const Spacer(),
-                if (widget.currentUserId != widget.post.authorId &&
-                    widget.currentUserId.isNotEmpty)
-                  TextButton(
-                    onPressed: () => sl<CommunityService>().toggleFollow(
-                      widget.currentUserId,
-                      widget.post.authorId,
-                    ),
-                    child: const Text(
-                      'Seguir',
-                      style: TextStyle(
-                        color: Color(0xFFE5B80B),
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                IconButton(
-                  icon: const Icon(Icons.more_vert, size: 20),
-                  onPressed: () {},
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-              ],
-            ),
-          ),
-
-          // Content
-          GestureDetector(
-            onDoubleTap: () => _toggleLike(),
-            child: CachedNetworkImage(
-              imageUrl: widget.post.imageUrl,
-              width: double.infinity,
-              height: MediaQuery.of(context).size.width,
-              fit: BoxFit.cover,
-              placeholder: (context, url) => Container(color: Colors.white10),
-            ),
-          ),
-
-          // Toolbar
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: _toggleLike,
-                  child: Icon(
-                    _isLiked ? Icons.favorite : Icons.favorite_border,
-                    color: _isLiked ? Colors.red : Colors.white,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                GestureDetector(
-                  onTap: () => _showCommentsSheet(context),
-                  child: const Icon(Icons.chat_bubble_outline, size: 24),
-                ),
-                const SizedBox(width: 16),
-                const Icon(Icons.send_outlined, size: 24),
-                const Spacer(),
-                const Icon(Icons.bookmark_border, size: 28),
-              ],
-            ),
-          ),
-
-          // Likes & Caption
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${widget.post.likes.length} curtidas',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                RichText(
-                  text: TextSpan(
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
-                    children: [
-                      TextSpan(
-                        text: '${widget.post.authorName} ',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      TextSpan(text: widget.post.caption),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                GestureDetector(
-                  onTap: () => _showCommentsSheet(context),
-                  child: const Text(
-                    'Ver todos os comentários',
-                    style: TextStyle(color: Colors.white54, fontSize: 13),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(color: Colors.white10),
-        ],
-      ),
-    ).animate().fadeIn(duration: 400.ms);
-  }
-
-  void _toggleLike() {
-    if (widget.currentUserId.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Faça login para curtir!')));
-      return;
-    }
-    sl<CommunityService>().toggleLike(widget.post.id, widget.currentUserId);
-  }
-
-  void _showCommentsSheet(BuildContext context) {
-    final commentController = TextEditingController();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.grey[900],
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: Container(
-          height: 500,
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              const Text(
-                'Comentários',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-              ),
-              const Divider(color: Colors.white10),
-              Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: sl<CommunityService>().getComments(widget.post.id),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData)
-                      return const Center(child: CircularProgressIndicator());
-                    final comments = snapshot.data!.docs;
-                    return ListView.builder(
-                      itemCount: comments.length,
-                      itemBuilder: (context, index) {
-                        final comment =
-                            comments[index].data() as Map<String, dynamic>;
-                        return ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: CircleAvatar(
-                            radius: 14,
-                            backgroundImage: comment['authorPhotoUrl'] != null
-                                ? CachedNetworkImageProvider(
-                                    comment['authorPhotoUrl'],
-                                  )
-                                : null,
-                            child: comment['authorPhotoUrl'] == null
-                                ? const Icon(Icons.person, size: 14)
-                                : null,
-                          ),
-                          title: Text(
-                            comment['authorName'] ?? 'Anônimo',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                            ),
-                          ),
-                          subtitle: Text(
-                            comment['text'] ?? '',
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 13,
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-              const Divider(color: Colors.white10),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: commentController,
-                      decoration: const InputDecoration(
-                        hintText: 'Adicione um comentário...',
-                        border: InputBorder.none,
-                      ),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      if (commentController.text.isNotEmpty &&
-                          widget.currentUserId.isNotEmpty) {
-                        // Get current user profile for naming the comment
-                        final authState = context.read<AuthBloc>().state;
-                        if (authState is ProfileLoaded) {
-                          sl<CommunityService>().addComment(widget.post.id, {
-                            'authorId': widget.currentUserId,
-                            'authorName': authState.profile.artisticName,
-                            'authorPhotoUrl': authState.profile.photoUrl,
-                            'text': commentController.text,
-                            'createdAt': Timestamp.now(),
-                          });
-                          commentController.clear();
-                        }
-                      }
-                    },
-                    child: const Text(
-                      'Publicar',
-                      style: TextStyle(
-                        color: Color(0xFFE5B80B),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

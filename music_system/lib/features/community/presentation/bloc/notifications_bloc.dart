@@ -1,0 +1,73 @@
+import 'dart:async';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../domain/repositories/notification_repository.dart';
+import 'notifications_event.dart';
+import 'notifications_state.dart';
+
+class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
+  final NotificationRepository repository;
+  StreamSubscription? _subscription;
+
+  NotificationsBloc({required this.repository})
+    : super(const NotificationsState()) {
+    on<NotificationsStarted>(_onStarted);
+    on<NotificationsUpdated>(_onUpdated);
+    on<MarkNotificationAsRead>(_onMarkAsRead);
+    on<NotificationsErrorOccurred>(_onErrorOccurred);
+  }
+
+  void _onErrorOccurred(
+    NotificationsErrorOccurred event,
+    Emitter<NotificationsState> emit,
+  ) {
+    emit(
+      state.copyWith(
+        status: NotificationsStatus.failure,
+        errorMessage: event.message,
+      ),
+    );
+  }
+
+  Future<void> _onMarkAsRead(
+    MarkNotificationAsRead event,
+    Emitter<NotificationsState> emit,
+  ) async {
+    await repository.markAsRead(event.userId, event.notificationId);
+  }
+
+  Future<void> _onStarted(
+    NotificationsStarted event,
+    Emitter<NotificationsState> emit,
+  ) async {
+    emit(state.copyWith(status: NotificationsStatus.loading));
+    await _subscription?.cancel();
+    _subscription = repository
+        .streamNotifications(event.userId)
+        .listen(
+          (notifications) {
+            add(NotificationsUpdated(notifications));
+          },
+          onError: (e) {
+            add(NotificationsErrorOccurred(e.toString()));
+          },
+        );
+  }
+
+  void _onUpdated(
+    NotificationsUpdated event,
+    Emitter<NotificationsState> emit,
+  ) {
+    emit(
+      state.copyWith(
+        status: NotificationsStatus.success,
+        notifications: event.notifications,
+      ),
+    );
+  }
+
+  @override
+  Future<void> close() {
+    _subscription?.cancel();
+    return super.close();
+  }
+}
