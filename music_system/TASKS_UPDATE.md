@@ -1,8 +1,16 @@
-# Atualização de Tarefas (Versão 19)
+# Atualização de Tarefas (Versão 20)
 
 ## ✅ Concluído Recentemente
 
-### 1. Sistema de Notificações Completo
+### 1. Refatoração e Melhorias no Perfil
+- **Refatoração do ArtistFeedCard:** Widget extraído para arquivo próprio e código limpo.
+- **Aba "Posts" no Perfil:** Implementada listagem de posts do usuário.
+- **Scroll Infinito no Perfil:**
+  - Substituição de `Column` por `NestedScrollView` para garantir que o cabeçalho do perfil role junto com as abas ("Sobre", "Posts", etc.), melhorando a experiência de uso.
+- **Correção de Crash (Firestore Index):**
+  - Implementada ordenação em memória para evitar erros de índice ausente no Firestore ao filtrar posts por usuário.
+
+### 2. Sistema de Notificações Completo
 - **Backend:**
   - Implementado `NotificationRepository` com suporte a listeners do Firestore.
   - Injeção de dependências configurada para disparar notificações automaticamente em:
@@ -19,13 +27,9 @@
     - Clicar em "Mensagem" -> Vai para o chat.
   - **Mark as Read:** Notificações são marcadas como lidas automaticamente ao clicar.
 
-### 2. Smart Lyrics (Correções Críticas)
+### 3. Smart Lyrics (Correções Críticas)
 - **Crash Fix:** Resolvido erro de `Assertion failed` no `ScrollController` quando a tela de letras era fechada durante a rolagem automática.
-- **Scraping Melhorado:** O algoritmo de busca de cifras agora é "resiliente". Se não encontrar a cifra nos seletores padrão do Cifra Club, ele varre todos os blocos de texto (`<pre>`) da página para tentar encontrar o conteúdo, corrigindo falhas em músicas com layout diferente (ex: Roberto Carlos).
-
-### 3. Deploy e Infraestrutura
-- **Firebase Deploy:** Resolvido problema de permissões no Storage e deploy realizado com sucesso.
-- **Versão:** Atualizada para **19**.
+- **Scraping Melhorado:** O algoritmo de busca de cifras agora é "resiliente".
 
 ## 🚧 Próximos Passos (Sugestões)
 
@@ -37,4 +41,4 @@
    - Realizar testes de carga no chat em tempo real.
 
 ---
-*Última atualização: Versão 19*
+*Última atualização: Versão 20*
