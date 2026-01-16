@@ -14,7 +14,10 @@ class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl({required this.firebaseAuth, required this.firestore});
 
   @override
-  Future<Either<Failure, UserEntity>> signIn(String email, String password) async {
+  Future<Either<Failure, UserEntity>> signIn(
+    String email,
+    String password,
+  ) async {
     try {
       final credential = await firebaseAuth.signInWithEmailAndPassword(
         email: email,
@@ -29,7 +32,11 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<Failure, UserEntity>> signUp(String email, String password, String name) async {
+  Future<Either<Failure, UserEntity>> signUp(
+    String email,
+    String password,
+    String name,
+  ) async {
     try {
       final credential = await firebaseAuth.createUserWithEmailAndPassword(
         email: email,
@@ -64,8 +71,9 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Stream<UserEntity?> get authStateChanges =>
-      firebaseAuth.authStateChanges().map((user) => user != null ? _mapFirebaseUser(user) : null);
+  Stream<UserEntity?> get authStateChanges => firebaseAuth
+      .authStateChanges()
+      .map((user) => user != null ? _mapFirebaseUser(user) : null);
 
   @override
   Future<Either<Failure, UserProfile>> getProfile(String userId) async {
@@ -100,11 +108,29 @@ class AuthRepositoryImpl implements AuthRepository {
 
       final data = model.toJson();
       // Only keep fields that are not null to avoid overwriting with null unless intended
-      data.removeWhere((key, value) => value == null && key != 'photoUrl' && key != 'bio'); 
+      data.removeWhere(
+        (key, value) => value == null && key != 'photoUrl' && key != 'bio',
+      );
 
-      await firestore.collection('users').doc(profile.id).set(data, SetOptions(merge: true));
+      await firestore
+          .collection('users')
+          .doc(profile.id)
+          .set(data, SetOptions(merge: true));
       return const Right(null);
     } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> updateLastActive(String userId) async {
+    try {
+      await firestore.collection('users').doc(userId).update({
+        'lastActiveAt': FieldValue.serverTimestamp(),
+      });
+      return const Right(null);
+    } catch (e) {
+      // Falhas ao atualizar status online não devem bloquear o app, mas podemos logar
       return Left(ServerFailure(e.toString()));
     }
   }

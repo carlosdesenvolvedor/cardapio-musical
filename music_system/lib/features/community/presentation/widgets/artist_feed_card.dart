@@ -32,11 +32,32 @@ class ArtistFeedCard extends StatefulWidget {
 }
 
 class _ArtistFeedCardState extends State<ArtistFeedCard> {
-  bool get _isLiked => widget.post.likes.contains(widget.currentUserId);
+  late bool _isLiked;
+  late int _likeCount;
+
+  @override
+  void initState() {
+    super.initState();
+    _paramsFromWidget();
+  }
+
+  @override
+  void didUpdateWidget(covariant ArtistFeedCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.post != widget.post) {
+      _paramsFromWidget();
+    }
+  }
+
+  void _paramsFromWidget() {
+    _isLiked = widget.post.likes.contains(widget.currentUserId);
+    _likeCount = widget.post.likes.length;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      // ... (build content remains mostly same, using _isLiked and _likeCount)
       margin: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -186,7 +207,7 @@ class _ArtistFeedCardState extends State<ArtistFeedCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${widget.post.likes.length} curtidas',
+                  '$_likeCount curtidas',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
@@ -229,6 +250,16 @@ class _ArtistFeedCardState extends State<ArtistFeedCard> {
       ).showSnackBar(const SnackBar(content: Text('Faça login para curtir!')));
       return;
     }
+
+    setState(() {
+      if (_isLiked) {
+        _isLiked = false;
+        _likeCount--;
+      } else {
+        _isLiked = true;
+        _likeCount++;
+      }
+    });
 
     final authState = context.read<AuthBloc>().state;
     String? senderName;

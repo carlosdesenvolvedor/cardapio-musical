@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:rxdart/rxdart.dart';
 import '../../domain/usecases/get_community_feed.dart';
 import '../../domain/usecases/get_active_stories.dart';
 import '../../domain/repositories/post_repository.dart';
@@ -22,7 +23,12 @@ class CommunityBloc extends Bloc<CommunityEvent, CommunityState> {
     on<FetchFeedStarted>(_onFetchFeedStarted);
     on<FetchStoriesStarted>(_onFetchStoriesStarted);
     on<LoadMorePostsRequested>(_onLoadMorePostsRequested);
-    on<ToggleLikeRequested>(_onToggleLikeRequested);
+    on<ToggleLikeRequested>(
+      _onToggleLikeRequested,
+      transformer: (events, mapper) => events
+          .debounceTime(const Duration(milliseconds: 500))
+          .switchMap(mapper),
+    );
   }
 
   Future<void> _onFetchFeedStarted(

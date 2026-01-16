@@ -46,6 +46,8 @@ class _ProfilePageState extends State<ProfilePage>
   String? _fcmToken; // To preserve the token
   List<String> _galleryUrls = [];
   bool _isUploadingImage = false;
+  DateTime? _lastActiveAt;
+  bool _isLive = false;
 
   bool get _isOwner => FirebaseAuth.instance.currentUser?.uid == widget.userId;
 
@@ -120,6 +122,8 @@ class _ProfilePageState extends State<ProfilePage>
                 _facebookController.text = state.profile.facebookUrl ?? '';
                 _currentPhotoUrl = state.profile.photoUrl;
                 _galleryUrls = state.profile.galleryUrls ?? [];
+                _lastActiveAt = state.profile.lastActiveAt; // Populate
+                _isLive = state.profile.isLive;
               }
             }
           },
@@ -300,6 +304,7 @@ class _ProfilePageState extends State<ProfilePage>
           facebookUrl: _facebookController.text,
           galleryUrls: _galleryUrls,
           fcmToken: _fcmToken,
+          isLive: _isLive,
         ),
       ),
     );
@@ -332,6 +337,58 @@ class _ProfilePageState extends State<ProfilePage>
                 : _artisticNameController.text,
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
+          if (_isOwner)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Switch(
+                    value: _isLive,
+                    onChanged: (value) {
+                      setState(() => _isLive = value);
+                      // Trigger save automatically or just visual?
+                      // Ideally we should auto-save or let the user hit Save.
+                      // Since there is a Save button, we rely on it, but for "Live" status, instant is better.
+                      // However, to keep consistency with other fields, let's keep it in "Save" for now or trigger a separate update?
+                      // Given the "Status" nature, instant update is expected.
+                      // But the Save button handles ProfileUpdateRequested.
+                      // Let's rely on _saveProfile for simplicity, user toggles and hits Save.
+                      // Wait, "Tocando Agora" implies strictly NOW.
+                      // Let's add a visual cue.
+                    },
+                    activeColor: const Color(0xFFE5B80B),
+                  ),
+                  const Text(
+                    'Tocando Agora',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+          if (_lastActiveAt != null &&
+              DateTime.now().difference(_lastActiveAt!).inMinutes < 5)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Colors.green,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Text(
+                    'Online',
+                    style: TextStyle(color: Colors.green, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
           if (_isOwner)
             Text(
               widget.email,

@@ -98,7 +98,7 @@ class ArtistAvatar extends StatelessWidget {
                   border: Border.all(color: Colors.black, width: 1.5),
                 ),
                 child: const Text(
-                  'LIVE',
+                  'TOCANDO',
                   style: TextStyle(
                     color: Colors.black,
                     fontSize: 8,

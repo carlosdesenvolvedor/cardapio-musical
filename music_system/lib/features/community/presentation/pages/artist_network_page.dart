@@ -21,6 +21,7 @@ import 'package:music_system/core/services/deezer_service.dart';
 import 'package:music_system/features/community/presentation/bloc/notifications_bloc.dart';
 import 'package:music_system/features/community/presentation/bloc/notifications_state.dart';
 import 'package:music_system/features/community/presentation/widgets/artist_feed_card.dart';
+import 'package:music_system/features/community/presentation/widgets/feed_shimmer.dart';
 
 class ArtistNetworkPage extends StatefulWidget {
   const ArtistNetworkPage({super.key});
@@ -214,11 +215,7 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
               builder: (context, state) {
                 if (state.status == CommunityStatus.loading &&
                     state.posts.isEmpty) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      color: AppTheme.primaryColor,
-                    ),
-                  );
+                  return const FeedShimmer();
                 }
 
                 final posts = state.posts;
