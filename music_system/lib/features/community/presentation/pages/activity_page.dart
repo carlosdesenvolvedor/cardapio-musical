@@ -104,7 +104,7 @@ class ActivityPage extends StatelessWidget {
         iconColor = Colors.red;
         break;
       case NotificationType.follow:
-        message = 'começou a seguir você.';
+        message = 'agora é seu fã.';
         icon = Icons.person_add;
         iconColor = Colors.blue;
         break;

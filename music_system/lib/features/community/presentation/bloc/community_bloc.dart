@@ -137,8 +137,15 @@ class CommunityBloc extends Bloc<CommunityEvent, CommunityState> {
     emit(state.copyWith(posts: updatedPosts));
     final result = await postRepository.toggleLike(event.postId, event.userId);
 
-    // Create Notification if it was a like (approximate logic: if senderName is provided)
+    // Check if it was a LIKE (userId was added)
+    bool isLike = false;
+    final post = state.posts.firstWhere((p) => p.id == event.postId);
+    if (post.likes.contains(event.userId)) {
+      isLike = true;
+    }
+
     if (result.isRight() &&
+        isLike && // Add this check
         event.senderName != null &&
         event.postAuthorId != null &&
         event.postAuthorId != event.userId) {

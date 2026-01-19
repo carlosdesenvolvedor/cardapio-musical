@@ -14,6 +14,8 @@ abstract class AuthRepository {
   Future<Either<Failure, UserEntity?>> getCurrentUser();
   Stream<UserEntity?> get authStateChanges;
   Future<Either<Failure, UserProfile>> getProfile(String userId);
+  Future<Either<Failure, List<UserProfile>>> getProfiles(List<String> userIds);
   Future<Either<Failure, void>> updateProfile(UserProfile profile);
   Future<Either<Failure, void>> updateLastActive(String userId);
+  Future<Either<Failure, void>> setLiveStatus(String userId, bool isLive);
 }

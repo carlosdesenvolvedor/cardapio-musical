@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'core/services/storage_service.dart';
 import 'core/services/cloudinary_service.dart';
 import 'core/services/notification_service.dart';
+import 'core/services/livekit_service.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
 import 'features/auth/domain/repositories/auth_repository.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
@@ -183,13 +184,18 @@ Future<void> init() async {
 
   sl.registerFactory(() => ChatBloc(sendMessage: sl(), streamMessages: sl()));
   sl.registerFactory(
-    () => ConversationsBloc(streamConversations: sl(), authRepository: sl()),
+    () => ConversationsBloc(
+      streamConversations: sl(),
+      authRepository: sl(),
+      socialGraphRepository: sl(),
+    ),
   );
 
   //! External
   sl.registerLazySingleton(() => StorageService());
   sl.registerLazySingleton(() => CloudinaryService());
   sl.registerLazySingleton(() => PushNotificationService());
+  sl.registerLazySingleton(() => LiveKitService());
   sl.registerLazySingleton(() => Dio());
   sl.registerLazySingleton(() => FirebaseFirestore.instance);
   sl.registerLazySingleton(() => FirebaseAuth.instance);

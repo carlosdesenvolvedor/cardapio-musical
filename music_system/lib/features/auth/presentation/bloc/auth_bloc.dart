@@ -53,6 +53,14 @@ class UpdateLastActive extends AuthEvent {
   List<Object?> get props => [userId];
 }
 
+class ToggleLiveStatus extends AuthEvent {
+  final String userId;
+  final bool isLive;
+  ToggleLiveStatus(this.userId, this.isLive);
+  @override
+  List<Object?> get props => [userId, isLive];
+}
+
 // States
 abstract class AuthState extends Equatable {
   @override
@@ -92,7 +100,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final PushNotificationService notificationService;
 
   AuthBloc({required this.repository, required this.notificationService})
-    : super(AuthInitial()) {
+      : super(AuthInitial()) {
     on<AppStarted>((event, emit) async {
       final result = await repository.getCurrentUser();
       result.fold((_) => emit(Unauthenticated()), (user) {
@@ -154,6 +162,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     on<UpdateLastActive>((event, emit) async {
       await repository.updateLastActive(event.userId);
+    });
+
+    on<ToggleLiveStatus>((event, emit) async {
+      await repository.setLiveStatus(event.userId, event.isLive);
+      // If we are showing the profile of this person, refresh it
+      if (state is ProfileLoaded) {
+        final currentProfile = (state as ProfileLoaded).profile;
+        if (currentProfile.id == event.userId) {
+          add(ProfileRequested(event.userId));
+        }
+      }
     });
   }
 }

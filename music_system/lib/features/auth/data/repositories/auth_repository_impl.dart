@@ -90,6 +90,30 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<Either<Failure, List<UserProfile>>> getProfiles(
+    List<String> userIds,
+  ) async {
+    if (userIds.isEmpty) return const Right([]);
+    try {
+      // O Firestore permite no máximo 30 IDs no 'whereIn'.
+      final limitedIds = userIds.take(30).toList();
+
+      final query = await firestore
+          .collection('users')
+          .where(FieldPath.documentId, whereIn: limitedIds)
+          .get();
+
+      final profiles = query.docs
+          .map((doc) => UserProfileModel.fromJson(doc.data(), doc.id))
+          .toList();
+
+      return Right(profiles);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, void>> updateProfile(UserProfile profile) async {
     try {
       final model = UserProfileModel(
@@ -104,6 +128,9 @@ class AuthRepositoryImpl implements AuthRepository {
         facebookUrl: profile.facebookUrl,
         galleryUrls: profile.galleryUrls,
         fcmToken: profile.fcmToken,
+        isLive: profile.isLive,
+        liveUntil: profile.liveUntil,
+        scheduledShow: profile.scheduledShow,
       );
 
       final data = model.toJson();
@@ -131,6 +158,20 @@ class AuthRepositoryImpl implements AuthRepository {
       return const Right(null);
     } catch (e) {
       // Falhas ao atualizar status online não devem bloquear o app, mas podemos logar
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> setLiveStatus(
+      String userId, bool isLive) async {
+    try {
+      await firestore.collection('users').doc(userId).update({
+        'isLive': isLive,
+        'lastActiveAt': FieldValue.serverTimestamp(),
+      });
+      return const Right(null);
+    } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
   }

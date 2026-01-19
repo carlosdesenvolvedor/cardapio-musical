@@ -13,6 +13,7 @@ import 'package:music_system/features/song_requests/presentation/bloc/song_reque
 
 import 'package:music_system/core/services/notification_service.dart';
 import 'package:music_system/injection_container.dart';
+import 'package:music_system/features/live/presentation/pages/live_page.dart';
 
 class MusicianDashboardPage extends StatefulWidget {
   const MusicianDashboardPage({super.key});
@@ -109,6 +110,31 @@ class _MusicianDashboardPageState extends State<MusicianDashboardPage> {
                     builder: (context) => const ManageRepertoirePage(),
                   ),
                 );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.live_tv, color: Colors.redAccent),
+              title: const Text('Iniciar Transmissão'),
+              subtitle: const Text(
+                'Modo Músico (High Quality)',
+                style: TextStyle(color: Colors.white38, fontSize: 10),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                final authState = context.read<AuthBloc>().state;
+                if (authState is Authenticated) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => LivePage(
+                        liveId: authState.user.id,
+                        isHost: true,
+                        userId: authState.user.id,
+                        userName: authState.user.displayName,
+                      ),
+                    ),
+                  );
+                }
               },
             ),
             ListTile(
@@ -339,8 +365,8 @@ class _RequestDashboardCard extends StatelessWidget {
                             TextButton(
                               onPressed: () {
                                 context.read<SongRequestBloc>().add(
-                                  DeleteSongRequestEvent(request.id),
-                                );
+                                      DeleteSongRequestEvent(request.id),
+                                    );
                                 Navigator.pop(context);
                               },
                               child: const Text(
@@ -401,8 +427,8 @@ class _RequestDashboardCard extends StatelessWidget {
                   TextButton(
                     onPressed: () {
                       context.read<SongRequestBloc>().add(
-                        UpdateSongRequestStatus(request.id, 'declined'),
-                      );
+                            UpdateSongRequestStatus(request.id, 'declined'),
+                          );
                     },
                     child: const Text(
                       'Recusar',
@@ -419,8 +445,8 @@ class _RequestDashboardCard extends StatelessWidget {
                     label: const Text('Aceitar'),
                     onPressed: () {
                       context.read<SongRequestBloc>().add(
-                        UpdateSongRequestStatus(request.id, 'accepted'),
-                      );
+                            UpdateSongRequestStatus(request.id, 'accepted'),
+                          );
                     },
                   ),
                 ],

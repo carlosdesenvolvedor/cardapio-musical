@@ -5,7 +5,8 @@ class StoryEntity extends Equatable {
   final String authorId;
   final String authorName;
   final String? authorPhotoUrl;
-  final String imageUrl;
+  final String mediaUrl;
+  final String mediaType; // 'image' or 'video'
   final DateTime createdAt;
   final DateTime expiresAt;
   final List<String> viewers;
@@ -15,13 +16,15 @@ class StoryEntity extends Equatable {
     required this.authorId,
     required this.authorName,
     this.authorPhotoUrl,
-    required this.imageUrl,
+    required this.mediaUrl,
+    required this.mediaType,
     required this.createdAt,
     required this.expiresAt,
     required this.viewers,
   });
 
   bool get isExpired => DateTime.now().isAfter(expiresAt);
+  bool get isVideo => mediaType == 'video';
 
   @override
   List<Object?> get props => [
@@ -29,7 +32,8 @@ class StoryEntity extends Equatable {
     authorId,
     authorName,
     authorPhotoUrl,
-    imageUrl,
+    mediaUrl,
+    mediaType,
     createdAt,
     expiresAt,
     viewers,

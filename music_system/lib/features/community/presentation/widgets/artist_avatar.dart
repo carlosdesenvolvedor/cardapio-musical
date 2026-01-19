@@ -7,6 +7,7 @@ class ArtistAvatar extends StatelessWidget {
   final bool isMe;
   final bool isLive;
   final bool hasStories;
+  final bool allStoriesViewed;
   final double radius;
   final VoidCallback? onTap;
 
@@ -16,6 +17,7 @@ class ArtistAvatar extends StatelessWidget {
     this.isMe = false,
     this.isLive = false,
     this.hasStories = false,
+    this.allStoriesViewed = false,
     this.radius = 30,
     this.onTap,
   });
@@ -37,11 +39,20 @@ class ArtistAvatar extends StatelessWidget {
               height: (radius + 4) * 2,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [AppTheme.primaryColor, Colors.orange, Colors.purple],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                gradient: allStoriesViewed
+                    ? null
+                    : LinearGradient(
+                        colors: [
+                          AppTheme.primaryColor,
+                          Colors.orange,
+                          Colors.purple,
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                border: allStoriesViewed
+                    ? Border.all(color: Colors.white24, width: 2)
+                    : null,
               ),
             ),
 

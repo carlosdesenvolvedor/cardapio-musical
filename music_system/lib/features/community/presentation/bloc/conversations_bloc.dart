@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/usecases/stream_conversations.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
+import '../../domain/repositories/social_graph_repository.dart';
 import '../../domain/entities/conversation_entity.dart';
 import 'conversations_event.dart';
 import 'conversations_state.dart';
@@ -9,14 +10,17 @@ import 'conversations_state.dart';
 class ConversationsBloc extends Bloc<ConversationsEvent, ConversationsState> {
   final StreamConversations streamConversations;
   final AuthRepository authRepository;
+  final SocialGraphRepository socialGraphRepository;
   StreamSubscription? _conversationsSubscription;
 
   ConversationsBloc({
     required this.streamConversations,
     required this.authRepository,
+    required this.socialGraphRepository,
   }) : super(const ConversationsState()) {
     on<ConversationsStarted>(_onConversationsStarted);
     on<ConversationsUpdated>(_onConversationsUpdated);
+    on<FollowingProfilesUpdated>(_onFollowingProfilesUpdated);
     on<ConversationsErrorOccurred>(_onErrorOccurred);
   }
 
@@ -37,6 +41,9 @@ class ConversationsBloc extends Bloc<ConversationsEvent, ConversationsState> {
     Emitter<ConversationsState> emit,
   ) async {
     emit(state.copyWith(status: ConversationsStatus.loading));
+
+    // Fetch following profiles as suggestions
+    _loadFollowingProfiles(event.userId);
 
     await _conversationsSubscription?.cancel();
     _conversationsSubscription = streamConversations(event.userId).listen(
@@ -71,6 +78,19 @@ class ConversationsBloc extends Bloc<ConversationsEvent, ConversationsState> {
     );
   }
 
+  Future<void> _loadFollowingProfiles(String userId) async {
+    final followingResult = await socialGraphRepository.getFollowingIds(userId);
+    followingResult.fold((_) => null, (ids) async {
+      if (ids.isNotEmpty) {
+        final profilesResult = await authRepository.getProfiles(ids);
+        profilesResult.fold(
+          (_) => null,
+          (profiles) => add(FollowingProfilesUpdated(profiles)),
+        );
+      }
+    });
+  }
+
   void _onConversationsUpdated(
     ConversationsUpdated event,
     Emitter<ConversationsState> emit,
@@ -81,6 +101,13 @@ class ConversationsBloc extends Bloc<ConversationsEvent, ConversationsState> {
         conversations: event.conversations,
       ),
     );
+  }
+
+  void _onFollowingProfilesUpdated(
+    FollowingProfilesUpdated event,
+    Emitter<ConversationsState> emit,
+  ) {
+    emit(state.copyWith(followingProfiles: event.profiles));
   }
 
   @override

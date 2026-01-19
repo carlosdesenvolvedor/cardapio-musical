@@ -22,12 +22,15 @@ import 'firebase_options.dart';
 import 'injection_container.dart' as di;
 import 'features/community/presentation/pages/artist_network_page.dart';
 import 'core/constants/app_version.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
   // Configures the URL strategy to remove the '#' from the URL
   usePathUrlStrategy();
 
   WidgetsFlutterBinding.ensureInitialized();
+
+  await initializeDateFormatting('pt_BR', null);
 
   try {
     await Firebase.initializeApp(

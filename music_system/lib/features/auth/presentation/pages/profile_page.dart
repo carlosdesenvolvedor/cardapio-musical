@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:intl/intl.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/profile_view_bloc.dart';
 import '../../domain/entities/user_profile.dart';
@@ -10,9 +11,13 @@ import 'package:music_system/core/services/cloudinary_service.dart';
 import '../../../../injection_container.dart';
 import 'package:music_system/features/community/domain/repositories/post_repository.dart';
 import 'package:music_system/features/community/presentation/widgets/artist_feed_card.dart';
+import 'package:music_system/features/community/domain/repositories/social_graph_repository.dart';
+import 'package:music_system/features/community/presentation/widgets/artist_avatar.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:dartz/dartz.dart' hide State;
 import 'package:music_system/core/error/failures.dart';
+import 'package:music_system/features/community/presentation/pages/chat_page.dart';
+import 'package:music_system/features/client_menu/presentation/pages/client_menu_page.dart';
 
 class ProfilePage extends StatefulWidget {
   final String userId;
@@ -48,6 +53,8 @@ class _ProfilePageState extends State<ProfilePage>
   bool _isUploadingImage = false;
   DateTime? _lastActiveAt;
   bool _isLive = false;
+  DateTime? _liveUntil;
+  DateTime? _scheduledShow;
 
   bool get _isOwner => FirebaseAuth.instance.currentUser?.uid == widget.userId;
 
@@ -124,6 +131,8 @@ class _ProfilePageState extends State<ProfilePage>
                 _galleryUrls = state.profile.galleryUrls ?? [];
                 _lastActiveAt = state.profile.lastActiveAt; // Populate
                 _isLive = state.profile.isLive;
+                _liveUntil = state.profile.liveUntil;
+                _scheduledShow = state.profile.scheduledShow;
               }
             }
           },
@@ -135,7 +144,7 @@ class _ProfilePageState extends State<ProfilePage>
               return NestedScrollView(
                 headerSliverBuilder: (context, innerBoxIsScrolled) {
                   return [
-                    SliverToBoxAdapter(child: _buildHeader()),
+                    SliverToBoxAdapter(child: _buildHeader(state)),
                     SliverToBoxAdapter(
                       child: Container(
                         color: Colors.black,
@@ -305,12 +314,14 @@ class _ProfilePageState extends State<ProfilePage>
           galleryUrls: _galleryUrls,
           fcmToken: _fcmToken,
           isLive: _isLive,
+          liveUntil: _liveUntil,
+          scheduledShow: _scheduledShow,
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(ProfileViewLoaded state) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 24.0),
       child: Column(
@@ -319,15 +330,11 @@ class _ProfilePageState extends State<ProfilePage>
             onTap: _isOwner
                 ? () => _pickAndUploadImage(isGallery: false)
                 : null,
-            child: CircleAvatar(
+            child: ArtistAvatar(
+              photoUrl: _currentPhotoUrl,
               radius: 50,
-              backgroundColor: Colors.grey[900],
-              backgroundImage: _currentPhotoUrl != null
-                  ? CachedNetworkImageProvider(_currentPhotoUrl!)
-                  : null,
-              child: _currentPhotoUrl == null
-                  ? const Icon(Icons.person, size: 50, color: Colors.white24)
-                  : null,
+              isLive: _isLive, // Pass the local state toggle
+              isMe: _isOwner,
             ),
           ),
           const SizedBox(height: 12),
@@ -347,29 +354,165 @@ class _ProfilePageState extends State<ProfilePage>
                     value: _isLive,
                     onChanged: (value) {
                       setState(() => _isLive = value);
-                      // Trigger save automatically or just visual?
-                      // Ideally we should auto-save or let the user hit Save.
-                      // Since there is a Save button, we rely on it, but for "Live" status, instant is better.
-                      // However, to keep consistency with other fields, let's keep it in "Save" for now or trigger a separate update?
-                      // Given the "Status" nature, instant update is expected.
-                      // But the Save button handles ProfileUpdateRequested.
-                      // Let's rely on _saveProfile for simplicity, user toggles and hits Save.
-                      // Wait, "Tocando Agora" implies strictly NOW.
-                      // Let's add a visual cue.
+                      _saveProfile();
                     },
                     activeColor: const Color(0xFFE5B80B),
                   ),
                   const Text(
                     'Tocando Agora',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                   ),
+                  if (_isLive) ...[
+                    const SizedBox(width: 8),
+                    InkWell(
+                      onTap: () => _selectTime(context, true),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white10,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: const Color(0xFFE5B80B).withOpacity(0.3),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.access_time,
+                              size: 14,
+                              color: Color(0xFFE5B80B),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _liveUntil != null
+                                  ? 'até ${DateFormat('HH:mm').format(_liveUntil!)}'
+                                  : 'até que horas?',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.white70,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
+              ),
+            ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildStatColumn('Fãs', state.profile.followersCount),
+              const SizedBox(width: 32),
+              _buildStatColumn('Ídolos', state.profile.followingCount),
+            ],
+          ),
+          if (!_isOwner)
+            Padding(
+              padding: const EdgeInsets.only(top: 16, left: 24, right: 24),
+              child: FutureBuilder<Either<Failure, bool>>(
+                future: sl<SocialGraphRepository>().isFollowing(
+                  FirebaseAuth.instance.currentUser?.uid ?? '',
+                  widget.userId,
+                ),
+                builder: (context, snapshot) {
+                  final bool isFollowing =
+                      snapshot.data?.fold((_) => false, (r) => r) ?? false;
+
+                  return SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final String currentUserId =
+                            FirebaseAuth.instance.currentUser?.uid ?? '';
+                        if (currentUserId.isEmpty) return;
+
+                        final authState = context.read<AuthBloc>().state;
+                        String? senderName;
+                        String? senderPhoto;
+                        if (authState is ProfileLoaded) {
+                          senderName = authState.profile.artisticName;
+                          senderPhoto = authState.profile.photoUrl;
+                        }
+
+                        if (isFollowing) {
+                          await sl<SocialGraphRepository>().unfollowUser(
+                            currentUserId,
+                            widget.userId,
+                          );
+                        } else {
+                          await sl<SocialGraphRepository>().followUser(
+                            currentUserId,
+                            widget.userId,
+                            senderName: senderName,
+                            senderPhoto: senderPhoto,
+                          );
+                        }
+                        setState(() {});
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isFollowing
+                            ? Colors.white10
+                            : const Color(0xFFE5B80B),
+                        foregroundColor: isFollowing
+                            ? Colors.white
+                            : Colors.black,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        isFollowing ? 'Deixar de ser fã' : 'Sou fã',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          if (!_isOwner)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: TextButton.icon(
+                onPressed: () {
+                  final String currentUserId =
+                      FirebaseAuth.instance.currentUser?.uid ?? '';
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ChatPage(
+                        currentUserId: currentUserId,
+                        targetUserId: widget.userId,
+                        targetUserName: _artisticNameController.text,
+                        targetUserPhoto: _currentPhotoUrl,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(
+                  Icons.chat,
+                  color: Color(0xFFE5B80B),
+                  size: 18,
+                ),
+                label: const Text(
+                  'Falar com artista',
+                  style: TextStyle(
+                    color: Color(0xFFE5B80B),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
           if (_lastActiveAt != null &&
               DateTime.now().difference(_lastActiveAt!).inMinutes < 5)
             Padding(
-              padding: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.only(top: 8),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -381,21 +524,40 @@ class _ProfilePageState extends State<ProfilePage>
                       shape: BoxShape.circle,
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 6),
                   const Text(
                     'Online',
-                    style: TextStyle(color: Colors.green, fontSize: 12),
+                    style: TextStyle(color: Colors.green, fontSize: 13),
                   ),
                 ],
               ),
             ),
           if (_isOwner)
-            Text(
-              widget.email,
-              style: const TextStyle(color: Colors.grey, fontSize: 14),
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                widget.email,
+                style: const TextStyle(color: Colors.grey, fontSize: 14),
+              ),
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildStatColumn(String label, int count) {
+    return Column(
+      children: [
+        Text(
+          count.toString(),
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+      ],
     );
   }
 
@@ -407,6 +569,50 @@ class _ProfilePageState extends State<ProfilePage>
           controller: _artisticNameController,
           label: 'Nome Artístico',
           icon: Icons.star,
+        ),
+        const SizedBox(height: 16),
+        ElevatedButton.icon(
+          onPressed: _isLive
+              ? () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          ClientMenuPage(musicianId: widget.userId),
+                    ),
+                  );
+                }
+              : () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Este artista não está aceitando pedidos no momento.',
+                      ),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                },
+          icon: Icon(
+            _isLive ? Icons.playlist_add_check_circle : Icons.do_not_disturb_on,
+            color: _isLive ? Colors.black : Colors.black45,
+          ),
+          label: Text(
+            _isLive
+                ? 'PEDIR MÚSICA (ABRIR CARDÁPIO)'
+                : 'PEDIR MÚSICA (OFFLINE)',
+            style: TextStyle(
+              color: _isLive ? Colors.black : Colors.black45,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.1,
+            ),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _isLive ? const Color(0xFFE5B80B) : Colors.grey,
+            minimumSize: const Size(double.infinity, 50),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
         ),
         const SizedBox(height: 16),
         _buildTextField(
@@ -421,6 +627,75 @@ class _ProfilePageState extends State<ProfilePage>
           label: 'PIX',
           icon: Icons.pix,
         ),
+        const SizedBox(height: 16),
+        if (_isOwner) ...[
+          const Center(
+            child: Text(
+              'Próximo Show',
+              style: TextStyle(
+                color: Color(0xFFE5B80B),
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                letterSpacing: 1.2,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          InkWell(
+            onTap: () => _selectDateTime(context),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white10,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFFE5B80B).withOpacity(0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.calendar_today, color: Color(0xFFE5B80B)),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _scheduledShow != null
+                              ? DateFormat(
+                                  "EEEE, dd 'de' MMMM 'às' HH:mm",
+                                  'pt_BR',
+                                ).format(_scheduledShow!)
+                              : 'Clique para agendar um show',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (_scheduledShow == null)
+                          const Text(
+                            'Seus fãs serão notificados!',
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: 12,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (_scheduledShow != null)
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white54),
+                      onPressed: () {
+                        setState(() => _scheduledShow = null);
+                        _saveProfile();
+                      },
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -511,5 +786,116 @@ class _ProfilePageState extends State<ProfilePage>
         ),
       ),
     );
+  }
+
+  Future<void> _selectTime(BuildContext context, bool isLiveUntil) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: Color(0xFFE5B80B),
+              onPrimary: Colors.black,
+              surface: Colors.black,
+              onSurface: Colors.white,
+            ),
+          ),
+          child: MediaQuery(
+            data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+            child: child!,
+          ),
+        );
+      },
+    );
+
+    if (picked != null) {
+      final now = DateTime.now();
+      final selectedDateTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        picked.hour,
+        picked.minute,
+      );
+
+      // Se a hora escolhida já passou hoje, assume que é para amanhã (ou apenas atualiza)
+      DateTime finalDateTime = selectedDateTime;
+      if (selectedDateTime.isBefore(now)) {
+        finalDateTime = selectedDateTime.add(const Duration(days: 1));
+      }
+
+      setState(() {
+        if (isLiveUntil) {
+          _liveUntil = finalDateTime;
+        } else {
+          _scheduledShow = finalDateTime;
+        }
+      });
+      _saveProfile();
+    }
+  }
+
+  Future<void> _selectDateTime(BuildContext context) async {
+    final DateTime? date = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: Color(0xFFE5B80B),
+              onPrimary: Colors.black,
+              surface: Colors.black,
+              onSurface: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (date != null) {
+      if (mounted) {
+        final TimeOfDay? time = await showTimePicker(
+          context: context,
+          initialTime: TimeOfDay.now(),
+          builder: (context, child) {
+            return Theme(
+              data: Theme.of(context).copyWith(
+                colorScheme: const ColorScheme.dark(
+                  primary: Color(0xFFE5B80B),
+                  onPrimary: Colors.black,
+                  surface: Colors.black,
+                  onSurface: Colors.white,
+                ),
+              ),
+              child: MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(alwaysUse24HourFormat: true),
+                child: child!,
+              ),
+            );
+          },
+        );
+
+        if (time != null) {
+          setState(() {
+            _scheduledShow = DateTime(
+              date.year,
+              date.month,
+              date.day,
+              time.hour,
+              time.minute,
+            );
+          });
+          _saveProfile();
+        }
+      }
+    }
   }
 }

@@ -1,4 +1,5 @@
 # 🎵 MusicRequest System - Project Context & Documentation
+falar somente em portugues.
 
 > **Versão Atual:** 16
 > **Status:** Em Desenvolvimento Ativo (Fase de Polimento Visual & Integrações)

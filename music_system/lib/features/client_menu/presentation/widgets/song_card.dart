@@ -62,13 +62,43 @@ class SongCard extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        trailing: IconButton(
-          icon: const Icon(Icons.add_circle_outline, color: Color(0xFFB3B3B3)),
-          onPressed: () {
-            _showRequestModal(context);
+        trailing: BlocBuilder<AuthBloc, AuthState>(
+          builder: (context, state) {
+            final bool isLive = state is ProfileLoaded && state.profile.isLive;
+            return IconButton(
+              icon: Icon(
+                Icons.add_circle_outline,
+                color: isLive ? const Color(0xFFB3B3B3) : Colors.white10,
+              ),
+              onPressed: () {
+                if (isLive) {
+                  _showRequestModal(context);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Músico offline. Pedidos suspensos.'),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
+              },
+            );
           },
         ),
-        onTap: () => _showRequestModal(context),
+        onTap: () {
+          final state = context.read<AuthBloc>().state;
+          final bool isLive = state is ProfileLoaded && state.profile.isLive;
+          if (isLive) {
+            _showRequestModal(context);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Músico offline. Pedidos suspensos.'),
+                backgroundColor: Colors.redAccent,
+              ),
+            );
+          }
+        },
       ),
     );
   }

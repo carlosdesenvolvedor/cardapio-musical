@@ -47,3 +47,15 @@
 # Firebase
 **/.firebase/
 **/firebase-debug.log
+
+# Secrets
+**/lib/core/secrets/
+**/google-services.json
+**/GoogleService-Info.plist
+
+# Analysis and Logs
+*.txt
+*.log
+**/build_error.txt
+**/pub_err.txt
+**/pub_error.txt

@@ -43,3 +43,18 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase
+.firebase/
+functions/node_modules/
+functions/lib/
+
+# Analysis and Logs
+*.txt
+*.log
+build_error.txt
+pub_err.txt
+pub_error.txt
+
+# Secrets
+/lib/core/secrets/

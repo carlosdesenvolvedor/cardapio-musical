@@ -39,7 +39,8 @@ class StoryRepositoryImpl implements StoryRepository {
         authorId: story.authorId,
         authorName: story.authorName,
         authorPhotoUrl: story.authorPhotoUrl,
-        imageUrl: story.imageUrl,
+        mediaUrl: story.mediaUrl,
+        mediaType: story.mediaType,
         createdAt: story.createdAt,
         expiresAt: story.expiresAt,
         viewers: story.viewers,
@@ -61,6 +62,16 @@ class StoryRepositoryImpl implements StoryRepository {
       await firestore.collection('stories').doc(storyId).update({
         'viewers': FieldValue.arrayUnion([userId]),
       });
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> deleteStory(String storyId) async {
+    try {
+      await firestore.collection('stories').doc(storyId).delete();
       return const Right(null);
     } catch (e) {
       return Left(ServerFailure(e.toString()));

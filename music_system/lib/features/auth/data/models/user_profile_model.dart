@@ -17,6 +17,8 @@ class UserProfileModel extends UserProfile {
     super.followersCount = 0,
     super.followingCount = 0,
     super.isLive = false,
+    super.liveUntil,
+    super.scheduledShow,
     super.lastActiveAt,
   });
 
@@ -38,6 +40,12 @@ class UserProfileModel extends UserProfile {
       followersCount: json['followersCount'] ?? 0,
       followingCount: json['followingCount'] ?? 0,
       isLive: json['isLive'] ?? false,
+      liveUntil: json['liveUntil'] != null
+          ? (json['liveUntil'] as Timestamp).toDate()
+          : null,
+      scheduledShow: json['scheduledShow'] != null
+          ? (json['scheduledShow'] as Timestamp).toDate()
+          : null,
       lastActiveAt: json['lastActiveAt'] != null
           ? (json['lastActiveAt'] as Timestamp).toDate()
           : null,
@@ -59,6 +67,10 @@ class UserProfileModel extends UserProfile {
       'followersCount': followersCount,
       'followingCount': followingCount,
       'isLive': isLive,
+      'liveUntil': liveUntil != null ? Timestamp.fromDate(liveUntil!) : null,
+      'scheduledShow': scheduledShow != null
+          ? Timestamp.fromDate(scheduledShow!)
+          : null,
       'lastActiveAt': lastActiveAt != null
           ? Timestamp.fromDate(lastActiveAt!)
           : null,

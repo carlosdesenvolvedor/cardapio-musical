@@ -9,4 +9,5 @@ abstract class StoryRepository {
     String storyId,
     String userId,
   );
+  Future<Either<Failure, void>> deleteStory(String storyId);
 }

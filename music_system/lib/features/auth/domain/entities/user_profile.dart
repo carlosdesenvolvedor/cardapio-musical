@@ -15,6 +15,8 @@ class UserProfile extends Equatable {
   final int followersCount;
   final int followingCount;
   final bool isLive;
+  final DateTime? liveUntil;
+  final DateTime? scheduledShow;
   final DateTime? lastActiveAt;
 
   const UserProfile({
@@ -32,6 +34,8 @@ class UserProfile extends Equatable {
     this.followersCount = 0,
     this.followingCount = 0,
     this.isLive = false,
+    this.liveUntil,
+    this.scheduledShow,
     this.lastActiveAt,
   });
 
@@ -51,6 +55,8 @@ class UserProfile extends Equatable {
     followersCount,
     followingCount,
     isLive,
+    liveUntil,
+    scheduledShow,
     lastActiveAt,
   ];
 }

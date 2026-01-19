@@ -4,6 +4,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
+import 'package:dartz/dartz.dart' hide State;
+import 'package:music_system/core/error/failures.dart';
 
 import 'package:music_system/features/community/domain/entities/post_entity.dart';
 import 'package:music_system/features/auth/presentation/bloc/auth_bloc.dart';
@@ -124,31 +126,50 @@ class _ArtistFeedCardState extends State<ArtistFeedCard> {
                 const Spacer(),
                 if (widget.currentUserId != widget.post.authorId &&
                     widget.currentUserId.isNotEmpty)
-                  TextButton(
-                    onPressed: () {
-                      final authState = context.read<AuthBloc>().state;
-                      String? senderName;
-                      String? senderPhoto;
-                      if (authState is ProfileLoaded) {
-                        senderName = authState.profile.artisticName;
-                        senderPhoto = authState.profile.photoUrl;
-                      }
+                  FutureBuilder<Either<Failure, bool>>(
+                    future: sl<SocialGraphRepository>().isFollowing(
+                      widget.currentUserId,
+                      widget.post.authorId,
+                    ),
+                    builder: (context, snapshot) {
+                      final bool isFollowing =
+                          snapshot.data?.fold((_) => false, (r) => r) ?? false;
 
-                      sl<SocialGraphRepository>().followUser(
-                        widget.currentUserId,
-                        widget.post.authorId,
-                        senderName: senderName,
-                        senderPhoto: senderPhoto,
+                      return TextButton(
+                        onPressed: () async {
+                          final authState = context.read<AuthBloc>().state;
+                          String? senderName;
+                          String? senderPhoto;
+                          if (authState is ProfileLoaded) {
+                            senderName = authState.profile.artisticName;
+                            senderPhoto = authState.profile.photoUrl;
+                          }
+
+                          if (isFollowing) {
+                            await sl<SocialGraphRepository>().unfollowUser(
+                              widget.currentUserId,
+                              widget.post.authorId,
+                            );
+                          } else {
+                            await sl<SocialGraphRepository>().followUser(
+                              widget.currentUserId,
+                              widget.post.authorId,
+                              senderName: senderName,
+                              senderPhoto: senderPhoto,
+                            );
+                          }
+                          setState(() {}); // Refresh the follow status
+                        },
+                        child: Text(
+                          isFollowing ? 'Deixar de ser fã' : 'Sou fã',
+                          style: const TextStyle(
+                            color: Color(0xFFE5B80B),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       );
                     },
-                    child: const Text(
-                      'Seguir',
-                      style: TextStyle(
-                        color: Color(0xFFE5B80B),
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
                   ),
                 IconButton(
                   icon: const Icon(Icons.more_vert, size: 20),

@@ -11,6 +11,7 @@ import '../bloc/repertoire_menu_bloc.dart';
 import '../bloc/repertoire_menu_event.dart';
 import '../bloc/repertoire_menu_state.dart';
 import '../widgets/song_card.dart';
+import '../../../live/presentation/pages/live_page.dart';
 
 class ClientMenuPage extends StatefulWidget {
   final String musicianId;
@@ -55,8 +56,8 @@ class _ClientMenuPageState extends State<ClientMenuPage> {
 
   void _loadMusicianData() {
     context.read<RepertoireMenuBloc>().add(
-      FetchRepertoireMenu(_currentMusicianId),
-    );
+          FetchRepertoireMenu(_currentMusicianId),
+        );
     context.read<AuthBloc>().add(ProfileRequested(_currentMusicianId));
   }
 
@@ -110,43 +111,56 @@ class _ClientMenuPageState extends State<ClientMenuPage> {
               ),
             ),
             SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 60),
-                    const Icon(
-                      Icons.qr_code_2_rounded,
-                      size: 100,
-                      color: Color(0xFFE5B80B),
-                    ).animate().scale(
-                      duration: 800.ms,
-                      curve: Curves.elasticOut,
-                    ),
-                    const SizedBox(height: 32),
-                    Text(
-                      'MUSIC REQUEST',
-                      style: GoogleFonts.outfit(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w900,
+              child: Stack(
+                children: [
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.arrow_back_ios,
                         color: Colors.white,
-                        letterSpacing: 4,
                       ),
-                      textAlign: TextAlign.center,
-                    ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Escaneie o QR Code do artista para escolher sua trilha sonora.',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.outfit(
-                        color: Colors.white70,
-                        fontSize: 16,
-                        height: 1.5,
-                      ),
-                    ).animate().fadeIn(delay: 500.ms),
-                    const SizedBox(height: 60),
-                    Container(
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(height: 60),
+                        const Icon(
+                          Icons.qr_code_2_rounded,
+                          size: 100,
+                          color: Color(0xFFE5B80B),
+                        ).animate().scale(
+                              duration: 800.ms,
+                              curve: Curves.elasticOut,
+                            ),
+                        const SizedBox(height: 32),
+                        Text(
+                          'MUSIC REQUEST',
+                          style: GoogleFonts.outfit(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            letterSpacing: 4,
+                          ),
+                          textAlign: TextAlign.center,
+                        ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Escaneie o QR Code do artista para escolher sua trilha sonora.',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.outfit(
+                            color: Colors.white70,
+                            fontSize: 16,
+                            height: 1.5,
+                          ),
+                        ).animate().fadeIn(delay: 500.ms),
+                        const SizedBox(height: 60),
+                        Container(
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.05),
                             borderRadius: BorderRadius.circular(15),
@@ -176,11 +190,13 @@ class _ClientMenuPageState extends State<ClientMenuPage> {
                             ),
                           ),
                         )
-                        .animate()
-                        .fadeIn(delay: 700.ms)
-                        .scale(begin: const Offset(0.9, 0.9)),
-                  ],
-                ),
+                            .animate()
+                            .fadeIn(delay: 700.ms)
+                            .scale(begin: const Offset(0.9, 0.9)),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -225,6 +241,10 @@ class _ClientMenuPageState extends State<ClientMenuPage> {
                     : Colors.transparent,
                 elevation: 0,
                 pinned: true,
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
                 expandedHeight: 300.0,
                 title: _showTitleInAppBar
                     ? BlocBuilder<AuthBloc, AuthState>(
@@ -268,26 +288,97 @@ class _ClientMenuPageState extends State<ClientMenuPage> {
                           mainAxisAlignment: MainAxisAlignment.end,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(3),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFE5B80B),
-                                shape: BoxShape.circle,
-                              ),
-                              child: CircleAvatar(
-                                radius: 45,
-                                backgroundColor: Colors.white10,
-                                backgroundImage:
-                                    photoUrl != null && photoUrl.isNotEmpty
-                                    ? CachedNetworkImageProvider(photoUrl)
-                                    : null,
-                                child: photoUrl == null || photoUrl.isEmpty
-                                    ? const Icon(
-                                        Icons.person,
-                                        size: 40,
-                                        color: Colors.white24,
-                                      )
-                                    : null,
+                            GestureDetector(
+                              onTap: () {
+                                if (state is ProfileLoaded &&
+                                    state.profile.isLive) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => LivePage(
+                                        liveId: state.profile.id,
+                                        isHost: false,
+                                        userId:
+                                            'viewer_${DateTime.now().millisecondsSinceEpoch}',
+                                        userName: 'Espectador',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                              child: Stack(
+                                alignment: Alignment.bottomCenter,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(3),
+                                    decoration: BoxDecoration(
+                                      gradient: state is ProfileLoaded &&
+                                              state.profile.isLive
+                                          ? const LinearGradient(
+                                              colors: [
+                                                Color(0xFF833AB4),
+                                                Color(0xFFFD1D1D),
+                                                Color(0xFFFCAF45)
+                                              ],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            )
+                                          : null,
+                                      color: state is ProfileLoaded &&
+                                              !state.profile.isLive
+                                          ? const Color(0xFFE5B80B)
+                                          : null,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: CircleAvatar(
+                                      radius: 45,
+                                      backgroundColor: Colors.white10,
+                                      backgroundImage: photoUrl != null &&
+                                              photoUrl.isNotEmpty
+                                          ? CachedNetworkImageProvider(photoUrl)
+                                          : null,
+                                      child:
+                                          photoUrl == null || photoUrl.isEmpty
+                                              ? const Icon(
+                                                  Icons.person,
+                                                  size: 40,
+                                                  color: Colors.white24,
+                                                )
+                                              : null,
+                                    ),
+                                  ),
+                                  if (state is ProfileLoaded &&
+                                      state.profile.isLive)
+                                    Positioned(
+                                      bottom: -2,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient(
+                                            colors: [
+                                              Color(0xFFFD1D1D),
+                                              Color(0xFF833AB4)
+                                            ],
+                                          ),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                          border: Border.all(
+                                              color: Colors.black, width: 2),
+                                        ),
+                                        child: const Text(
+                                          'AO VIVO',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ).animate().scale(duration: 400.ms),
                             const SizedBox(height: 16),
@@ -427,8 +518,8 @@ class _ClientMenuPageState extends State<ClientMenuPage> {
                             },
                             childCount:
                                 filteredSongs.isEmpty && query.isNotEmpty
-                                ? 1
-                                : filteredSongs.length,
+                                    ? 1
+                                    : filteredSongs.length,
                           ),
                         ),
                         if (_deezerSongs.isNotEmpty || _isSearchingDeezer) ...[
