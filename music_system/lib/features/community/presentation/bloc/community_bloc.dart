@@ -66,15 +66,22 @@ class CommunityBloc extends Bloc<CommunityEvent, CommunityState> {
               hasReachedMax: posts.length < 10,
             ),
           ),
-          (stories) => emit(
-            state.copyWith(
-              status: CommunityStatus.success,
-              posts: posts,
-              stories: stories,
-              lastDoc: lastDoc,
-              hasReachedMax: posts.length < 10,
-            ),
-          ),
+          (stories) {
+            final filteredStories = event.followingIds != null
+                ? stories
+                    .where((s) => event.followingIds!.contains(s.authorId))
+                    .toList()
+                : stories;
+            emit(
+              state.copyWith(
+                status: CommunityStatus.success,
+                posts: posts,
+                stories: filteredStories,
+                lastDoc: lastDoc,
+                hasReachedMax: posts.length < 10,
+              ),
+            );
+          },
         );
       },
     );
@@ -87,7 +94,14 @@ class CommunityBloc extends Bloc<CommunityEvent, CommunityState> {
     final result = await getActiveStories();
     result.fold(
       (failure) => null, // Silencioso para stories se falhar no meio
-      (stories) => emit(state.copyWith(stories: stories)),
+      (stories) {
+        final filteredStories = event.followingIds != null
+            ? stories
+                .where((s) => event.followingIds!.contains(s.authorId))
+                .toList()
+            : stories;
+        emit(state.copyWith(stories: filteredStories));
+      },
     );
   }
 
@@ -97,7 +111,11 @@ class CommunityBloc extends Bloc<CommunityEvent, CommunityState> {
   ) async {
     if (state.hasReachedMax) return;
 
-    final result = await getCommunityFeed(lastDoc: state.lastDoc, limit: 10);
+    final result = await getCommunityFeed(
+      followingIds: event.followingIds,
+      lastDoc: state.lastDoc,
+      limit: 10,
+    );
 
     result.fold(
       (failure) => null, // Silencioso no scroll infinito

@@ -8,6 +8,7 @@ import 'package:music_system/injection_container.dart';
 import 'package:music_system/features/community/data/models/story_model.dart';
 import 'package:music_system/features/auth/domain/entities/user_profile.dart';
 import 'package:music_system/features/community/domain/repositories/story_repository.dart';
+import 'package:music_system/core/utils/cloudinary_sanitizer.dart';
 
 class CreateStoryPage extends StatefulWidget {
   final UserProfile profile;
@@ -57,27 +58,24 @@ class _CreateStoryPageState extends State<CreateStoryPage> {
           _videoController = VideoPlayerController.network(media.path)
             ..setVolume(0);
 
-          _videoController!
-              .initialize()
-              .then((_) {
-                if (mounted) {
-                  setState(() {
-                    _showUploadOnly = false;
-                  });
-                  _videoController?.play();
-                  _videoController?.setLooping(true);
-                }
-              })
-              .catchError((e) {
-                debugPrint('Video Init Error: $e');
-                if (mounted) {
-                  setState(() {
-                    _showUploadOnly = true;
-                    _initError =
-                        'Prévia indisponível, mas você ainda pode compartilhar!';
-                  });
-                }
+          _videoController!.initialize().then((_) {
+            if (mounted) {
+              setState(() {
+                _showUploadOnly = false;
               });
+              _videoController?.play();
+              _videoController?.setLooping(true);
+            }
+          }).catchError((e) {
+            debugPrint('Video Init Error: $e');
+            if (mounted) {
+              setState(() {
+                _showUploadOnly = true;
+                _initError =
+                    'Prévia indisponível, mas você ainda pode compartilhar!';
+              });
+            }
+          });
         } else {
           // For images, we still read bytes for preview because it's safer and small
           final bytes = await media.readAsBytes();
@@ -135,16 +133,7 @@ class _CreateStoryPageState extends State<CreateStoryPage> {
 
       if (url != null) {
         // Otimizar URL do Cloudinary para compatibilidade máxima entre dispositivos
-        if (url.contains('cloudinary.com') && url.contains('/upload/')) {
-          // vc_h264: Força o codec H.264, o mais compatível com iPhone/Safari
-          // f_auto,q_auto: Escolhe o melhor formato/qualidade
-          url = url.replaceFirst('/upload/', '/upload/f_auto,q_auto,vc_h264/');
-
-          // Garante que o container seja .mp4 para o iPhone reconhecer como vídeo
-          if (!url.toLowerCase().endsWith('.mp4')) {
-            url = '$url.mp4';
-          }
-        }
+        url = CloudinarySanitizer.sanitize(url, mediaType: _mediaType);
 
         final story = StoryModel(
           id: '',
@@ -219,43 +208,43 @@ class _CreateStoryPageState extends State<CreateStoryPage> {
             Positioned.fill(
               child: _mediaType == 'image'
                   ? (_mediaBytes != null
-                        ? Image.memory(_mediaBytes!, fit: BoxFit.cover)
-                        : const Center(child: CircularProgressIndicator()))
+                      ? Image.memory(_mediaBytes!, fit: BoxFit.cover)
+                      : const Center(child: CircularProgressIndicator()))
                   : (_showUploadOnly
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.video_file,
-                                  color: Color(0xFFE5B80B),
-                                  size: 80,
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.video_file,
+                                color: Color(0xFFE5B80B),
+                                size: 80,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                _initError ?? 'Vídeo selecionado',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  _initError ?? 'Vídeo selecionado',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const Text(
-                                  'Toque em "Compartilhar" para publicar.',
-                                  style: TextStyle(color: Colors.white54),
-                                ),
-                              ],
-                            ),
-                          )
-                        : (_videoController != null &&
-                                  _videoController!.value.isInitialized
-                              ? Center(
-                                  child: AspectRatio(
-                                    aspectRatio:
-                                        _videoController!.value.aspectRatio,
-                                    child: VideoPlayer(_videoController!),
-                                  ),
-                                )
-                              : _initError != null
+                              ),
+                              const Text(
+                                'Toque em "Compartilhar" para publicar.',
+                                style: TextStyle(color: Colors.white54),
+                              ),
+                            ],
+                          ),
+                        )
+                      : (_videoController != null &&
+                              _videoController!.value.isInitialized
+                          ? Center(
+                              child: AspectRatio(
+                                aspectRatio:
+                                    _videoController!.value.aspectRatio,
+                                child: VideoPlayer(_videoController!),
+                              ),
+                            )
+                          : _initError != null
                               ? Center(
                                   child: Text(
                                     _initError!,

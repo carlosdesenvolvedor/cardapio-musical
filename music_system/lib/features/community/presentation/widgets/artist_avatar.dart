@@ -6,6 +6,7 @@ class ArtistAvatar extends StatelessWidget {
   final String? photoUrl;
   final bool isMe;
   final bool isLive;
+  final bool isStreaming;
   final bool hasStories;
   final bool allStoriesViewed;
   final double radius;
@@ -16,6 +17,7 @@ class ArtistAvatar extends StatelessWidget {
     this.photoUrl,
     this.isMe = false,
     this.isLive = false,
+    this.isStreaming = false,
     this.hasStories = false,
     this.allStoriesViewed = false,
     this.radius = 30,
@@ -29,8 +31,8 @@ class ArtistAvatar extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Anel Dourado Pulsante (se estiver Live/Tocando)
-          if (isLive) _PulsingRing(radius: radius + 4),
+          // Anel Dourado Pulsante (se estiver Live ou Tocando)
+          if (isLive || isStreaming) _PulsingRing(radius: radius + 4),
 
           // Anel de Stories (se tiver stories e não estiver live)
           if (!isLive && hasStories)
@@ -97,21 +99,21 @@ class ArtistAvatar extends StatelessWidget {
               ),
             ),
 
-          // Badge "AO VIVO"
-          if (isLive)
+          // Badge "AO VIVO" ou "TOCANDO"
+          if (isLive || isStreaming)
             Positioned(
               bottom: 0,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor,
+                  color: isStreaming ? Colors.red : AppTheme.primaryColor,
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(color: Colors.black, width: 1.5),
                 ),
-                child: const Text(
-                  'TOCANDO',
+                child: Text(
+                  isStreaming ? 'AO VIVO' : 'TOCANDO',
                   style: TextStyle(
-                    color: Colors.black,
+                    color: isStreaming ? Colors.white : Colors.black,
                     fontSize: 8,
                     fontWeight: FontWeight.bold,
                   ),

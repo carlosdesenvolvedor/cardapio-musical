@@ -41,10 +41,23 @@ class LivePage extends StatefulWidget {
 class _LivePageState extends State<LivePage> {
   final _liveKitService = sl<LiveKitService>();
   bool _isLoading = true;
+  bool _isFullscreen = false;
   String? _error;
   EventsListener<RoomEvent>? _listener;
   final List<LiveChatMessage> _chatMessages = [];
   final TextEditingController _chatFieldController = TextEditingController();
+  CameraPosition _cameraPosition = CameraPosition.front;
+
+  // Fake data for UI alignment as per image
+  final double _tipGoalProgress = 0.65;
+  final List<Map<String, String>> _topSupporters = [
+    {'name': 'Anranda', 'last': 'Llinta'},
+    {'name': 'Joranna', 'last': 'Bompas'},
+    {'name': 'Benzoa', 'last': 'Moria'},
+    {'name': 'Aniver', 'last': 'Goia'},
+    {'name': 'Eiron', 'last': 'Madro'},
+    {'name': 'Brizaniha', 'last': 'Lilves'},
+  ];
 
   @override
   void initState() {
@@ -100,6 +113,13 @@ class _LivePageState extends State<LivePage> {
       if (widget.isHost) {
         await room.localParticipant?.setCameraEnabled(true);
         await room.localParticipant?.setMicrophoneEnabled(true);
+
+        final track =
+            room.localParticipant?.videoTrackPublications.firstOrNull?.track;
+        if (track is LocalVideoTrack) {
+          _cameraPosition = CameraPosition.front;
+        }
+
         if (mounted) {
           context.read<AuthBloc>().add(ToggleLiveStatus(widget.userId, true));
         }
@@ -115,9 +135,33 @@ class _LivePageState extends State<LivePage> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _error = 'Falha ao iniciar live: $e';
+          _error = 'Ocorreu um erro de conexão. Toque para tentar novamente.';
         });
       }
+    }
+  }
+
+  Future<void> _switchCamera() async {
+    final room = _liveKitService.room;
+    if (room == null || !widget.isHost) return;
+
+    final track =
+        room.localParticipant?.videoTrackPublications.firstOrNull?.track;
+    if (track is! LocalVideoTrack) return;
+
+    try {
+      final newPosition = _cameraPosition == CameraPosition.front
+          ? CameraPosition.back
+          : CameraPosition.front;
+
+      await track
+          .restartTrack(CameraCaptureOptions(cameraPosition: newPosition));
+
+      setState(() {
+        _cameraPosition = newPosition;
+      });
+    } catch (e) {
+      debugPrint('Error switching camera: $e');
     }
   }
 
@@ -137,11 +181,8 @@ class _LivePageState extends State<LivePage> {
     final bytes = utf8.encode(jsonEncode(messageData));
 
     try {
-      await room.localParticipant?.publishData(
-        bytes,
-      );
+      await room.localParticipant?.publishData(bytes);
 
-      // Add local message to list
       if (mounted) {
         setState(() {
           _chatMessages.add(LiveChatMessage(
@@ -206,15 +247,7 @@ class _LivePageState extends State<LivePage> {
       return const Scaffold(
         backgroundColor: Colors.black,
         body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(color: Color(0xFFE5B80B)),
-              SizedBox(height: 16),
-              Text('Conectando ao LiveKit...',
-                  style: TextStyle(color: Colors.white)),
-            ],
-          ),
+          child: CircularProgressIndicator(color: Color(0xFFE5B80B)),
         ),
       );
     }
@@ -226,15 +259,19 @@ class _LivePageState extends State<LivePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, color: Colors.red, size: 48),
-              const SizedBox(height: 16),
-              Text(_error!,
-                  style: const TextStyle(color: Colors.white),
-                  textAlign: TextAlign.center),
+              const Icon(Icons.wifi_off, color: Color(0xFFE5B80B), size: 64),
               const SizedBox(height: 24),
+              Text(_error!, style: const TextStyle(color: Colors.white70)),
+              const SizedBox(height: 32),
               ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Voltar'),
+                onPressed: () {
+                  setState(() {
+                    _isLoading = true;
+                    _error = null;
+                  });
+                  _initLiveKit();
+                },
+                child: const Text('Tentar Novamente'),
               ),
             ],
           ),
@@ -250,298 +287,161 @@ class _LivePageState extends State<LivePage> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          Positioned.fill(
-            child: widget.isHost
-                ? _buildLocalVideo(room)
-                : _buildRemoteVideo(room),
-          ),
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withOpacity(0.5),
-                    Colors.transparent,
-                    Colors.transparent,
-                    Colors.black.withOpacity(0.7),
-                  ],
-                  stops: const [0.0, 0.2, 0.7, 1.0],
-                ),
-              ),
-            ),
-          ),
+          // Background Video (When fullscreen) or black
+          if (_isFullscreen)
+            Positioned.fill(child: _buildVideoFrame(room, isFull: true)),
 
-          // Header
-          Positioned(
-            top: 50,
-            left: 16,
-            right: 8,
-            child: Row(
+          SafeArea(
+            child: Column(
               children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back_ios,
-                      color: Colors.white, size: 20),
-                  onPressed: () => _confirmExit(),
-                ),
+                _buildHeader(room),
                 Expanded(
-                  child: Row(
+                  child: Stack(
                     children: [
-                      _buildArtistAvatar(),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
+                      // Non-fullscreen view: Framed Video
+                      if (!_isFullscreen)
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Center(
+                            child: Hero(
+                              tag: 'live_video',
+                              child: _buildVideoFrame(room, isFull: false),
+                            ),
+                          ),
+                        ),
+
+                      // Floating engagement panel
+                      Positioned(
+                        right: 16,
+                        top: 16,
+                        width: MediaQuery.of(context).size.width * 0.35,
+                        child: _buildSidePanel(room),
+                      ),
+
+                      // Fullscreen toggle button (Floating bottom right of video area)
+                      Positioned(
+                        left: 24,
+                        bottom: 80,
+                        child: _buildActionCircle(
+                          icon: _isFullscreen
+                              ? Icons.fullscreen_exit
+                              : Icons.fullscreen,
+                          onPressed: () =>
+                              setState(() => _isFullscreen = !_isFullscreen),
+                          color: const Color(0xFFE5B80B),
+                        ),
+                      ),
+
+                      // Host controls
+                      if (widget.isHost)
+                        Positioned(
+                          right: 24,
+                          bottom: 80,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                widget.userName,
-                                style: GoogleFonts.outfit(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
+                              _buildActionCircle(
+                                icon: room.localParticipant
+                                            ?.isMicrophoneEnabled() ??
+                                        false
+                                    ? Icons.mic
+                                    : Icons.mic_off,
+                                onPressed: () {
+                                  final e = room.localParticipant
+                                          ?.isMicrophoneEnabled() ??
+                                      false;
+                                  room.localParticipant
+                                      ?.setMicrophoneEnabled(!e);
+                                  setState(() {});
+                                },
                               ),
-                              const SizedBox(width: 4),
-                              const Icon(Icons.verified,
-                                  color: Colors.blueAccent, size: 14),
+                              const SizedBox(height: 12),
+                              _buildActionCircle(
+                                icon: Icons.flip_camera_ios,
+                                onPressed: _switchCamera,
+                              ),
+                              const SizedBox(height: 12),
+                              _buildActionCircle(
+                                icon:
+                                    room.localParticipant?.isCameraEnabled() ??
+                                            false
+                                        ? Icons.videocam
+                                        : Icons.videocam_off,
+                                onPressed: () {
+                                  final e = room.localParticipant
+                                          ?.isCameraEnabled() ??
+                                      false;
+                                  room.localParticipant?.setCameraEnabled(!e);
+                                  setState(() {});
+                                },
+                              ),
                             ],
                           ),
-                          const Text(
-                            'Ao vivo agora',
-                            style:
-                                TextStyle(color: Colors.white70, fontSize: 11),
-                          ),
-                        ],
-                      ),
+                        ),
                     ],
                   ),
                 ),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFFD1D1D), Color(0xFF833AB4)],
-                        ),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        'AO VIVO',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 10),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.visibility,
-                              color: Colors.white, size: 12),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${room.remoteParticipants.length + (widget.isHost ? 0 : 1)}',
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 10),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.more_vert, color: Colors.white),
-                  onPressed: _showOptionsMenu,
-                ),
+                _buildBottomControls(),
               ],
             ),
           ),
-
-          // Chat Messages Overlay
-          Positioned(
-            bottom: 90,
-            left: 16,
-            right: 16,
-            child: Container(
-              height: 200,
-              child: ListView.builder(
-                reverse: true,
-                itemCount: _chatMessages.length,
-                itemBuilder: (context, index) {
-                  final msg = _chatMessages[_chatMessages.length - 1 - index];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8.0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${msg.senderName}: ',
-                          style: const TextStyle(
-                              color: Color(0xFFE5B80B),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13),
-                        ),
-                        Expanded(
-                          child: Text(
-                            msg.text,
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 13),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-
-          // Bottom Bar (Input)
-          Positioned(
-            bottom: 30,
-            left: 16,
-            right: 16,
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: Colors.white24),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: TextField(
-                      controller: _chatFieldController,
-                      style: const TextStyle(color: Colors.white, fontSize: 13),
-                      decoration: const InputDecoration(
-                        hintText: 'Enviar um comentário...',
-                        hintStyle:
-                            TextStyle(color: Colors.white60, fontSize: 13),
-                        border: InputBorder.none,
-                      ),
-                      onSubmitted: (_) => _sendMessage(),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _buildActionCircle(
-                  icon: Icons.send,
-                  onPressed: _sendMessage,
-                ),
-                const SizedBox(width: 12),
-                _buildActionCircle(
-                  icon: Icons.music_note,
-                  color: const Color(0xFFE5B80B),
-                  onPressed: _showRepertoire,
-                ),
-                const SizedBox(width: 12),
-                _buildActionCircle(
-                  icon: Icons.monetization_on,
-                  color: Colors.greenAccent,
-                  onPressed: _showRepertoire,
-                ),
-              ],
-            ),
-          ),
-
-          if (widget.isHost)
-            Positioned(
-              bottom: 100,
-              right: 16,
-              child: Column(
-                children: [
-                  _buildActionCircle(
-                    icon: room.localParticipant?.isMicrophoneEnabled() ?? false
-                        ? Icons.mic
-                        : Icons.mic_off,
-                    onPressed: () async {
-                      final enabled =
-                          room.localParticipant?.isMicrophoneEnabled() ?? false;
-                      await room.localParticipant
-                          ?.setMicrophoneEnabled(!enabled);
-                      setState(() {});
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _buildActionCircle(
-                    icon: room.localParticipant?.isCameraEnabled() ?? false
-                        ? Icons.videocam
-                        : Icons.videocam_off,
-                    onPressed: () async {
-                      final enabled =
-                          room.localParticipant?.isCameraEnabled() ?? false;
-                      await room.localParticipant?.setCameraEnabled(!enabled);
-                      setState(() {});
-                    },
-                  ),
-                ],
-              ),
-            ),
         ],
       ),
     );
   }
 
-  Widget _buildArtistAvatar() {
+  Widget _buildHeader(Room room) {
     return Container(
-      padding: const EdgeInsets.all(2),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF833AB4), Color(0xFFFD1D1D), Color(0xFFFCAF45)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        shape: BoxShape.circle,
-      ),
-      child: CircleAvatar(
-        radius: 18,
-        backgroundColor: Colors.black,
-        child: BlocBuilder<AuthBloc, AuthState>(
-          builder: (context, state) {
-            String? photoUrl;
-            if (state is ProfileLoaded) photoUrl = state.profile.photoUrl;
-            return photoUrl != null
-                ? CircleAvatar(
-                    radius: 17, backgroundImage: NetworkImage(photoUrl))
-                : const Icon(Icons.person, size: 20, color: Colors.white);
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionCircle(
-      {required IconData icon,
-      Color color = Colors.white,
-      required VoidCallback onPressed}) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: Colors.black38,
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white10),
-        ),
-        child: Icon(icon, color: color, size: 22),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: Colors.black.withAlpha(50),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new,
+                color: Colors.white, size: 20),
+            onPressed: () => _confirmExit(),
+          ),
+          const SizedBox(width: 4),
+          _buildUserAvatar(),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        widget.userName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.outfit(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.verified,
+                        color: Colors.blueAccent, size: 16),
+                  ],
+                ),
+                const Text('Ao vivo',
+                    style: TextStyle(color: Colors.white54, fontSize: 11)),
+              ],
+            ),
+          ),
+          _buildBadge('AO VIVO', isLive: true),
+          const SizedBox(width: 8),
+          _buildBadge(room.remoteParticipants.length + (widget.isHost ? 0 : 1),
+              icon: Icons.person_outline),
+          const SizedBox(width: 4),
+          IconButton(
+            icon: const Icon(Icons.more_vert, color: Colors.white, size: 24),
+            onPressed: () => _showOptionsMenu(),
+          ),
+        ],
       ),
     );
   }
@@ -549,34 +449,278 @@ class _LivePageState extends State<LivePage> {
   void _showOptionsMenu() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1C1C1E),
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) => Column(
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        decoration: const BoxDecoration(
+          color: Color(0xFF1C1C1E),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.share, color: Colors.white),
+              title: const Text('Compartilhar Live',
+                  style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                // Share logic here
+              },
+            ),
+            ListTile(
+              leading: Icon(
+                  widget.isHost ? Icons.stop_circle : Icons.exit_to_app,
+                  color: Colors.red),
+              title: Text(
+                  widget.isHost ? 'Encerrar Transmissão' : 'Sair da Live',
+                  style: const TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                _confirmExit();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserAvatar() {
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: const Color(0xFFE5B80B), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+              color: const Color(0xFFE5B80B).withAlpha(100), blurRadius: 8),
+        ],
+      ),
+      child: BlocBuilder<AuthBloc, AuthState>(
+        builder: (context, state) {
+          String? photoUrl;
+          if (state is ProfileLoaded) photoUrl = state.profile.photoUrl;
+          return CircleAvatar(
+            radius: 18,
+            backgroundColor: Colors.grey[900],
+            backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
+            child: photoUrl == null
+                ? const Icon(Icons.person, color: Colors.white54, size: 20)
+                : null,
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildBadge(dynamic content, {IconData? icon, bool isLive = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: isLive ? const Color(0xFFC00000).withAlpha(180) : Colors.black87,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+            color: isLive ? Colors.red : const Color(0xFFE5B80B), width: 1),
+      ),
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ListTile(
-            leading: const Icon(Icons.report, color: Colors.white),
-            title: const Text('Denunciar Live',
-                style: TextStyle(color: Colors.white)),
-            onTap: () => Navigator.pop(context),
+          if (icon != null) ...[
+            Icon(icon, color: const Color(0xFFE5B80B), size: 12),
+            const SizedBox(width: 4)
+          ],
+          Text(
+            content.toString(),
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
           ),
-          ListTile(
-            leading: const Icon(Icons.share, color: Colors.white),
-            title: const Text('Compartilhar Transmissão',
-                style: TextStyle(color: Colors.white)),
-            onTap: () => Navigator.pop(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVideoFrame(Room room, {required bool isFull}) {
+    final frame = Container(
+      decoration: isFull
+          ? null
+          : BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0xFFE5B80B), width: 4),
+              boxShadow: [
+                BoxShadow(
+                    color: const Color(0xFFE5B80B).withAlpha(100),
+                    blurRadius: 20,
+                    spreadRadius: 2),
+              ],
+            ),
+      clipBehavior: Clip.antiAlias,
+      child: widget.isHost ? _buildLocalVideo(room) : _buildRemoteVideo(room),
+    );
+
+    if (isFull) return frame;
+
+    return AspectRatio(
+      aspectRatio:
+          9 / 12, // More vertical aspect ratio for larger presence on mobile
+      child: frame,
+    );
+  }
+
+  Widget _buildSidePanel(Room room) {
+    if (_isFullscreen) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        // Tip Goal
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.black54,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white12),
           ),
-          ListTile(
-            leading: const Icon(Icons.close, color: Colors.redAccent),
-            title: const Text('Sair da Live',
-                style: TextStyle(color: Colors.redAccent)),
-            onTap: () {
-              Navigator.pop(context);
-              _confirmExit();
-            },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('META',
+                  style: GoogleFonts.outfit(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10)),
+              const SizedBox(height: 6),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(5),
+                child: LinearProgressIndicator(
+                  value: _tipGoalProgress,
+                  minHeight: 8,
+                  backgroundColor: Colors.white10,
+                  color: const Color(0xFFE5B80B),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 20),
+        ),
+        const SizedBox(height: 12),
+        // Top Supporters
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.black54,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('TOP APOIADORES',
+                  style: GoogleFonts.outfit(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10)),
+              const SizedBox(height: 8),
+              ..._topSupporters.take(4).map((s) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4.0),
+                    child: RichText(
+                      text: TextSpan(
+                        style: const TextStyle(fontSize: 10),
+                        children: [
+                          TextSpan(
+                              text: s['name'],
+                              style: const TextStyle(
+                                  color: Color(0xFFE5B80B),
+                                  fontWeight: FontWeight.bold)),
+                          const TextSpan(text: ' '),
+                          TextSpan(
+                              text: s['last'],
+                              style: const TextStyle(color: Colors.white70)),
+                        ],
+                      ),
+                    ),
+                  )),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBottomControls() {
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      color: Colors.black.withAlpha(80),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(30),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: TextField(
+                controller: _chatFieldController,
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+                decoration: const InputDecoration(
+                  hintText: 'Comentar...',
+                  hintStyle: TextStyle(color: Colors.white54),
+                  border: InputBorder.none,
+                ),
+                onSubmitted: (_) => _sendMessage(),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          _buildActionCircle(
+              icon: Icons.send,
+              onPressed: _sendMessage,
+              color: const Color(0xFFE5B80B),
+              size: 44),
+          const SizedBox(width: 8),
+          _buildActionCircle(
+              icon: Icons.music_note,
+              color: const Color(0xFFE5B80B),
+              onPressed: _showRepertoire,
+              size: 44),
+          const SizedBox(width: 8),
+          // Large Tip Button
+          GestureDetector(
+            onTap: _showRepertoire,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 54,
+                  height: 54,
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    shape: BoxShape.circle,
+                    border:
+                        Border.all(color: const Color(0xFFE5B80B), width: 2.5),
+                    boxShadow: [
+                      BoxShadow(
+                          color: const Color(0xFFE5B80B).withAlpha(150),
+                          blurRadius: 12),
+                    ],
+                  ),
+                  child: Center(
+                      child: Text('\$',
+                          style: GoogleFonts.outfit(
+                              color: const Color(0xFFE5B80B),
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold))),
+                ),
+                const SizedBox(height: 2),
+                const Text('GORJETA',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -585,10 +729,7 @@ class _LivePageState extends State<LivePage> {
   Widget _buildLocalVideo(Room room) {
     final track =
         room.localParticipant?.videoTrackPublications.firstOrNull?.track;
-    if (track == null)
-      return const Center(
-          child: Text('Iniciando câmera...',
-              style: TextStyle(color: Colors.white)));
+    if (track == null) return const Center(child: CircularProgressIndicator());
     return VideoTrackRenderer(track as VideoTrack, fit: VideoViewFit.cover);
   }
 
@@ -597,14 +738,31 @@ class _LivePageState extends State<LivePage> {
         .firstWhereOrNull((p) => p.videoTrackPublications.isNotEmpty);
     final track = remote?.videoTrackPublications.firstOrNull?.track;
     if (track == null)
-      return Center(
-          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        const Icon(Icons.wifi_off, color: Colors.white54, size: 64),
-        const SizedBox(height: 16),
-        Text('Aguardando início da transmissão...',
-            style: GoogleFonts.outfit(color: Colors.white54, fontSize: 16))
-      ]));
+      return const Center(
+          child:
+              Text('Aguardando...', style: TextStyle(color: Colors.white54)));
     return VideoTrackRenderer(track as VideoTrack, fit: VideoViewFit.cover);
+  }
+
+  Widget _buildActionCircle(
+      {required IconData icon,
+      Color color = Colors.white,
+      required VoidCallback onPressed,
+      double size = 42}) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: Colors.black54,
+          shape: BoxShape.circle,
+          border: Border.all(
+              color: const Color(0xFFE5B80B).withAlpha(150), width: 1.5),
+        ),
+        child: Icon(icon, color: color, size: size * 0.5),
+      ),
+    );
   }
 
   void _confirmExit() {
@@ -614,31 +772,29 @@ class _LivePageState extends State<LivePage> {
         backgroundColor: const Color(0xFF1C1C1E),
         title: Text(widget.isHost ? 'Encerrar Live?' : 'Sair da Live?',
             style: const TextStyle(color: Colors.white)),
-        content: Text(
-            widget.isHost
-                ? 'Isso irá encerrar a transmissão para todos os espectadores.'
-                : 'Tem certeza que deseja sair agora?',
+        content: Text(widget.isHost ? 'A live será encerrada.' : 'Deseja sair?',
             style: const TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar',
-                  style: TextStyle(color: Colors.white54))),
+              child: const Text('Não')),
           TextButton(
               onPressed: () {
+                if (widget.isHost)
+                  context
+                      .read<AuthBloc>()
+                      .add(ToggleLiveStatus(widget.userId, false));
                 Navigator.pop(context);
                 Navigator.pop(context);
               },
-              child: Text(widget.isHost ? 'Encerrar' : 'Sair',
-                  style: const TextStyle(
-                      color: Colors.redAccent, fontWeight: FontWeight.bold))),
+              child: const Text('Sim')),
         ],
       ),
     );
   }
 }
 
-extension IterableExtension<T> on Iterable<T> {
+extension IterableExt<T> on Iterable<T> {
   T? get firstOrNull => isEmpty ? null : first;
   T? firstWhereOrNull(bool Function(T) test) {
     for (var element in this) {

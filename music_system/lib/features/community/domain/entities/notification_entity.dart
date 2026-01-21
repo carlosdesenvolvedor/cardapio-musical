@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-enum NotificationType { like, comment, follow, message, system }
+enum NotificationType { like, comment, follow, message, system, band_invite }
 
 class NotificationEntity extends Equatable {
   final String id;
@@ -29,15 +29,15 @@ class NotificationEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-    id,
-    recipientId,
-    senderId,
-    senderName,
-    senderPhotoUrl,
-    type,
-    postId,
-    message,
-    createdAt,
-    isRead,
-  ];
+        id,
+        recipientId,
+        senderId,
+        senderName,
+        senderPhotoUrl,
+        type,
+        postId,
+        message,
+        createdAt,
+        isRead,
+      ];
 }

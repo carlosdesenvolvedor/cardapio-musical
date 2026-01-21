@@ -10,17 +10,20 @@ import 'package:music_system/features/auth/presentation/pages/profile_page.dart'
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/community_bloc.dart';
 import '../bloc/community_event.dart';
+import '../../../../core/utils/cloudinary_sanitizer.dart';
 
 class StoryPlayerPage extends StatefulWidget {
   final List<StoryEntity> stories;
   final int initialIndex;
   final String? currentUserId;
+  final List<String>? followingIds;
 
   const StoryPlayerPage({
     super.key,
     required this.stories,
     this.initialIndex = 0,
     this.currentUserId,
+    this.followingIds,
   });
 
   @override
@@ -49,47 +52,35 @@ class _StoryPlayerPageState extends State<StoryPlayerPage> {
     _videoController = null;
 
     final story = widget.stories[_currentIndex];
-    String mediaUrl = story.mediaUrl;
-
-    // Otimizar dinamicamente se for Cloudinary e ainda não tiver os parâmetros
-    if (mediaUrl.contains('cloudinary.com') &&
-        mediaUrl.contains('/upload/') &&
-        !mediaUrl.contains('vc_h264')) {
-      mediaUrl = mediaUrl.replaceFirst(
-        '/upload/',
-        '/upload/f_auto,q_auto,vc_h264/',
-      );
-      if (!mediaUrl.toLowerCase().endsWith('.mp4')) {
-        mediaUrl = '$mediaUrl.mp4';
-      }
-    }
+    final mediaUrl = CloudinarySanitizer.sanitize(
+      story.mediaUrl,
+      mediaType: story.mediaType,
+    );
 
     if (story.mediaType == 'video') {
       _videoController = VideoPlayerController.network(mediaUrl)
         ..setVolume(
           0,
         ) // Crucial para Autoplay em navegadores mobile (Safari/iOS)
-        ..initialize()
-            .then((_) {
-              if (mounted) {
-                setState(() {});
-                _videoController?.play();
-                _startTimer();
-              }
-            })
-            .catchError((error) {
-              debugPrint('Erro ao carregar vídeo: $error');
-              // Se falhar o vídeo, pula para o próximo ou mostra erro
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Aguardando carregamento do vídeo...'),
-                    duration: Duration(seconds: 4),
-                  ),
-                );
-                _startTimer(); // Inicia o timer mesmo assim para não travar o player
-              }
-            });
+        ..initialize().then((_) {
+          if (mounted) {
+            setState(() {});
+            _videoController?.play();
+            _startTimer();
+          }
+        }).catchError((error) {
+          debugPrint('Erro ao carregar vídeo: $error');
+          // Se falhar o vídeo, pula para o próximo ou mostra erro
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Aguardando carregamento do vídeo...'),
+                duration: Duration(seconds: 4),
+              ),
+            );
+            _startTimer(); // Inicia o timer mesmo assim para não travar o player
+          }
+        });
     } else {
       _startTimer();
     }
@@ -98,6 +89,10 @@ class _StoryPlayerPageState extends State<StoryPlayerPage> {
   void _startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
       if (!_isPaused) {
         setState(() {
           if (_videoController != null &&
@@ -198,7 +193,8 @@ class _StoryPlayerPageState extends State<StoryPlayerPage> {
               if (mounted) {
                 // Refresh feed
                 // ignore: use_build_context_synchronously
-                context.read<CommunityBloc>().add(const FetchStoriesStarted());
+                context.read<CommunityBloc>().add(
+                    FetchStoriesStarted(followingIds: widget.followingIds));
                 // ignore: use_build_context_synchronously
                 Navigator.pop(context); // Close dialog
                 // ignore: use_build_context_synchronously
@@ -242,12 +238,12 @@ class _StoryPlayerPageState extends State<StoryPlayerPage> {
             child: Center(
               child: story.mediaType == 'video'
                   ? (_videoController != null &&
-                            _videoController!.value.isInitialized
-                        ? AspectRatio(
-                            aspectRatio: _videoController!.value.aspectRatio,
-                            child: VideoPlayer(_videoController!),
-                          )
-                        : const CircularProgressIndicator())
+                          _videoController!.value.isInitialized
+                      ? AspectRatio(
+                          aspectRatio: _videoController!.value.aspectRatio,
+                          child: VideoPlayer(_videoController!),
+                        )
+                      : const CircularProgressIndicator())
                   : AppNetworkImage(
                       imageUrl: story.mediaUrl,
                       width: double.infinity,

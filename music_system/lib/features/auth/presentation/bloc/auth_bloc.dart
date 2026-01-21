@@ -4,6 +4,7 @@ import '../../../../core/services/notification_service.dart';
 import '../../domain/entities/user_entity.dart';
 import '../../domain/entities/user_profile.dart';
 import '../../domain/repositories/auth_repository.dart';
+import '../../../community/domain/repositories/social_graph_repository.dart';
 
 // Events
 abstract class AuthEvent extends Equatable {
@@ -20,6 +21,8 @@ class SignInRequested extends AuthEvent {
   @override
   List<Object?> get props => [email, password];
 }
+
+class GoogleSignInRequested extends AuthEvent {}
 
 class SignUpRequested extends AuthEvent {
   final String email;
@@ -61,6 +64,33 @@ class ToggleLiveStatus extends AuthEvent {
   List<Object?> get props => [userId, isLive];
 }
 
+class FollowUserRequested extends AuthEvent {
+  final String currentUserId;
+  final String targetUserId;
+  final String? senderName;
+  final String? senderPhoto;
+  FollowUserRequested(this.currentUserId, this.targetUserId,
+      {this.senderName, this.senderPhoto});
+  @override
+  List<Object?> get props =>
+      [currentUserId, targetUserId, senderName, senderPhoto];
+}
+
+class UnfollowUserRequested extends AuthEvent {
+  final String currentUserId;
+  final String targetUserId;
+  UnfollowUserRequested(this.currentUserId, this.targetUserId);
+  @override
+  List<Object?> get props => [currentUserId, targetUserId];
+}
+
+class LoadFollowedUsersRequested extends AuthEvent {
+  final String userId;
+  LoadFollowedUsersRequested(this.userId);
+  @override
+  List<Object?> get props => [userId];
+}
+
 // States
 abstract class AuthState extends Equatable {
   @override
@@ -80,9 +110,10 @@ class Authenticated extends AuthState {
 
 class ProfileLoaded extends AuthState {
   final UserProfile profile;
-  ProfileLoaded(this.profile);
+  final UserEntity? currentUser;
+  ProfileLoaded(this.profile, {this.currentUser});
   @override
-  List<Object?> get props => [profile];
+  List<Object?> get props => [profile, currentUser];
 }
 
 class Unauthenticated extends AuthState {}
@@ -98,15 +129,20 @@ class AuthError extends AuthState {
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository repository;
   final PushNotificationService notificationService;
+  final SocialGraphRepository socialGraphRepository;
 
-  AuthBloc({required this.repository, required this.notificationService})
-      : super(AuthInitial()) {
+  AuthBloc({
+    required this.repository,
+    required this.notificationService,
+    required this.socialGraphRepository,
+  }) : super(AuthInitial()) {
     on<AppStarted>((event, emit) async {
       final result = await repository.getCurrentUser();
       result.fold((_) => emit(Unauthenticated()), (user) {
         if (user != null) {
           notificationService.saveTokenToFirestore(user.id);
-          add(UpdateLastActive(user.id)); // Atualiza status online
+          add(UpdateLastActive(user.id));
+          add(LoadFollowedUsersRequested(user.id));
           emit(Authenticated(user));
         } else {
           emit(Unauthenticated());
@@ -119,6 +155,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final result = await repository.signIn(event.email, event.password);
       result.fold((failure) => emit(AuthError(failure.message)), (user) {
         notificationService.saveTokenToFirestore(user.id);
+        add(LoadFollowedUsersRequested(user.id));
+        emit(Authenticated(user));
+      });
+    });
+
+    on<GoogleSignInRequested>((event, emit) async {
+      emit(AuthLoading());
+      final result = await repository.signInWithGoogle();
+      result.fold((failure) => emit(AuthError(failure.message)), (user) {
+        notificationService.saveTokenToFirestore(user.id);
+        add(LoadFollowedUsersRequested(user.id));
         emit(Authenticated(user));
       });
     });
@@ -143,11 +190,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     });
 
     on<ProfileRequested>((event, emit) async {
-      emit(AuthLoading());
+      UserEntity? currentUser;
+      if (state is Authenticated) {
+        currentUser = (state as Authenticated).user;
+      } else if (state is ProfileLoaded) {
+        currentUser = (state as ProfileLoaded).currentUser;
+      }
+
       final result = await repository.getProfile(event.userId);
       result.fold(
         (failure) => emit(AuthError(failure.message)),
-        (profile) => emit(ProfileLoaded(profile)),
+        (profile) => emit(ProfileLoaded(profile, currentUser: currentUser)),
       );
     });
 
@@ -166,13 +219,51 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     on<ToggleLiveStatus>((event, emit) async {
       await repository.setLiveStatus(event.userId, event.isLive);
-      // If we are showing the profile of this person, refresh it
       if (state is ProfileLoaded) {
         final currentProfile = (state as ProfileLoaded).profile;
         if (currentProfile.id == event.userId) {
           add(ProfileRequested(event.userId));
         }
       }
+    });
+
+    on<FollowUserRequested>((event, emit) async {
+      await socialGraphRepository.followUser(
+        event.currentUserId,
+        event.targetUserId,
+        senderName: event.senderName,
+        senderPhoto: event.senderPhoto,
+      );
+      add(LoadFollowedUsersRequested(event.currentUserId));
+    });
+
+    on<UnfollowUserRequested>((event, emit) async {
+      await socialGraphRepository.unfollowUser(
+          event.currentUserId, event.targetUserId);
+      add(LoadFollowedUsersRequested(event.currentUserId));
+    });
+
+    on<LoadFollowedUsersRequested>((event, emit) async {
+      final result = await socialGraphRepository.getFollowingIds(event.userId);
+
+      result.fold(
+        (failure) {
+          // falha silenciosa
+        },
+        (ids) {
+          if (state is Authenticated) {
+            final currentUser = (state as Authenticated).user;
+            emit(Authenticated(currentUser.copyWith(followingIds: ids)));
+          } else if (state is ProfileLoaded) {
+            final currentState = state as ProfileLoaded;
+            final currentUser = currentState.currentUser;
+            if (currentUser != null) {
+              emit(ProfileLoaded(currentState.profile,
+                  currentUser: currentUser.copyWith(followingIds: ids)));
+            }
+          }
+        },
+      );
     });
   }
 }

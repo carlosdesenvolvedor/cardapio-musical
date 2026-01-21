@@ -8,7 +8,11 @@ abstract class CommunityEvent extends Equatable {
 }
 
 class FetchStoriesStarted extends CommunityEvent {
-  const FetchStoriesStarted();
+  final List<String>? followingIds;
+  const FetchStoriesStarted({this.followingIds});
+
+  @override
+  List<Object?> get props => [followingIds];
 }
 
 class FetchFeedStarted extends CommunityEvent {
@@ -47,10 +51,10 @@ class ToggleLikeRequested extends CommunityEvent {
 
   @override
   List<Object?> get props => [
-    postId,
-    userId,
-    senderName,
-    senderPhoto,
-    postAuthorId,
-  ];
+        postId,
+        userId,
+        senderName,
+        senderPhoto,
+        postAuthorId,
+      ];
 }

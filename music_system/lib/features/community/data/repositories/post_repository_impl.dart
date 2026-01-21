@@ -33,9 +33,8 @@ class PostRepositoryImpl implements PostRepository {
       }
 
       final snapshot = await query.get();
-      final posts = snapshot.docs
-          .map((doc) => PostModel.fromFirestore(doc))
-          .toList();
+      final posts =
+          snapshot.docs.map((doc) => PostModel.fromFirestore(doc)).toList();
 
       final nextLastDoc = snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
 
@@ -61,7 +60,6 @@ class PostRepositoryImpl implements PostRepository {
       Query query = firestore
           .collection('posts')
           .where('authorId', whereIn: idsToQuery)
-          .orderBy('createdAt', descending: true)
           .limit(limit);
 
       if (lastDoc != null) {
@@ -69,9 +67,11 @@ class PostRepositoryImpl implements PostRepository {
       }
 
       final snapshot = await query.get();
-      final posts = snapshot.docs
-          .map((doc) => PostModel.fromFirestore(doc))
-          .toList();
+      final posts =
+          snapshot.docs.map((doc) => PostModel.fromFirestore(doc)).toList();
+
+      // Sort in memory to avoid "Composite Index" requirement
+      posts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
       final nextLastDoc = snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
 
@@ -202,9 +202,8 @@ class PostRepositoryImpl implements PostRepository {
       }
 
       final snapshot = await query.get();
-      final posts = snapshot.docs
-          .map((doc) => PostModel.fromFirestore(doc))
-          .toList();
+      final posts =
+          snapshot.docs.map((doc) => PostModel.fromFirestore(doc)).toList();
 
       // Sort in memory to fix missing index issue
       posts.sort((a, b) => b.createdAt.compareTo(a.createdAt));

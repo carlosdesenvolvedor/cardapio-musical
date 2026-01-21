@@ -35,10 +35,17 @@ class _ManageRepertoirePageState extends State<ManageRepertoirePage> {
 
   void _loadSongs() {
     final authState = context.read<AuthBloc>().state;
+    String? userId;
     if (authState is Authenticated) {
+      userId = authState.user.id;
+    } else if (authState is ProfileLoaded) {
+      userId = authState.currentUser?.id;
+    }
+
+    if (userId != null) {
       context.read<RepertoireBloc>().add(
-        LoadRepertoireEvent(authState.user.id),
-      );
+            LoadRepertoireEvent(userId),
+          );
     }
   }
 
@@ -95,16 +102,16 @@ class _ManageRepertoirePageState extends State<ManageRepertoirePage> {
             _filteredSongs = _searchController.text.isEmpty
                 ? _allSongs
                 : _allSongs
-                      .where(
-                        (song) =>
-                            song.title.toLowerCase().contains(
-                              _searchController.text.toLowerCase(),
-                            ) ||
-                            song.artist.toLowerCase().contains(
-                              _searchController.text.toLowerCase(),
-                            ),
-                      )
-                      .toList();
+                    .where(
+                      (song) =>
+                          song.title.toLowerCase().contains(
+                                _searchController.text.toLowerCase(),
+                              ) ||
+                          song.artist.toLowerCase().contains(
+                                _searchController.text.toLowerCase(),
+                              ),
+                    )
+                    .toList();
           }
 
           return Column(
@@ -214,10 +221,18 @@ class _ManageRepertoirePageState extends State<ManageRepertoirePage> {
       if (!context.mounted) return;
       final bytes = result.files.single.bytes!;
       final authState = context.read<AuthBloc>().state;
+      String? userId;
+
       if (authState is Authenticated) {
+        userId = authState.user.id;
+      } else if (authState is ProfileLoaded) {
+        userId = authState.currentUser?.id;
+      }
+
+      if (userId != null) {
         context.read<RepertoireBloc>().add(
-          StartImportEvent(bytes, authState.user.id),
-        );
+              StartImportEvent(bytes, userId),
+            );
       }
     }
   }
@@ -464,7 +479,15 @@ class _ManageRepertoirePageState extends State<ManageRepertoirePage> {
               if (titleController.text.isNotEmpty &&
                   artistController.text.isNotEmpty) {
                 final authState = context.read<AuthBloc>().state;
+                String? userId;
+
                 if (authState is Authenticated) {
+                  userId = authState.user.id;
+                } else if (authState is ProfileLoaded) {
+                  userId = authState.currentUser?.id;
+                }
+
+                if (userId != null) {
                   final newSong = Song(
                     id: isEditing ? song.id : const Uuid().v4(),
                     title: titleController.text,
@@ -472,14 +495,14 @@ class _ManageRepertoirePageState extends State<ManageRepertoirePage> {
                     genre: genreController.text.isNotEmpty
                         ? genreController.text
                         : 'Outros',
-                    musicianId: authState.user.id,
+                    musicianId: userId,
                     albumCoverUrl: _selectedAlbumCover,
                   );
 
                   if (isEditing) {
                     context.read<RepertoireBloc>().add(
-                      UpdateSongEvent(newSong),
-                    );
+                          UpdateSongEvent(newSong),
+                        );
                   } else {
                     context.read<RepertoireBloc>().add(AddSongEvent(newSong));
                   }

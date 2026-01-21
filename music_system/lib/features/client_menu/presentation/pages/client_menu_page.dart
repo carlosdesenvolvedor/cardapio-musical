@@ -12,6 +12,9 @@ import '../bloc/repertoire_menu_event.dart';
 import '../bloc/repertoire_menu_state.dart';
 import '../widgets/song_card.dart';
 import '../../../live/presentation/pages/live_page.dart';
+import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../auth/domain/entities/user_profile.dart';
 
 class ClientMenuPage extends StatefulWidget {
   final String musicianId;
@@ -150,6 +153,13 @@ class _ClientMenuPageState extends State<ClientMenuPage> {
                           textAlign: TextAlign.center,
                         ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
                         const SizedBox(height: 16),
+                        _FollowedArtistsWidget(
+                          onArtistSelected: (id) {
+                            setState(() => _currentMusicianId = id);
+                            _loadMusicianData();
+                          },
+                        ).animate().fadeIn(delay: 400.ms),
+                        const SizedBox(height: 16),
                         Text(
                           'Escaneie o QR Code do artista para escolher sua trilha sonora.',
                           textAlign: TextAlign.center,
@@ -166,27 +176,87 @@ class _ClientMenuPageState extends State<ClientMenuPage> {
                             borderRadius: BorderRadius.circular(15),
                             border: Border.all(color: Colors.white10),
                           ),
-                          child: TextField(
-                            onSubmitted: (value) {
-                              if (value.isNotEmpty) {
-                                setState(() => _currentMusicianId = value);
-                                _loadMusicianData();
-                              }
+                          child: TypeAheadField<UserProfile>(
+                            builder: (context, controller, focusNode) =>
+                                TextField(
+                              controller: controller,
+                              focusNode: focusNode,
+                              onSubmitted: (value) {
+                                if (value.isNotEmpty) {
+                                  setState(() => _currentMusicianId = value);
+                                  _loadMusicianData();
+                                }
+                              },
+                              style: const TextStyle(color: Colors.white),
+                              decoration: const InputDecoration(
+                                hintText: 'Buscar Músico (Nome)...',
+                                hintStyle: TextStyle(color: Colors.white24),
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 16,
+                                ),
+                                border: InputBorder.none,
+                                suffixIcon: Icon(
+                                  Icons.search,
+                                  color: Color(0xFFE5B80B),
+                                  size: 18,
+                                ),
+                              ),
+                            ),
+                            suggestionsCallback: (pattern) async {
+                              if (pattern.length < 2) return [];
+
+                              final query = await FirebaseFirestore.instance
+                                  .collection('users')
+                                  .where('artisticName',
+                                      isGreaterThanOrEqualTo: pattern)
+                                  .where('artisticName',
+                                      isLessThanOrEqualTo: pattern + '\uf8ff')
+                                  .limit(5)
+                                  .get();
+
+                              return query.docs.map((doc) {
+                                final data = doc.data();
+                                return UserProfile(
+                                  id: doc.id,
+                                  email: data['email'] ?? '',
+                                  artisticName:
+                                      data['artisticName'] ?? 'Sem Nome',
+                                  pixKey: data['pixKey'] ?? '',
+                                  photoUrl: data['photoUrl'],
+                                  followersCount: data['followersCount'] ?? 0,
+                                  followingCount: data['followingCount'] ?? 0,
+                                  profileViewsCount:
+                                      data['profileViewsCount'] ?? 0,
+                                  isLive: data['isLive'] ?? false,
+                                );
+                              }).toList();
                             },
-                            style: const TextStyle(color: Colors.white),
-                            decoration: const InputDecoration(
-                              hintText: 'Digite o ID do Músico...',
-                              hintStyle: TextStyle(color: Colors.white24),
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 16,
-                              ),
-                              border: InputBorder.none,
-                              suffixIcon: Icon(
-                                Icons.arrow_forward_ios,
-                                color: Color(0xFFE5B80B),
-                                size: 18,
-                              ),
+                            itemBuilder: (context, profile) {
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  backgroundImage: profile.photoUrl != null &&
+                                          profile.photoUrl!.isNotEmpty
+                                      ? CachedNetworkImageProvider(
+                                          profile.photoUrl!)
+                                      : null,
+                                  child: profile.photoUrl == null ||
+                                          profile.photoUrl!.isEmpty
+                                      ? const Icon(Icons.person)
+                                      : null,
+                                ),
+                                title: Text(profile.artisticName),
+                                subtitle: const Text('Músico',
+                                    style: TextStyle(fontSize: 10)),
+                              );
+                            },
+                            onSelected: (profile) {
+                              setState(() => _currentMusicianId = profile.id);
+                              _loadMusicianData();
+                            },
+                            emptyBuilder: (context) => const Padding(
+                              padding: EdgeInsets.all(8.0),
+                              child: Text('Nenhum músico encontrado.'),
                             ),
                           ),
                         )
@@ -382,14 +452,71 @@ class _ClientMenuPageState extends State<ClientMenuPage> {
                               ),
                             ).animate().scale(duration: 400.ms),
                             const SizedBox(height: 16),
-                            Text(
-                              name,
-                              style: GoogleFonts.outfit(
-                                fontSize: 36,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white,
-                              ),
-                            ).animate().fadeIn().slideX(),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  name,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 36,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                  ),
+                                ).animate().fadeIn().slideX(),
+                                if (state is ProfileLoaded &&
+                                    state.currentUser != null &&
+                                    state.currentUser!.id !=
+                                        state.profile.id) ...[
+                                  const SizedBox(width: 12),
+                                  Builder(builder: (context) {
+                                    final isFollowing = state
+                                        .currentUser!.followingIds
+                                        .contains(state.profile.id);
+                                    return SizedBox(
+                                      height: 32,
+                                      child: ElevatedButton(
+                                        onPressed: () {
+                                          if (isFollowing) {
+                                            context.read<AuthBloc>().add(
+                                                UnfollowUserRequested(
+                                                    state.currentUser!.id,
+                                                    state.profile.id));
+                                          } else {
+                                            context.read<AuthBloc>().add(
+                                                FollowUserRequested(
+                                                    state.currentUser!.id,
+                                                    state.profile.id));
+                                          }
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: isFollowing
+                                              ? Colors.transparent
+                                              : AppTheme.primaryColor,
+                                          side: const BorderSide(
+                                              color: AppTheme.primaryColor),
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(20)),
+                                          elevation: 0,
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16),
+                                        ),
+                                        child: Text(
+                                          isFollowing ? 'Seguindo' : 'Seguir',
+                                          style: TextStyle(
+                                            color: isFollowing
+                                                ? AppTheme.primaryColor
+                                                : Colors.black,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }),
+                                ]
+                              ],
+                            ),
                             const SizedBox(height: 8),
                             Row(
                               children: [
@@ -595,6 +722,130 @@ class _ClientMenuPageState extends State<ClientMenuPage> {
           foregroundColor: Colors.black,
         ),
       ),
+    );
+  }
+}
+
+class _FollowedArtistsWidget extends StatelessWidget {
+  final Function(String) onArtistSelected;
+
+  const _FollowedArtistsWidget({required this.onArtistSelected});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        List<String> followingIds = [];
+        if (state is Authenticated) {
+          followingIds = state.user.followingIds;
+        } else if (state is ProfileLoaded && state.currentUser != null) {
+          followingIds = state.currentUser!.followingIds;
+        }
+
+        if (followingIds.isNotEmpty) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(left: 4.0),
+                child: Text(
+                  'Meus Artistas',
+                  style: GoogleFonts.outfit(
+                    color: const Color(0xFFE5B80B),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 120, // Altura suficiente para avatar + texto
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: followingIds.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 16),
+                  itemBuilder: (context, index) {
+                    return _ArtistAvatarItem(
+                      artistId: followingIds[index],
+                      onTap: onArtistSelected,
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Divider(color: Colors.white10),
+            ],
+          );
+        }
+        return const SizedBox.shrink();
+      },
+    );
+  }
+}
+
+class _ArtistAvatarItem extends StatelessWidget {
+  final String artistId;
+  final Function(String) onTap;
+
+  const _ArtistAvatarItem({required this.artistId, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      future: context.read<AuthBloc>().repository.getProfile(artistId),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return Container(
+            width: 70,
+            height: 70,
+            decoration: const BoxDecoration(
+                color: Colors.black26, shape: BoxShape.circle),
+          );
+        }
+        return snapshot.data!.fold(
+            (l) => const SizedBox.shrink(),
+            (profile) => GestureDetector(
+                  onTap: () => onTap(artistId),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: const Color(0xFFE5B80B), width: 1.5),
+                        ),
+                        child: CircleAvatar(
+                          radius: 32,
+                          backgroundImage: profile.photoUrl != null
+                              ? NetworkImage(profile.photoUrl!)
+                              : null,
+                          backgroundColor: Colors.grey[800],
+                          child: profile.photoUrl == null
+                              ? Text(
+                                  profile.artisticName.isNotEmpty
+                                      ? profile.artisticName[0].toUpperCase()
+                                      : '?',
+                                  style: const TextStyle(color: Colors.white))
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: 80,
+                        child: Text(
+                          profile.artisticName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.outfit(
+                              color: Colors.white70, fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ));
+      },
     );
   }
 }

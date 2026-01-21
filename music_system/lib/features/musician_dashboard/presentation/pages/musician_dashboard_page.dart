@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'manage_repertoire_page.dart';
 import 'share_page.dart';
 import 'artist_insights_page.dart';
+import '../../../bands/presentation/pages/my_bands_page.dart';
 import 'package:music_system/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:music_system/features/auth/presentation/pages/profile_page.dart';
 import 'package:music_system/features/smart_lyrics/presentation/pages/lyrics_view_page.dart';
@@ -108,6 +109,23 @@ class _MusicianDashboardPageState extends State<MusicianDashboardPage> {
                   context,
                   MaterialPageRoute(
                     builder: (context) => const ManageRepertoirePage(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.group, color: Color(0xFFE5B80B)),
+              title: const Text('Minhas Bandas'),
+              subtitle: const Text(
+                'Gestão de Equipe & Agenda',
+                style: TextStyle(color: Colors.white38, fontSize: 10),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const MyBandsPage(),
                   ),
                 );
               },

@@ -16,6 +16,7 @@ class UserProfileModel extends UserProfile {
     super.fcmToken,
     super.followersCount = 0,
     super.followingCount = 0,
+    super.profileViewsCount = 0,
     super.isLive = false,
     super.liveUntil,
     super.scheduledShow,
@@ -39,6 +40,7 @@ class UserProfileModel extends UserProfile {
       fcmToken: json['fcmToken'],
       followersCount: json['followersCount'] ?? 0,
       followingCount: json['followingCount'] ?? 0,
+      profileViewsCount: json['profileViewsCount'] ?? 0,
       isLive: json['isLive'] ?? false,
       liveUntil: json['liveUntil'] != null
           ? (json['liveUntil'] as Timestamp).toDate()
@@ -66,14 +68,13 @@ class UserProfileModel extends UserProfile {
       'fcmToken': fcmToken,
       'followersCount': followersCount,
       'followingCount': followingCount,
+      'profileViewsCount': profileViewsCount,
       'isLive': isLive,
       'liveUntil': liveUntil != null ? Timestamp.fromDate(liveUntil!) : null,
-      'scheduledShow': scheduledShow != null
-          ? Timestamp.fromDate(scheduledShow!)
-          : null,
-      'lastActiveAt': lastActiveAt != null
-          ? Timestamp.fromDate(lastActiveAt!)
-          : null,
+      'scheduledShow':
+          scheduledShow != null ? Timestamp.fromDate(scheduledShow!) : null,
+      'lastActiveAt':
+          lastActiveAt != null ? Timestamp.fromDate(lastActiveAt!) : null,
     };
   }
 }

@@ -47,8 +47,8 @@ class ActivityPage extends StatelessWidget {
                   TextButton(
                     onPressed: () {
                       context.read<NotificationsBloc>().add(
-                        NotificationsStarted(userId),
-                      );
+                            NotificationsStarted(userId),
+                          );
                     },
                     child: const Text('Tentar novamente'),
                   ),
@@ -123,6 +123,11 @@ class ActivityPage extends StatelessWidget {
         icon = Icons.info;
         iconColor = Colors.orange;
         break;
+      case NotificationType.band_invite:
+        message = 'convidou você para tocar em uma banda!';
+        icon = Icons.group_add;
+        iconColor = const Color(0xFFE5B80B);
+        break;
     }
 
     return ListTile(
@@ -133,13 +138,11 @@ class ActivityPage extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundImage:
-                notification.senderPhotoUrl != null &&
+            backgroundImage: notification.senderPhotoUrl != null &&
                     notification.senderPhotoUrl!.isNotEmpty
                 ? CachedNetworkImageProvider(notification.senderPhotoUrl!)
                 : null,
-            child:
-                (notification.senderPhotoUrl == null ||
+            child: (notification.senderPhotoUrl == null ||
                     notification.senderPhotoUrl!.isEmpty)
                 ? const Icon(Icons.person, size: 20)
                 : null,
@@ -191,15 +194,14 @@ class ActivityPage extends StatelessWidget {
         _formatDate(notification.createdAt),
         style: TextStyle(color: Colors.grey[600], fontSize: 12),
       ),
-      trailing:
-          notification.type == NotificationType.like &&
+      trailing: notification.type == NotificationType.like &&
               notification.postId != null
           ? const Icon(Icons.image, size: 30, color: Colors.white10)
           : null,
       onTap: () {
         context.read<NotificationsBloc>().add(
-          MarkNotificationAsRead(userId, notification.id),
-        );
+              MarkNotificationAsRead(userId, notification.id),
+            );
 
         // Create mapped actions
         if (notification.type == NotificationType.message) {
@@ -234,6 +236,17 @@ class ActivityPage extends StatelessWidget {
               builder: (context) => PostDetailPage(
                 postId: notification.postId!,
                 currentUserId: userId,
+              ),
+            ),
+          );
+        } else if (notification.type == NotificationType.band_invite) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProfilePage(
+                userId: notification.senderId,
+                email: '',
+                showAppBar: true,
               ),
             ),
           );

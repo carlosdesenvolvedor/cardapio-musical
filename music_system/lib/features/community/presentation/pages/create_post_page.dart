@@ -7,6 +7,7 @@ import 'package:music_system/injection_container.dart';
 import 'package:music_system/features/community/domain/repositories/post_repository.dart';
 import 'package:music_system/features/community/domain/entities/post_entity.dart';
 import 'package:music_system/features/auth/domain/entities/user_profile.dart';
+import 'package:music_system/core/utils/cloudinary_sanitizer.dart';
 
 class CreatePostPage extends StatefulWidget {
   final UserProfile profile;
@@ -70,6 +71,8 @@ class _CreatePostPageState extends State<CreatePostPage> {
       }
 
       if (url != null) {
+        url = CloudinarySanitizer.sanitize(url, mediaType: 'image');
+
         final post = PostEntity(
           id: '',
           authorId: widget.profile.id,

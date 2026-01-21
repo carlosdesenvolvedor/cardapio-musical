@@ -4,16 +4,12 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
-import 'package:dartz/dartz.dart' hide State;
-import 'package:music_system/core/error/failures.dart';
-
 import 'package:music_system/features/community/domain/entities/post_entity.dart';
 import 'package:music_system/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:music_system/features/auth/presentation/pages/profile_page.dart';
 import 'package:music_system/features/community/presentation/widgets/artist_avatar.dart';
 import 'package:music_system/core/presentation/widgets/app_network_image.dart';
 import 'package:music_system/injection_container.dart';
-import 'package:music_system/features/community/domain/repositories/social_graph_repository.dart';
 import 'package:music_system/features/community/domain/repositories/post_repository.dart';
 import 'package:music_system/features/community/presentation/bloc/community_bloc.dart';
 import 'package:music_system/features/community/presentation/bloc/community_event.dart';
@@ -22,11 +18,13 @@ import 'package:music_system/config/theme/app_theme.dart';
 class ArtistFeedCard extends StatefulWidget {
   final PostEntity post;
   final String currentUserId;
+  final bool isFollowing;
 
   const ArtistFeedCard({
     super.key,
     required this.post,
     required this.currentUserId,
+    this.isFollowing = false,
   });
 
   @override
@@ -59,7 +57,6 @@ class _ArtistFeedCardState extends State<ArtistFeedCard> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      // ... (build content remains mostly same, using _isLiked and _likeCount)
       margin: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -126,50 +123,24 @@ class _ArtistFeedCardState extends State<ArtistFeedCard> {
                 const Spacer(),
                 if (widget.currentUserId != widget.post.authorId &&
                     widget.currentUserId.isNotEmpty)
-                  FutureBuilder<Either<Failure, bool>>(
-                    future: sl<SocialGraphRepository>().isFollowing(
-                      widget.currentUserId,
-                      widget.post.authorId,
-                    ),
-                    builder: (context, snapshot) {
-                      final bool isFollowing =
-                          snapshot.data?.fold((_) => false, (r) => r) ?? false;
-
-                      return TextButton(
-                        onPressed: () async {
-                          final authState = context.read<AuthBloc>().state;
-                          String? senderName;
-                          String? senderPhoto;
-                          if (authState is ProfileLoaded) {
-                            senderName = authState.profile.artisticName;
-                            senderPhoto = authState.profile.photoUrl;
-                          }
-
-                          if (isFollowing) {
-                            await sl<SocialGraphRepository>().unfollowUser(
-                              widget.currentUserId,
-                              widget.post.authorId,
-                            );
-                          } else {
-                            await sl<SocialGraphRepository>().followUser(
-                              widget.currentUserId,
-                              widget.post.authorId,
-                              senderName: senderName,
-                              senderPhoto: senderPhoto,
-                            );
-                          }
-                          setState(() {}); // Refresh the follow status
-                        },
-                        child: Text(
-                          isFollowing ? 'Deixar de ser fã' : 'Sou fã',
-                          style: const TextStyle(
-                            color: Color(0xFFE5B80B),
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      );
+                  TextButton(
+                    onPressed: () {
+                      if (widget.isFollowing) {
+                        context.read<AuthBloc>().add(UnfollowUserRequested(
+                            widget.currentUserId, widget.post.authorId));
+                      } else {
+                        context.read<AuthBloc>().add(FollowUserRequested(
+                            widget.currentUserId, widget.post.authorId));
+                      }
                     },
+                    child: Text(
+                      widget.isFollowing ? 'Sou fã' : 'Virar fã',
+                      style: const TextStyle(
+                        color: Color(0xFFE5B80B),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 IconButton(
                   icon: const Icon(Icons.more_vert, size: 20),
@@ -291,14 +262,14 @@ class _ArtistFeedCardState extends State<ArtistFeedCard> {
     }
 
     context.read<CommunityBloc>().add(
-      ToggleLikeRequested(
-        postId: widget.post.id,
-        userId: widget.currentUserId,
-        senderName: senderName,
-        senderPhoto: senderPhoto,
-        postAuthorId: widget.post.authorId,
-      ),
-    );
+          ToggleLikeRequested(
+            postId: widget.post.id,
+            userId: widget.currentUserId,
+            senderName: senderName,
+            senderPhoto: senderPhoto,
+            postAuthorId: widget.post.authorId,
+          ),
+        );
   }
 
   void _confirmRepost(BuildContext context) {

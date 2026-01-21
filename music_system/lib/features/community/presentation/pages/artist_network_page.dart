@@ -18,12 +18,16 @@ import 'package:music_system/features/community/presentation/pages/story_player_
 import 'package:music_system/features/community/presentation/pages/create_story_page.dart';
 import 'package:music_system/features/community/presentation/pages/conversations_page.dart';
 import 'package:music_system/features/community/presentation/pages/activity_page.dart';
+import 'package:music_system/features/community/domain/entities/notification_entity.dart';
 import 'package:music_system/core/services/deezer_service.dart';
 import 'package:music_system/features/community/presentation/bloc/notifications_bloc.dart';
 import 'package:music_system/features/community/presentation/bloc/notifications_state.dart';
 import 'package:music_system/features/community/presentation/widgets/artist_feed_card.dart';
 import 'package:music_system/features/community/presentation/widgets/feed_shimmer.dart';
 import 'package:music_system/features/live/presentation/pages/live_page.dart';
+import 'package:music_system/features/client_menu/presentation/pages/client_menu_page.dart';
+import 'package:music_system/injection_container.dart';
+import 'package:music_system/features/auth/domain/repositories/auth_repository.dart';
 
 class ArtistNetworkPage extends StatefulWidget {
   const ArtistNetworkPage({super.key});
@@ -41,6 +45,10 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
   List<DeezerSong> _deezerMusicResults = [];
   bool _isSearchingMusic = false;
 
+  // Local state to hold following IDs fetched explicitly
+  List<String> _localFollowingIds = [];
+  bool _isLoadingData = true; // New state to track loading
+
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -48,10 +56,57 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
     super.initState();
     _scrollController.addListener(_onScroll);
     final authState = context.read<AuthBloc>().state;
+
+    String? currentUserId;
+
     if (authState is Authenticated) {
-      context.read<AuthBloc>().add(ProfileRequested(authState.user.id));
-      // Inicializa o feed
-      context.read<CommunityBloc>().add(const FetchFeedStarted());
+      currentUserId = authState.user.id;
+    } else if (authState is ProfileLoaded && authState.currentUser != null) {
+      currentUserId = authState.currentUser!.id;
+    }
+
+    if (currentUserId != null) {
+      _loadData(currentUserId);
+    } else {
+      // If we don't have user yet, we wait for AuthState listener or just show empty/loading
+      _isLoadingData = false;
+    }
+  }
+
+  Future<void> _loadData(String userId) async {
+    if (mounted) setState(() => _isLoadingData = true);
+
+    context.read<AuthBloc>().add(ProfileRequested(userId));
+
+    // Fetch followed users explicitly since UserEntity/Profile doesn't guarantee it
+    final followingResult = await sl<AuthRepository>().getFollowedUsers(userId);
+
+    List<String> loadedFollowingIds = [];
+    followingResult.fold(
+      (failure) =>
+          debugPrint('Error fetching followed users: ${failure.message}'),
+      (ids) => loadedFollowingIds = ids,
+    );
+
+    // If we failed to load (or list is empty), we might fallback to authState if available,
+    // but usually if this call fails, we rely on what we have.
+    // Ensure we include ourselves in the feed
+    final feedIds = List<String>.from(loadedFollowingIds)..add(userId);
+
+    if (mounted) {
+      // Update local state AND trigger Bloc BEFORE setting loading to false
+      _localFollowingIds = loadedFollowingIds; // Update this before setState
+
+      context
+          .read<CommunityBloc>()
+          .add(FetchFeedStarted(followingIds: feedIds));
+      context
+          .read<CommunityBloc>()
+          .add(FetchStoriesStarted(followingIds: loadedFollowingIds));
+
+      setState(() {
+        _isLoadingData = false;
+      });
     }
   }
 
@@ -63,7 +118,16 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
 
   void _onScroll() {
     if (_isBottom) {
-      context.read<CommunityBloc>().add(const LoadMorePostsRequested());
+      final authState = context.read<AuthBloc>().state;
+      List<String> followingIds = [];
+      if (authState is Authenticated) {
+        followingIds = authState.user.followingIds;
+      } else if (authState is ProfileLoaded && authState.currentUser != null) {
+        followingIds = authState.currentUser!.followingIds;
+      }
+      context
+          .read<CommunityBloc>()
+          .add(LoadMorePostsRequested(followingIds: followingIds));
     }
   }
 
@@ -78,11 +142,49 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
   Widget build(BuildContext context) {
     // Get the current user profile from AuthBloc
     final authState = context.watch<AuthBloc>().state;
-    UserProfile? currentUser;
+    UserProfile? currentUserProfile;
+    List<String> followingIds = [];
+    String? currentUserId;
 
     if (authState is ProfileLoaded) {
-      currentUser = authState.profile;
-    } else if (authState is Authenticated || authState is AuthLoading) {
+      currentUserProfile = authState.profile;
+      currentUserId = authState.currentUser?.id;
+      // Prioritize local IDs if AuthBloc's list is empty but we fetched something
+      if ((authState.currentUser?.followingIds.isEmpty ?? true) &&
+          _localFollowingIds.isNotEmpty) {
+        followingIds = _localFollowingIds;
+      } else {
+        followingIds =
+            List<String>.from(authState.currentUser?.followingIds ?? []);
+      }
+    } else if (authState is Authenticated) {
+      currentUserId = authState.user.id;
+      if (authState.user.followingIds.isEmpty &&
+          _localFollowingIds.isNotEmpty) {
+        followingIds = _localFollowingIds;
+      } else {
+        followingIds = List<String>.from(authState.user.followingIds);
+      }
+      // We need a dummy profile here if it's null, or logic further down might break if it relies on currentUserProfile
+      currentUserProfile ??= UserProfile(
+        id: authState.user.id,
+        email: authState.user.email,
+        artisticName: authState.user.displayName,
+        pixKey: '',
+        photoUrl: authState.user.photoUrl,
+        followersCount: 0,
+        followingCount: 0,
+        profileViewsCount: 0,
+        isLive: false,
+      );
+    }
+
+    // Sempre inclui o próprio usuário para ver seus posts
+    if (currentUserId != null && !followingIds.contains(currentUserId)) {
+      followingIds.add(currentUserId);
+    }
+
+    if (authState is AuthLoading || _isLoadingData) {
       return const Scaffold(
         backgroundColor: Colors.black,
         body: Center(
@@ -113,14 +215,33 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
             IconButton(
               icon: const Icon(Icons.add_box_outlined, color: Colors.white),
               onPressed: () {
-                if (currentUser != null) {
+                if (currentUserProfile != null) {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) =>
-                          CreatePostPage(profile: currentUser!),
+                          CreatePostPage(profile: currentUserProfile!),
                     ),
-                  );
+                  ).then((_) {
+                    final authState = context.read<AuthBloc>().state;
+                    List<String> currentFollowing = [];
+                    String? myId;
+                    if (authState is Authenticated) {
+                      currentFollowing =
+                          List<String>.from(authState.user.followingIds);
+                      myId = authState.user.id;
+                    } else if (authState is ProfileLoaded) {
+                      currentFollowing = List<String>.from(
+                          authState.currentUser?.followingIds ?? []);
+                      myId = authState.currentUser?.id;
+                    }
+                    if (myId != null && !currentFollowing.contains(myId)) {
+                      currentFollowing.add(myId);
+                    }
+                    context
+                        .read<CommunityBloc>()
+                        .add(FetchFeedStarted(followingIds: currentFollowing));
+                  });
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Faça login para publicar!')),
@@ -130,12 +251,17 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
             ),
             BlocBuilder<NotificationsBloc, NotificationsState>(
               builder: (context, state) {
-                final hasUnread = state.notifications.any((n) => !n.isRead);
+                final notifications = state.notifications;
+                final hasUnread = notifications.any((n) => !n.isRead);
+                final hasInvitations = notifications.any(
+                  (n) => !n.isRead && n.type == NotificationType.band_invite,
+                );
                 return IconButton(
                   icon: Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      const Icon(Icons.favorite_border, color: Colors.white),
+                      const Icon(Icons.notifications_outlined,
+                          color: Colors.white),
                       if (hasUnread)
                         Positioned(
                           right: -2,
@@ -152,15 +278,25 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
                             ),
                           ),
                         ),
+                      if (hasInvitations)
+                        Positioned(
+                          left: -4,
+                          top: -4,
+                          child: const Icon(
+                            Icons.favorite,
+                            color: Colors.red,
+                            size: 12,
+                          ),
+                        ),
                     ],
                   ),
                   onPressed: () {
-                    if (currentUser != null) {
+                    if (currentUserProfile != null) {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) =>
-                              ActivityPage(userId: currentUser!.id),
+                              ActivityPage(userId: currentUserProfile!.id),
                         ),
                       );
                     } else {
@@ -177,12 +313,12 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
             IconButton(
               icon: const Icon(Icons.chat_bubble_outline, color: Colors.white),
               onPressed: () {
-                if (currentUser != null) {
+                if (currentUserProfile != null) {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) =>
-                          ConversationsPage(userId: currentUser!.id),
+                          ConversationsPage(userId: currentUserProfile!.id),
                     ),
                   );
                 } else {
@@ -193,7 +329,7 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
               },
             ),
           ],
-          if (_currentIndex == 4 && currentUser != null)
+          if (_currentIndex == 4 && currentUserProfile != null)
             IconButton(
               icon: const Icon(Icons.logout, color: Colors.redAccent),
               onPressed: () {
@@ -203,302 +339,471 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
             ),
         ],
       ),
-      body: _currentIndex == 4
-          ? (currentUser != null
-              ? ProfilePage(
-                  userId: currentUser.id,
-                  email: '',
-                  showAppBar: false,
-                )
-              : const Center(child: Text('Faça login para ver seu perfil')))
-          : _currentIndex == 1
-              ? _buildSearchPage()
-              : BlocBuilder<CommunityBloc, CommunityState>(
-                  builder: (context, state) {
-                    if (state.status == CommunityStatus.loading &&
-                        state.posts.isEmpty) {
-                      return const FeedShimmer();
-                    }
+      body: BlocListener<AuthBloc, AuthState>(
+        listener: (context, state) {
+          if (state is ProfileLoaded) {
+            final ids =
+                List<String>.from(state.currentUser?.followingIds ?? []);
+            if (state.currentUser?.id != null) {
+              ids.add(state.currentUser!.id);
+            }
+            context
+                .read<CommunityBloc>()
+                .add(FetchFeedStarted(followingIds: ids));
+          } else if (state is Authenticated) {
+            final ids = List<String>.from(state.user.followingIds);
+            ids.add(state.user.id);
+            context
+                .read<CommunityBloc>()
+                .add(FetchFeedStarted(followingIds: ids));
+          }
+        },
+        child: _currentIndex == 4
+            ? (currentUserProfile != null
+                ? ProfilePage(
+                    userId: currentUserProfile.id,
+                    email: '',
+                    showAppBar: false,
+                  )
+                : const Center(child: Text('Faça login para ver seu perfil')))
+            : _currentIndex == 1
+                ? _buildSearchPage()
+                : BlocBuilder<CommunityBloc, CommunityState>(
+                    builder: (context, state) {
+                      if (state.status == CommunityStatus.loading &&
+                          state.posts.isEmpty) {
+                        return const FeedShimmer();
+                      }
 
-                    final posts = state.posts;
+                      final posts = state.posts;
 
-                    return RefreshIndicator(
-                      onRefresh: () async {
-                        context.read<CommunityBloc>().add(
-                              const FetchFeedStarted(isRefresh: true),
-                            );
-                      },
-                      color: AppTheme.primaryColor,
-                      child: CustomScrollView(
-                        controller: _scrollController,
-                        slivers: [
-                          // Stories section (Artists)
-                          SliverToBoxAdapter(
-                            child: StreamBuilder<QuerySnapshot>(
-                              stream: FirebaseFirestore.instance
-                                  .collection('users')
-                                  .snapshots(),
-                              builder: (context, userSnapshot) {
-                                if (!userSnapshot.hasData)
-                                  return const SizedBox();
+                      return RefreshIndicator(
+                        onRefresh: () async {
+                          final ids = List<String>.from(followingIds);
+                          if (currentUserId != null) ids.add(currentUserId);
+                          context.read<CommunityBloc>().add(
+                                FetchFeedStarted(
+                                    followingIds: ids, isRefresh: true),
+                              );
+                        },
+                        color: AppTheme.primaryColor,
+                        child: CustomScrollView(
+                          controller: _scrollController,
+                          slivers: [
+                            // Stories section (Artists)
+                            SliverToBoxAdapter(
+                              child: StreamBuilder<QuerySnapshot>(
+                                stream: FirebaseFirestore.instance
+                                    .collection('users')
+                                    .snapshots(),
+                                builder: (context, userSnapshot) {
+                                  if (!userSnapshot.hasData)
+                                    return const SizedBox();
 
-                                final allUsers = userSnapshot.data!.docs;
-                                final currentUserId = currentUser?.id;
+                                  final allUsers = userSnapshot.data!.docs;
 
-                                // Group state.stories by authorId
-                                final Map<String, List<StoryEntity>>
-                                    groupedStories = {};
-                                for (var story in state.stories) {
-                                  groupedStories
-                                      .putIfAbsent(story.authorId, () => [])
-                                      .add(story);
-                                }
+                                  final Map<String, List<StoryEntity>>
+                                      groupedStories = {};
+                                  for (var story in state.stories) {
+                                    groupedStories
+                                        .putIfAbsent(story.authorId, () => [])
+                                        .add(story);
+                                  }
 
-                                // Identify users with stories
-                                final usersWithStories = allUsers
-                                    .where(
-                                        (u) => groupedStories.containsKey(u.id))
-                                    .toList();
-                                final usersWithoutStories = allUsers
-                                    .where(
-                                      (u) =>
-                                          !groupedStories.containsKey(u.id) &&
-                                          u.id != currentUserId,
-                                    )
-                                    .toList();
+                                  // Filtro rígido: Apenas quem eu sigo ou eu mesmo
+                                  final Map<String, DocumentSnapshot>
+                                      userDocsMap = {
+                                    for (var doc in allUsers) doc.id: doc
+                                  };
 
-                                DocumentSnapshot? me;
-                                try {
-                                  me = allUsers.firstWhere(
-                                    (u) => u.id == currentUserId,
-                                  );
-                                } catch (_) {}
-
-                                final bool myStoriesAllViewed = currentUserId !=
-                                        null &&
-                                    groupedStories.containsKey(currentUserId) &&
-                                    groupedStories[currentUserId]!.every(
-                                      (s) => s.viewers.contains(currentUserId),
+                                  DocumentSnapshot? me;
+                                  try {
+                                    me = allUsers.firstWhere(
+                                      (u) => u.id == currentUserId,
                                     );
+                                  } catch (_) {}
 
-                                return Container(
-                                  height: 125,
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 8),
-                                  child: ListView(
-                                    scrollDirection: Axis.horizontal,
-                                    children: [
-                                      // 1. Me Logged or Guest
-                                      if (me != null)
-                                        _buildStoryItem(
-                                          'Você',
-                                          (me.data() as Map<String, dynamic>)[
-                                              'photoUrl'],
-                                          isMe: true,
-                                          isLive: (me.data() as Map<String,
-                                                  dynamic>)['isLive'] ??
-                                              false,
-                                          hasStories:
-                                              groupedStories.containsKey(
-                                            currentUserId,
-                                          ),
-                                          allStoriesViewed: myStoriesAllViewed,
-                                          onTap: () {
-                                            if (groupedStories.containsKey(
+                                  // DEBUG: Log filtering logic
+                                  debugPrint('--- BUILD STORIES DEBUG ---');
+                                  debugPrint('Current User ID: $currentUserId');
+                                  debugPrint('Following IDs: $followingIds');
+                                  debugPrint(
+                                      'Total Stories: ${state.stories.length}');
+
+                                  // Coletamos todos os IDs que devem aparecer (seguidos)
+                                  // Removemos o próprio ID para não duplicar com o item "Você"
+                                  final Set<String> idsToShow =
+                                      Set.from(followingIds);
+                                  if (currentUserId != null) {
+                                    idsToShow.remove(currentUserId);
+                                  }
+
+                                  // Adicionamos autores de stories ativos que eu sigo
+                                  for (var story in state.stories) {
+                                    // DEBUG: Check each story
+                                    // debugPrint('Checking story from: ${story.authorName} (${story.authorId})');
+
+                                    if (followingIds.contains(story.authorId) &&
+                                        story.authorId != currentUserId) {
+                                      idsToShow.add(story.authorId);
+                                    } else {
+                                      // debugPrint('Excluded story from ${story.authorName}: Followed? ${followingIds.contains(story.authorId)}');
+                                    }
+                                  }
+                                  debugPrint('Final IDs to Show: $idsToShow');
+
+                                  final bool myStoriesAllViewed =
+                                      currentUserId != null &&
+                                          groupedStories
+                                              .containsKey(currentUserId) &&
+                                          groupedStories[currentUserId]!.every(
+                                            (s) => s.viewers
+                                                .contains(currentUserId),
+                                          );
+
+                                  return Container(
+                                    height: 125,
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 8),
+                                    child: ListView(
+                                      scrollDirection: Axis.horizontal,
+                                      children: [
+                                        if (me != null)
+                                          _buildStoryItem(
+                                            'Você',
+                                            (me.data() as Map<String, dynamic>)[
+                                                'photoUrl'],
+                                            isMe: true,
+                                            isLive: (me.data() as Map<String,
+                                                    dynamic>)['isLive'] ??
+                                                false,
+                                            isStreaming:
+                                                false, // Dono do perfil no story bar geralmente não mostra streaming ali
+                                            hasStories:
+                                                groupedStories.containsKey(
                                               currentUserId,
-                                            )) {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      StoryPlayerPage(
-                                                    stories: groupedStories[
-                                                        currentUserId]!,
-                                                    currentUserId:
-                                                        currentUserId,
-                                                  ),
-                                                ),
-                                              );
-                                            } else {
-                                              final authState = context
-                                                  .read<AuthBloc>()
-                                                  .state;
-                                              if (authState is ProfileLoaded) {
+                                            ),
+                                            allStoriesViewed:
+                                                myStoriesAllViewed,
+                                            onTap: () {
+                                              if (groupedStories.containsKey(
+                                                currentUserId,
+                                              )) {
                                                 Navigator.push(
                                                   context,
                                                   MaterialPageRoute(
                                                     builder: (context) =>
-                                                        CreateStoryPage(
-                                                      profile:
-                                                          authState.profile,
+                                                        StoryPlayerPage(
+                                                      stories: groupedStories[
+                                                          currentUserId]!,
+                                                      currentUserId:
+                                                          currentUserId,
+                                                      followingIds:
+                                                          followingIds,
+                                                    ),
+                                                  ),
+                                                ).then((_) {
+                                                  // Refresh when returning from player
+                                                  if (context.mounted) {
+                                                    context
+                                                        .read<CommunityBloc>()
+                                                        .add(FetchStoriesStarted(
+                                                            followingIds:
+                                                                followingIds));
+                                                  }
+                                                });
+                                              } else {
+                                                final authState = context
+                                                    .read<AuthBloc>()
+                                                    .state;
+                                                if (authState
+                                                    is ProfileLoaded) {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (context) =>
+                                                          CreateStoryPage(
+                                                        profile:
+                                                            authState.profile,
+                                                      ),
+                                                    ),
+                                                  ).then((_) {
+                                                    // Refresh after creating a story
+                                                    context
+                                                        .read<CommunityBloc>()
+                                                        .add(FetchStoriesStarted(
+                                                            followingIds:
+                                                                followingIds));
+                                                  });
+                                                }
+                                              }
+                                            },
+                                          )
+                                        else
+                                          _buildStoryItem(
+                                            'Entrar',
+                                            null,
+                                            isGuest: true,
+                                            onTap: () => Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    const LoginPage(),
+                                              ),
+                                            ),
+                                          ),
+
+                                        // Apresenta usuários seguidos (que estão live ou possuem stories ou simplesmente seguimos)
+                                        ...idsToShow.map((userId) {
+                                          final userDoc = userDocsMap[userId];
+                                          final stories =
+                                              groupedStories[userId] ?? [];
+                                          final hasStories = stories.isNotEmpty;
+
+                                          String name = 'Artista';
+                                          String? photoUrl;
+                                          bool isPerforming = false;
+                                          bool isStreaming = false;
+
+                                          if (userDoc != null) {
+                                            final userData = userDoc.data()
+                                                as Map<String, dynamic>;
+                                            name = userData['artisticName'] ??
+                                                'Artista';
+                                            photoUrl = userData['photoUrl'];
+
+                                            final bool isLive =
+                                                userData['isLive'] ?? false;
+                                            isPerforming = isLive &&
+                                                userData['liveUntil'] != null;
+                                            isStreaming = isLive &&
+                                                userData['liveUntil'] == null;
+                                          } else if (hasStories) {
+                                            // Fallback para info do story se o doc do usuário não carregou
+                                            name = stories.first.authorName;
+                                            photoUrl =
+                                                stories.first.authorPhotoUrl;
+                                          } else {
+                                            // Se não temos doc nem stories, não mostramos nada para este ID (evita círculos vazios indesejados)
+                                            return const SizedBox();
+                                          }
+
+                                          final bool allViewed =
+                                              currentUserId != null &&
+                                                  hasStories &&
+                                                  stories.every(
+                                                    (s) => s.viewers.contains(
+                                                        currentUserId),
+                                                  );
+
+                                          return _buildStoryItem(
+                                            name,
+                                            photoUrl,
+                                            hasStories: hasStories,
+                                            allStoriesViewed: allViewed,
+                                            isLive: isPerforming,
+                                            isStreaming: isStreaming,
+                                            onTap: () {
+                                              if (isStreaming) {
+                                                // 1. Live Streaming
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) =>
+                                                        LivePage(
+                                                      liveId: userId,
+                                                      isHost: false,
+                                                      userId: currentUserId ??
+                                                          'viewer_${DateTime.now().millisecondsSinceEpoch}',
+                                                      userName: currentUserProfile
+                                                              ?.artisticName ??
+                                                          'Espectador',
                                                     ),
                                                   ),
                                                 );
+                                              } else if (hasStories) {
+                                                // 2. Stories
+                                                // 2. Stories
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) =>
+                                                        StoryPlayerPage(
+                                                      stories: stories,
+                                                      currentUserId:
+                                                          currentUserId,
+                                                      followingIds:
+                                                          followingIds,
+                                                    ),
+                                                  ),
+                                                ).then((_) {
+                                                  // Refresh stories to update "viewed" ring status
+                                                  if (context.mounted &&
+                                                      currentUserId != null) {
+                                                    _loadData(currentUserId);
+                                                  }
+                                                });
+                                              } else if (isPerforming) {
+                                                // 3. Peça sua música (Menu)
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) =>
+                                                        ClientMenuPage(
+                                                            musicianId: userId),
+                                                  ),
+                                                );
+                                              } else {
+                                                // 4. Perfil
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) =>
+                                                        ProfilePage(
+                                                      userId: userId,
+                                                      email: (userDoc?.data()
+                                                                  as Map<String,
+                                                                      dynamic>?)?[
+                                                              'email'] ??
+                                                          '',
+                                                      showAppBar: true,
+                                                    ),
+                                                  ),
+                                                ).then((_) {
+                                                  // Refresh feed/stories in case user followed/unfollowed
+                                                  if (context.mounted &&
+                                                      currentUserId != null) {
+                                                    _loadData(currentUserId);
+                                                  }
+                                                });
                                               }
-                                            }
-                                          },
-                                        )
-                                      else
-                                        _buildStoryItem(
-                                          'Entrar',
-                                          null,
-                                          isGuest: true,
-                                          onTap: () => Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  const LoginPage(),
+                                            },
+                                          );
+                                        }),
+
+                                        // Ícone de "Descobrir" ao final
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10),
+                                          child: GestureDetector(
+                                            onTap: () => setState(
+                                                () => _currentIndex = 1),
+                                            child: Column(
+                                              children: [
+                                                Container(
+                                                  width: 60,
+                                                  height: 60,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    border: Border.all(
+                                                        color: Colors.white24,
+                                                        width: 2),
+                                                  ),
+                                                  child: const Icon(
+                                                      Icons.explore_outlined,
+                                                      color: Colors.white54,
+                                                      size: 28),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                const Text('Explorar',
+                                                    style: TextStyle(
+                                                        fontSize: 10,
+                                                        color: Colors.white54)),
+                                              ],
                                             ),
                                           ),
                                         ),
-
-                                      // 2. Artists with Stories
-                                      ...usersWithStories.map((user) {
-                                        final userData =
-                                            user.data() as Map<String, dynamic>;
-                                        final bool allViewed =
-                                            currentUserId != null &&
-                                                groupedStories
-                                                    .containsKey(user.id) &&
-                                                groupedStories[user.id]!.every(
-                                                  (s) => s.viewers
-                                                      .contains(currentUserId),
-                                                );
-                                        return _buildStoryItem(
-                                          userData['artisticName'] ?? 'Artista',
-                                          userData['photoUrl'],
-                                          hasStories: true,
-                                          allStoriesViewed: allViewed,
-                                          isLive: userData['isLive'] ?? false,
-                                          onTap: () {
-                                            if (userData['isLive'] == true) {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      LivePage(
-                                                    liveId: user.id,
-                                                    isHost: false,
-                                                    userId: currentUserId ??
-                                                        'viewer_${DateTime.now().millisecondsSinceEpoch}',
-                                                    userName: currentUser
-                                                            ?.artisticName ??
-                                                        'Espectador',
-                                                  ),
-                                                ),
-                                              );
-                                            } else {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      StoryPlayerPage(
-                                                    stories: groupedStories[
-                                                        user.id]!,
-                                                    currentUserId:
-                                                        currentUserId,
-                                                  ),
-                                                ),
-                                              );
-                                            }
-                                          },
-                                        );
-                                      }),
-
-                                      // 3. Other artists (discovery)
-                                      ...usersWithoutStories.map((user) {
-                                        final userData =
-                                            user.data() as Map<String, dynamic>;
-                                        return _buildStoryItem(
-                                          userData['artisticName'] ?? 'Artista',
-                                          userData['photoUrl'],
-                                          isLive:
-                                              (userData['isLive'] ?? false) ==
-                                                  true,
-                                          onTap: () {
-                                            if (userData['isLive'] == true) {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      LivePage(
-                                                    liveId: user.id,
-                                                    isHost: false,
-                                                    userId: currentUserId ??
-                                                        'viewer_${DateTime.now().millisecondsSinceEpoch}',
-                                                    userName: currentUser
-                                                            ?.artisticName ??
-                                                        'Espectador',
-                                                  ),
-                                                ),
-                                              );
-                                            } else {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      ProfilePage(
-                                                    userId: user.id,
-                                                    email: '',
-                                                    showAppBar: true,
-                                                  ),
-                                                ),
-                                              );
-                                            }
-                                          },
-                                        );
-                                      }),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          const SliverToBoxAdapter(
-                            child: Divider(color: Colors.white10, height: 1),
-                          ),
-
-                          // Feed section (Posts)
-                          if (posts.isEmpty &&
-                              state.status == CommunityStatus.success)
-                            const SliverFillRemaining(
-                              child: Center(
-                                child:
-                                    Text('Nenhuma publicação na rede ainda.'),
-                              ),
-                            )
-                          else
-                            SliverList(
-                              delegate: SliverChildBuilderDelegate(
-                                (context, index) {
-                                  if (index >= posts.length) {
-                                    return const Padding(
-                                      padding:
-                                          EdgeInsets.symmetric(vertical: 32),
-                                      child: Center(
-                                        child: CircularProgressIndicator(
-                                          color: AppTheme.primaryColor,
-                                          strokeWidth: 2,
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                  return ArtistFeedCard(
-                                    post: posts[index],
-                                    currentUserId: currentUser?.id ?? '',
+                                      ],
+                                    ),
                                   );
                                 },
-                                childCount: state.hasReachedMax
-                                    ? posts.length
-                                    : posts.length + 1,
                               ),
                             ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-      bottomNavigationBar: _buildBottomBar(currentUser),
+                            const SliverToBoxAdapter(
+                              child: Divider(color: Colors.white10, height: 1),
+                            ),
+
+                            // Feed section (Posts)
+                            if (posts.isEmpty &&
+                                state.status == CommunityStatus.success)
+                              SliverFillRemaining(
+                                hasScrollBody: false,
+                                child: Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(Icons.people_outline,
+                                          size: 64, color: Colors.white24),
+                                      const SizedBox(height: 16),
+                                      const Text(
+                                        'Seu feed está vazio.',
+                                        style: TextStyle(
+                                            color: Colors.white, fontSize: 18),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      const Text(
+                                        'Vire fã de músicos para ver suas postagens.',
+                                        style: TextStyle(color: Colors.white54),
+                                      ),
+                                      const SizedBox(height: 24),
+                                      ElevatedButton(
+                                        onPressed: () =>
+                                            setState(() => _currentIndex = 1),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor:
+                                              AppTheme.primaryColor,
+                                          foregroundColor: Colors.black,
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(20)),
+                                        ),
+                                        child:
+                                            const Text('Virar fã de músicos'),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            else
+                              SliverList(
+                                delegate: SliverChildBuilderDelegate(
+                                  (context, index) {
+                                    if (index >= posts.length) {
+                                      return const Padding(
+                                        padding:
+                                            EdgeInsets.symmetric(vertical: 32),
+                                        child: Center(
+                                          child: CircularProgressIndicator(
+                                            color: AppTheme.primaryColor,
+                                            strokeWidth: 2,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                    final post = posts[index];
+                                    return ArtistFeedCard(
+                                      post: post,
+                                      currentUserId: currentUserId ?? '',
+                                      isFollowing:
+                                          followingIds.contains(post.authorId),
+                                    );
+                                  },
+                                  childCount: state.hasReachedMax
+                                      ? posts.length
+                                      : posts.length + 1,
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+      ),
+      bottomNavigationBar: _buildBottomBar(
+        currentUserProfile,
+        followingIds,
+        currentUserId,
+      ),
     );
   }
 
@@ -803,6 +1108,7 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
     bool isMe = false,
     bool isGuest = false,
     bool isLive = false,
+    bool isStreaming = false,
     bool hasStories = false,
     bool allStoriesViewed = false,
   }) {
@@ -814,6 +1120,7 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
             photoUrl: photoUrl,
             isMe: isMe,
             isLive: isLive,
+            isStreaming: isStreaming,
             hasStories: hasStories,
             allStoriesViewed: allStoriesViewed,
             onTap: onTap,
@@ -829,7 +1136,11 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
     );
   }
 
-  Widget _buildBottomBar(UserProfile? currentUser) {
+  Widget _buildBottomBar(
+    UserProfile? currentUser,
+    List<String> followingIds,
+    String? currentUserId,
+  ) {
     return BottomNavigationBar(
       backgroundColor: Colors.black,
       selectedItemColor: AppTheme.primaryColor,
@@ -846,7 +1157,26 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
               MaterialPageRoute(
                 builder: (context) => CreateStoryPage(profile: currentUser),
               ),
-            );
+            ).then((_) {
+              final authState = context.read<AuthBloc>().state;
+              List<String> currentFollowing = [];
+              String? myId;
+              if (authState is Authenticated) {
+                currentFollowing =
+                    List<String>.from(authState.user.followingIds);
+                myId = authState.user.id;
+              } else if (authState is ProfileLoaded) {
+                currentFollowing = List<String>.from(
+                    authState.currentUser?.followingIds ?? []);
+                myId = authState.currentUser?.id;
+              }
+              if (myId != null && !currentFollowing.contains(myId)) {
+                currentFollowing.add(myId);
+              }
+              context
+                  .read<CommunityBloc>()
+                  .add(FetchFeedStarted(followingIds: currentFollowing));
+            });
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Faça login para criar stories!')),

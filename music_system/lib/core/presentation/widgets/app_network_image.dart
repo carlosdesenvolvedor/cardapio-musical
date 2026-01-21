@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:music_system/core/utils/cloudinary_sanitizer.dart';
 
 class AppNetworkImage extends StatelessWidget {
   final String imageUrl;
@@ -26,10 +27,13 @@ class AppNetworkImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sanitizedUrl =
+        CloudinarySanitizer.sanitize(imageUrl, mediaType: 'image');
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
       child: CachedNetworkImage(
-        imageUrl: imageUrl,
+        imageUrl: sanitizedUrl,
         width: width,
         height: height,
         fit: fit,

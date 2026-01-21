@@ -14,6 +14,7 @@ class UserProfile extends Equatable {
   final String? fcmToken;
   final int followersCount;
   final int followingCount;
+  final int profileViewsCount;
   final bool isLive;
   final DateTime? liveUntil;
   final DateTime? scheduledShow;
@@ -33,6 +34,7 @@ class UserProfile extends Equatable {
     this.fcmToken,
     this.followersCount = 0,
     this.followingCount = 0,
+    this.profileViewsCount = 0,
     this.isLive = false,
     this.liveUntil,
     this.scheduledShow,
@@ -41,22 +43,23 @@ class UserProfile extends Equatable {
 
   @override
   List<Object?> get props => [
-    id,
-    email,
-    artisticName,
-    pixKey,
-    photoUrl,
-    bio,
-    instagramUrl,
-    youtubeUrl,
-    facebookUrl,
-    galleryUrls,
-    fcmToken,
-    followersCount,
-    followingCount,
-    isLive,
-    liveUntil,
-    scheduledShow,
-    lastActiveAt,
-  ];
+        id,
+        email,
+        artisticName,
+        pixKey,
+        photoUrl,
+        bio,
+        instagramUrl,
+        youtubeUrl,
+        facebookUrl,
+        galleryUrls,
+        fcmToken,
+        followersCount,
+        followingCount,
+        profileViewsCount,
+        isLive,
+        liveUntil,
+        scheduledShow,
+        lastActiveAt,
+      ];
 }

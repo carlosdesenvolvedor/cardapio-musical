@@ -5,6 +5,7 @@ import '../entities/user_profile.dart';
 
 abstract class AuthRepository {
   Future<Either<Failure, UserEntity>> signIn(String email, String password);
+  Future<Either<Failure, UserEntity>> signInWithGoogle();
   Future<Either<Failure, UserEntity>> signUp(
     String email,
     String password,
@@ -18,4 +19,21 @@ abstract class AuthRepository {
   Future<Either<Failure, void>> updateProfile(UserProfile profile);
   Future<Either<Failure, void>> updateLastActive(String userId);
   Future<Either<Failure, void>> setLiveStatus(String userId, bool isLive);
+
+  // Social
+  Future<Either<Failure, void>> followUser(
+      String currentUserId, String targetUserId);
+  Future<Either<Failure, void>> unfollowUser(
+      String currentUserId, String targetUserId);
+  Future<Either<Failure, List<String>>> getFollowedUsers(String userId);
+
+  // Profile Visits
+  Future<Either<Failure, void>> logProfileVisit({
+    required String viewedUserId,
+    required String viewerId,
+    required String viewerName,
+    String? viewerPhotoUrl,
+  });
+  Future<Either<Failure, List<Map<String, dynamic>>>> getProfileVisitors(
+      String userId);
 }

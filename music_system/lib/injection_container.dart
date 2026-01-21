@@ -9,6 +9,7 @@ import 'core/services/notification_service.dart';
 import 'core/services/livekit_service.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
 import 'features/auth/domain/repositories/auth_repository.dart';
+import 'features/auth/domain/usecases/log_profile_view.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/client_menu/data/datasources/song_remote_data_source.dart';
 import 'features/musician_dashboard/data/repositories/repertoire_repository_impl.dart';
@@ -62,17 +63,41 @@ import 'features/community/presentation/bloc/chat_bloc.dart';
 import 'features/community/presentation/bloc/conversations_bloc.dart';
 import 'features/community/presentation/bloc/community_bloc.dart';
 
+import 'features/bands/domain/repositories/band_repository.dart';
+import 'features/bands/data/repositories/band_repository_impl.dart';
+import 'features/bands/data/datasources/band_remote_data_source.dart';
+import 'features/bands/domain/usecases/create_band.dart';
+import 'features/bands/domain/usecases/get_band_members.dart';
+import 'features/bands/domain/usecases/invite_member.dart';
+import 'features/bands/presentation/bloc/band_bloc.dart';
+import 'features/bookings/domain/repositories/booking_repository.dart';
+import 'features/bookings/data/repositories/booking_repository_impl.dart';
+import 'features/bookings/data/datasources/booking_remote_data_source.dart';
+import 'features/calendar/domain/repositories/calendar_repository.dart';
+import 'features/calendar/data/repositories/calendar_repository_impl.dart';
+import 'features/calendar/data/datasources/calendar_remote_data_source.dart';
+import 'features/calendar/data/datasources/calendar_remote_data_source_impl.dart';
+import 'features/calendar/domain/usecases/get_artist_calendar.dart';
+import 'features/calendar/domain/usecases/save_calendar_event.dart';
+import 'features/calendar/domain/usecases/delete_calendar_event.dart';
+import 'features/calendar/presentation/bloc/calendar_bloc.dart';
+
 final sl = GetIt.instance;
 
 Future<void> init() async {
   //! Features - Auth
   sl.registerFactory(
-    () => AuthBloc(repository: sl(), notificationService: sl()),
+    () => AuthBloc(
+      repository: sl(),
+      notificationService: sl(),
+      socialGraphRepository: sl(),
+    ),
   );
   sl.registerFactory(() => ProfileViewBloc(repository: sl()));
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(firebaseAuth: sl(), firestore: sl()),
   );
+  sl.registerLazySingleton(() => LogProfileView(sl()));
 
   //! Features - Song Requests
   sl.registerFactory(
@@ -189,6 +214,54 @@ Future<void> init() async {
       authRepository: sl(),
       socialGraphRepository: sl(),
     ),
+  );
+
+  //! Bands
+  sl.registerFactory(
+    () => BandBloc(
+      createBand: sl(),
+      getBandMembers: sl(),
+      inviteMember: sl(),
+      repository: sl(),
+    ),
+  );
+  sl.registerLazySingleton(() => CreateBand(sl()));
+  sl.registerLazySingleton(() => GetBandMembers(sl()));
+  sl.registerLazySingleton(() => InviteMember(sl()));
+  sl.registerLazySingleton<BandRepository>(
+    () => BandRepositoryImpl(
+      remoteDataSource: sl(),
+      notificationRepository: sl(),
+    ),
+  );
+  sl.registerLazySingleton<BandRemoteDataSource>(
+    () => BandRemoteDataSourceImpl(firestore: sl()),
+  );
+
+  //! Bookings
+  sl.registerLazySingleton<BookingRepository>(
+    () => BookingRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerLazySingleton<BookingRemoteDataSource>(
+    () => BookingRemoteDataSourceImpl(firestore: sl()),
+  );
+
+  //! Calendar
+  sl.registerFactory(
+    () => CalendarBloc(
+      getArtistCalendar: sl(),
+      saveCalendarEvent: sl(),
+      deleteCalendarEvent: sl(),
+    ),
+  );
+  sl.registerLazySingleton(() => GetArtistCalendar(sl()));
+  sl.registerLazySingleton(() => SaveCalendarEvent(sl()));
+  sl.registerLazySingleton(() => DeleteCalendarEvent(sl()));
+  sl.registerLazySingleton<CalendarRepository>(
+    () => CalendarRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerLazySingleton<CalendarRemoteDataSource>(
+    () => CalendarRemoteDataSourceImpl(firestore: sl()),
   );
 
   //! External

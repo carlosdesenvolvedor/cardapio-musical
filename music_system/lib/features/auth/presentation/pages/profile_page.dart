@@ -11,13 +11,15 @@ import 'package:music_system/core/services/cloudinary_service.dart';
 import '../../../../injection_container.dart';
 import 'package:music_system/features/community/domain/repositories/post_repository.dart';
 import 'package:music_system/features/community/presentation/widgets/artist_feed_card.dart';
-import 'package:music_system/features/community/domain/repositories/social_graph_repository.dart';
 import 'package:music_system/features/community/presentation/widgets/artist_avatar.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:dartz/dartz.dart' hide State;
 import 'package:music_system/core/error/failures.dart';
 import 'package:music_system/features/community/presentation/pages/chat_page.dart';
 import 'package:music_system/features/client_menu/presentation/pages/client_menu_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../domain/repositories/auth_repository.dart';
+import '../../domain/usecases/log_profile_view.dart';
 
 class ProfilePage extends StatefulWidget {
   final String userId;
@@ -61,7 +63,10 @@ class _ProfilePageState extends State<ProfilePage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: _isOwner ? 5 : 4, vsync: this);
+    if (!_isOwner) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _logVisit());
+    }
   }
 
   @override
@@ -153,11 +158,12 @@ class _ProfilePageState extends State<ProfilePage>
                           indicatorColor: const Color(0xFFE5B80B),
                           labelColor: const Color(0xFFE5B80B),
                           unselectedLabelColor: Colors.grey,
-                          tabs: const [
-                            Tab(text: 'Sobre'),
-                            Tab(text: 'Posts'),
-                            Tab(text: 'Social'),
-                            Tab(text: 'Galeria'),
+                          tabs: [
+                            const Tab(text: 'Sobre'),
+                            const Tab(text: 'Posts'),
+                            const Tab(text: 'Social'),
+                            const Tab(text: 'Galeria'),
+                            if (_isOwner) const Tab(text: 'Visitantes'),
                           ],
                         ),
                       ),
@@ -171,6 +177,7 @@ class _ProfilePageState extends State<ProfilePage>
                     _buildPostsTab(),
                     _buildSocialTab(),
                     _buildGalleryTab(),
+                    if (_isOwner) _buildVisitorsTab(),
                   ],
                 ),
               );
@@ -298,27 +305,53 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
+  Future<void> _logVisit() async {
+    final authState = context.read<AuthBloc>().state;
+    String? viewerId;
+    String? viewerName;
+    String? viewerPhoto;
+
+    if (authState is Authenticated) {
+      viewerId = authState.user.id;
+      viewerName = authState.user.displayName;
+      viewerPhoto = authState.user.photoUrl;
+    } else if (authState is ProfileLoaded) {
+      viewerId = authState.currentUser?.id;
+      viewerName = authState.currentUser?.displayName;
+      viewerPhoto = authState.currentUser?.photoUrl;
+    }
+
+    if (viewerId != null && viewerId != widget.userId) {
+      await sl<LogProfileView>().call(
+        viewedUserId: widget.userId,
+        viewerId: viewerId,
+        viewerName: viewerName ?? 'Visitante',
+        viewerPhotoUrl: viewerPhoto,
+      );
+    }
+  }
+
   void _saveProfile() {
     context.read<AuthBloc>().add(
-      ProfileUpdateRequested(
-        UserProfile(
-          id: widget.userId,
-          email: widget.email,
-          artisticName: _artisticNameController.text,
-          pixKey: _pixKeyController.text,
-          photoUrl: _currentPhotoUrl,
-          bio: _bioController.text,
-          instagramUrl: _instagramController.text,
-          youtubeUrl: _youtubeController.text,
-          facebookUrl: _facebookController.text,
-          galleryUrls: _galleryUrls,
-          fcmToken: _fcmToken,
-          isLive: _isLive,
-          liveUntil: _liveUntil,
-          scheduledShow: _scheduledShow,
-        ),
-      ),
-    );
+          ProfileUpdateRequested(
+            UserProfile(
+              id: widget.userId,
+              email: widget.email,
+              artisticName: _artisticNameController.text,
+              pixKey: _pixKeyController.text,
+              photoUrl: _currentPhotoUrl,
+              bio: _bioController.text,
+              instagramUrl: _instagramController.text,
+              youtubeUrl: _youtubeController.text,
+              facebookUrl: _facebookController.text,
+              galleryUrls: _galleryUrls,
+              fcmToken: _fcmToken,
+              isLive: _isLive,
+              liveUntil: _liveUntil,
+              scheduledShow: _scheduledShow,
+            ),
+          ),
+        );
   }
 
   Widget _buildHeader(ProfileViewLoaded state) {
@@ -327,9 +360,8 @@ class _ProfilePageState extends State<ProfilePage>
       child: Column(
         children: [
           InkWell(
-            onTap: _isOwner
-                ? () => _pickAndUploadImage(isGallery: false)
-                : null,
+            onTap:
+                _isOwner ? () => _pickAndUploadImage(isGallery: false) : null,
             child: ArtistAvatar(
               photoUrl: _currentPhotoUrl,
               radius: 50,
@@ -416,24 +448,24 @@ class _ProfilePageState extends State<ProfilePage>
           if (!_isOwner)
             Padding(
               padding: const EdgeInsets.only(top: 16, left: 24, right: 24),
-              child: FutureBuilder<Either<Failure, bool>>(
-                future: sl<SocialGraphRepository>().isFollowing(
-                  FirebaseAuth.instance.currentUser?.uid ?? '',
-                  widget.userId,
-                ),
-                builder: (context, snapshot) {
-                  final bool isFollowing =
-                      snapshot.data?.fold((_) => false, (r) => r) ?? false;
+              child: BlocBuilder<AuthBloc, AuthState>(
+                builder: (context, authState) {
+                  List<String> followingIds = [];
+                  if (authState is ProfileLoaded) {
+                    followingIds = authState.currentUser?.followingIds ?? [];
+                  } else if (authState is Authenticated) {
+                    followingIds = authState.user.followingIds;
+                  }
+                  final bool isFollowing = followingIds.contains(widget.userId);
 
                   return SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () async {
+                      onPressed: () {
                         final String currentUserId =
                             FirebaseAuth.instance.currentUser?.uid ?? '';
                         if (currentUserId.isEmpty) return;
 
-                        final authState = context.read<AuthBloc>().state;
                         String? senderName;
                         String? senderPhoto;
                         if (authState is ProfileLoaded) {
@@ -442,33 +474,35 @@ class _ProfilePageState extends State<ProfilePage>
                         }
 
                         if (isFollowing) {
-                          await sl<SocialGraphRepository>().unfollowUser(
-                            currentUserId,
-                            widget.userId,
-                          );
+                          context.read<AuthBloc>().add(
+                                UnfollowUserRequested(
+                                  currentUserId,
+                                  widget.userId,
+                                ),
+                              );
                         } else {
-                          await sl<SocialGraphRepository>().followUser(
-                            currentUserId,
-                            widget.userId,
-                            senderName: senderName,
-                            senderPhoto: senderPhoto,
-                          );
+                          context.read<AuthBloc>().add(
+                                FollowUserRequested(
+                                  currentUserId,
+                                  widget.userId,
+                                  senderName: senderName,
+                                  senderPhoto: senderPhoto,
+                                ),
+                              );
                         }
-                        setState(() {});
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: isFollowing
                             ? Colors.white10
                             : const Color(0xFFE5B80B),
-                        foregroundColor: isFollowing
-                            ? Colors.white
-                            : Colors.black,
+                        foregroundColor:
+                            isFollowing ? Colors.white : Colors.black,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                       child: Text(
-                        isFollowing ? 'Deixar de ser fã' : 'Sou fã',
+                        isFollowing ? 'Deixar de ser fã' : 'Virar fã',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -897,5 +931,82 @@ class _ProfilePageState extends State<ProfilePage>
         }
       }
     }
+  }
+
+  Widget _buildVisitorsTab() {
+    return FutureBuilder<Either<Failure, List<Map<String, dynamic>>>>(
+      future: sl<AuthRepository>().getProfileVisitors(widget.userId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return const Center(
+            child: Text(
+              'Erro ao carregar visitantes',
+              style: TextStyle(color: Colors.white),
+            ),
+          );
+        }
+
+        final result = snapshot.data;
+        if (result == null) return const SizedBox();
+
+        return result.fold(
+          (failure) => Center(
+            child: Text(
+              'Erro: ${failure.message}',
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+          (visitors) {
+            if (visitors.isEmpty) {
+              return const Center(
+                child: Text(
+                  'Ainda não há visitas recentes.',
+                  style: TextStyle(color: Colors.white70),
+                ),
+              );
+            }
+            return ListView.builder(
+              itemCount: visitors.length,
+              itemBuilder: (context, index) {
+                final visit = visitors[index];
+                final String name = visit['viewerName'] ?? 'Anônimo';
+                final String? photo = visit['viewerPhotoUrl'];
+                final Timestamp? t = visit['viewedAt'] as Timestamp?;
+                final String time = t != null
+                    ? DateFormat('dd/MM HH:mm').format(t.toDate())
+                    : '';
+
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundImage: photo != null ? NetworkImage(photo) : null,
+                    child: photo == null ? const Icon(Icons.person) : null,
+                  ),
+                  title:
+                      Text(name, style: const TextStyle(color: Colors.white)),
+                  subtitle: Text(
+                    'Visitou em $time',
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProfilePage(
+                          userId: visit['viewerId'],
+                          email: '',
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
+    );
   }
 }

@@ -21,6 +21,9 @@ import 'features/community/presentation/bloc/conversations_event.dart';
 import 'firebase_options.dart';
 import 'injection_container.dart' as di;
 import 'features/community/presentation/pages/artist_network_page.dart';
+import 'features/bands/presentation/pages/band_public_profile_page.dart';
+import 'features/bands/presentation/bloc/band_bloc.dart';
+import 'features/calendar/presentation/bloc/calendar_bloc.dart';
 import 'core/constants/app_version.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
@@ -68,31 +71,38 @@ class MusicSystemApp extends StatelessWidget {
         BlocProvider(create: (_) => di.sl<ConversationsBloc>()),
         BlocProvider(create: (_) => di.sl<ChatBloc>()),
         BlocProvider(create: (_) => di.sl<NotificationsBloc>()),
+        BlocProvider(create: (_) => di.sl<BandBloc>()),
+        BlocProvider(create: (_) => di.sl<CalendarBloc>()),
       ],
       child: MaterialApp(
         title: 'MusicRequest System',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.darkTheme,
-        builder: (context, child) => BlocListener<AuthBloc, AuthState>(
-          listener: (context, state) {
-            if (state is ProfileLoaded) {
-              context.read<NotificationsBloc>().add(
-                NotificationsStarted(state.profile.id),
-              );
-              context.read<ConversationsBloc>().add(
-                ConversationsStarted(state.profile.id),
-              );
-            }
-          },
-          child: ResponsiveBreakpoints.builder(
-            child: child ?? const SizedBox(),
-            breakpoints: [
-              const Breakpoint(start: 0, end: 450, name: MOBILE),
-              const Breakpoint(start: 451, end: 800, name: TABLET),
-              const Breakpoint(start: 801, end: 1920, name: DESKTOP),
-            ],
-          ),
-        ),
+        builder: (context, child) {
+          if (child == null) return const SizedBox.shrink();
+          return BlocListener<AuthBloc, AuthState>(
+            listener: (context, state) {
+              if (state is ProfileLoaded) {
+                if (context.mounted) {
+                  context.read<NotificationsBloc>().add(
+                        NotificationsStarted(state.profile.id),
+                      );
+                  context.read<ConversationsBloc>().add(
+                        ConversationsStarted(state.profile.id),
+                      );
+                }
+              }
+            },
+            child: ResponsiveBreakpoints.builder(
+              child: child,
+              breakpoints: [
+                const Breakpoint(start: 0, end: 450, name: MOBILE),
+                const Breakpoint(start: 451, end: 800, name: TABLET),
+                const Breakpoint(start: 801, end: 1920, name: DESKTOP),
+              ],
+            ),
+          );
+        },
         initialRoute: '/',
         onGenerateRoute: (settings) {
           final uri = Uri.parse(settings.name ?? '/');
@@ -105,6 +115,17 @@ class MusicSystemApp extends StatelessWidget {
               return MaterialPageRoute(
                 settings: settings,
                 builder: (context) => ClientMenuPage(musicianId: musicianId),
+              );
+            }
+          }
+
+          if (uri.path.startsWith('/band/')) {
+            final segments = uri.pathSegments;
+            if (segments.length >= 2) {
+              final slug = segments[1];
+              return MaterialPageRoute(
+                settings: settings,
+                builder: (context) => BandPublicProfilePage(slug: slug),
               );
             }
           }

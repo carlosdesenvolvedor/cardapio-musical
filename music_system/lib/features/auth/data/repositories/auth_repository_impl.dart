@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:dartz/dartz.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/user_entity.dart';
 import '../../domain/entities/user_profile.dart';
@@ -28,6 +30,58 @@ class AuthRepositoryImpl implements AuthRepository {
       return Left(ServerFailure(e.message ?? 'Erro ao fazer login'));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, UserEntity>> signInWithGoogle() async {
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        clientId: kIsWeb
+            ? '108435262492-m6as6h713s53k329be92bafmhm88an6g.apps.googleusercontent.com'
+            : null,
+        scopes: ['email', 'profile'],
+      );
+
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+
+      if (googleUser == null) {
+        return Left(ServerFailure('Login cancelado pelo usuário'));
+      }
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      final OAuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential =
+          await firebaseAuth.signInWithCredential(credential);
+
+      if (userCredential.user == null) {
+        return Left(ServerFailure('Erro ao obter usuário do Google'));
+      }
+
+      final user = userCredential.user!;
+
+      // Auto-criação do perfil se for novo usuário ou se não tiver DisplayName
+      if (user.displayName == null ||
+          userCredential.additionalUserInfo?.isNewUser == true) {
+        // Aqui poderíamos chamar um método interno para garantir a criação no Firestore
+        // Mas o _mapFirebaseUser já resolve a entidade.
+      }
+
+      return Right(_mapFirebaseUser(user));
+    } on FirebaseAuthException catch (e) {
+      return Left(
+          ServerFailure(e.message ?? 'Erro na autenticação com Google'));
+    } catch (e) {
+      if (e.toString().contains('popup_closed_by_user')) {
+        return Left(ServerFailure('Janela de login fechada pelo usuário'));
+      }
+      return Left(ServerFailure('Erro inesperado: ${e.toString()}'));
     }
   }
 
@@ -183,5 +237,131 @@ class AuthRepositoryImpl implements AuthRepository {
       displayName: user.displayName ?? 'Usuário',
       photoUrl: user.photoURL,
     );
+  }
+
+  @override
+  Future<Either<Failure, void>> followUser(
+      String currentUserId, String targetUserId) async {
+    try {
+      // Adiciona na subcoleção 'following' do usuário atual
+      await firestore
+          .collection('users')
+          .doc(currentUserId)
+          .collection('following')
+          .doc(targetUserId)
+          .set({
+        'followedAt': FieldValue.serverTimestamp(),
+      });
+
+      // Opcional: Adicionar na subcoleção 'followers' do alvo (para contagem)
+      await firestore
+          .collection('users')
+          .doc(targetUserId)
+          .collection('followers')
+          .doc(currentUserId)
+          .set({
+        'followedAt': FieldValue.serverTimestamp(),
+      });
+
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> unfollowUser(
+      String currentUserId, String targetUserId) async {
+    try {
+      await firestore
+          .collection('users')
+          .doc(currentUserId)
+          .collection('following')
+          .doc(targetUserId)
+          .delete();
+
+      await firestore
+          .collection('users')
+          .doc(targetUserId)
+          .collection('followers')
+          .doc(currentUserId)
+          .delete();
+
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<String>>> getFollowedUsers(String userId) async {
+    try {
+      final snapshot = await firestore
+          .collection('users')
+          .doc(userId)
+          .collection('following')
+          .get();
+
+      final followingIds = snapshot.docs.map((doc) => doc.id).toList();
+      return Right(followingIds);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> logProfileVisit({
+    required String viewedUserId,
+    required String viewerId,
+    required String viewerName,
+    String? viewerPhotoUrl,
+  }) async {
+    try {
+      final batch = firestore.batch();
+
+      // Referência para o documento na subcoleção 'profile_views'
+      // Usamos o ID do visitante como ID do documento para que cada pessoa conte apenas uma vez (ou atualize o timestamp)
+      // Se quiser contar CADA visita, use .add(). Mas geralmente redes sociais mostram "Quem te visitou" de forma única.
+      final visitRef = firestore
+          .collection('users')
+          .doc(viewedUserId)
+          .collection('profile_views')
+          .doc(viewerId);
+
+      batch.set(visitRef, {
+        'viewerId': viewerId,
+        'viewerName': viewerName,
+        'viewerPhotoUrl': viewerPhotoUrl,
+        'viewedAt': FieldValue.serverTimestamp(),
+      });
+
+      // Incrementa o contador global do perfil
+      final userRef = firestore.collection('users').doc(viewedUserId);
+      batch.update(userRef, {'profileViewsCount': FieldValue.increment(1)});
+
+      await batch.commit();
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> getProfileVisitors(
+      String userId) async {
+    try {
+      final snapshot = await firestore
+          .collection('users')
+          .doc(userId)
+          .collection('profile_views')
+          .orderBy('viewedAt', descending: true)
+          .limit(50)
+          .get();
+
+      final visitors = snapshot.docs.map((doc) => doc.data()).toList();
+      return Right(visitors);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
   }
 }

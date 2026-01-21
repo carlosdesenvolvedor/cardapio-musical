@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
@@ -14,16 +15,34 @@ class StoryRepositoryImpl implements StoryRepository {
   Future<Either<Failure, List<StoryEntity>>> getActiveStories() async {
     try {
       final now = DateTime.now();
+      // Buscamos todos os stories recentes (últimos 2 dias) para garantir que pegamos os ativos
+      // e aplicamos o filtro de expiresAt em memória para evitar index issues complicados
       final snapshot = await firestore
           .collection('stories')
-          .where('expiresAt', isGreaterThan: Timestamp.fromDate(now))
-          .orderBy('expiresAt')
-          .orderBy('createdAt', descending: true)
+          .where('createdAt',
+              isGreaterThan:
+                  Timestamp.fromDate(now.subtract(const Duration(days: 2))))
           .get();
 
       final stories = snapshot.docs
-          .map((doc) => StoryModel.fromFirestore(doc))
+          .map((doc) {
+            try {
+              return StoryModel.fromFirestore(doc);
+            } catch (e) {
+              debugPrint('Erro ao mapear story ${doc.id}: $e');
+              return null;
+            }
+          })
+          .whereType<StoryModel>()
+          .where((story) {
+            return story.expiresAt.isAfter(now);
+          })
           .toList();
+
+      debugPrint('Stories carregados: ${stories.length}');
+
+      // Ordenar em memória: mais recentes primeiro
+      stories.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
       return Right(stories);
     } catch (e) {

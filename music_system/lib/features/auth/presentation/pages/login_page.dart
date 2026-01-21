@@ -118,29 +118,65 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       );
                     }
-                    return ElevatedButton(
-                      onPressed: () {
-                        if (_isSignUp) {
-                          context.read<AuthBloc>().add(
-                            SignUpRequested(
-                              _emailController.text,
-                              _passwordController.text,
-                              "Músico",
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () {
+                            if (_isSignUp) {
+                              context.read<AuthBloc>().add(
+                                    SignUpRequested(
+                                      _emailController.text,
+                                      _passwordController.text,
+                                      "Músico",
+                                    ),
+                                  );
+                            } else {
+                              context.read<AuthBloc>().add(
+                                    SignInRequested(
+                                      _emailController.text,
+                                      _passwordController.text,
+                                    ),
+                                  );
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          child: Text(_isSignUp ? 'Cadastrar' : 'Entrar'),
+                        ),
+                        const SizedBox(height: 16),
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            context
+                                .read<AuthBloc>()
+                                .add(GoogleSignInRequested());
+                          },
+                          icon: Image.network(
+                            'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_\"G\"_logo.svg/768px-Google_\"G\"_logo.svg.png',
+                            height: 24,
+                          ),
+                          label: const Text(
+                            'Continuar com Google',
+                            style: TextStyle(
+                              color: AppTheme.primaryColor,
+                              fontWeight: FontWeight.bold,
                             ),
-                          );
-                        } else {
-                          context.read<AuthBloc>().add(
-                            SignInRequested(
-                              _emailController.text,
-                              _passwordController.text,
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            side: const BorderSide(
+                              color: AppTheme.primaryColor,
+                              width: 1.5,
                             ),
-                          );
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      child: Text(_isSignUp ? 'Cadastrar' : 'Entrar'),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            backgroundColor:
+                                AppTheme.primaryColor.withOpacity(0.05),
+                          ),
+                        ),
+                      ],
                     );
                   },
                 ),
