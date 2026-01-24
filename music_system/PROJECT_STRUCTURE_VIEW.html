@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estrutura do Projeto MUSICG</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code&family=Outfit:wght@300;400;600&display=swap');
+
+        body {
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            font-family: 'Outfit', sans-serif;
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+        }
+
+        h1 {
+            color: #FFD700;
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 2.5em;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .tree {
+            background: #151515;
+            padding: 30px;
+            border-radius: 12px;
+            border: 1px solid #333;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            font-family: 'Fira Code', monospace;
+            line-height: 1.6;
+            overflow-x: auto;
+        }
+
+        .item {
+            display: flex;
+            align-items: center;
+            padding: 4px 0;
+            transition: background 0.2s;
+        }
+
+        .item:hover {
+            background: #222;
+            border-radius: 4px;
+        }
+
+        .indent {
+            width: 24px;
+            display: inline-block;
+        }
+
+        .icon {
+            width: 20px;
+            text-align: center;
+            margin-right: 8px;
+            color: #666;
+        }
+
+        .folder {
+            color: #FFD700;
+            font-weight: 600;
+        }
+
+        .file {
+            color: #8BE9FD;
+        }
+
+        .comment {
+            color: #555;
+            font-style: italic;
+            margin-left: 15px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.9em;
+        }
+
+        /* Cores Específicas */
+        .feature-auth {
+            color: #FF6B6B;
+        }
+
+        .feature-social {
+            color: #BD93F9;
+        }
+
+        .feature-biz {
+            color: #50FA7B;
+        }
+
+        .feature-core {
+            color: #8BE9FD;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>Arquitetura de Arquivos</h1>
+
+        <div class="tree">
+            <!-- Raiz -->
+            <div class="item"><span class="icon"><i class="fas fa-folder-open"></i></span><span
+                    class="folder">lib/</span> <span class="comment">Raiz do código fonte Flutter</span></div>
+
+            <!-- Config -->
+            <div class="item"><span class="indent">│</span><span class="icon"><i class="fas fa-folder"></i></span><span
+                    class="folder">config/</span></div>
+            <div class="item"><span class="indent">│</span><span class="indent">├──</span><span class="icon"><i
+                        class="fas fa-palette"></i></span><span class="file">theme/app_theme.dart</span> <span
+                    class="comment">Definição de cores (Amarelo/Preto) e fontes</span></div>
+            <div class="item"><span class="indent">│</span><span class="indent">└──</span><span class="icon"><i
+                        class="fas fa-route"></i></span><span class="file">routes/</span> <span class="comment">Sistema
+                    de navegação</span></div>
+
+            <!-- Core -->
+            <div class="item"><span class="indent">│</span><span class="icon"><i class="fas fa-folder"></i></span><span
+                    class="folder">core/</span> <span class="comment">Módulos compartilhados e utilitários</span></div>
+            <div class="item"><span class="indent">│</span><span class="indent">├──</span><span class="icon"><i
+                        class="fas fa-cogs"></i></span><span class="file">services/</span> <span
+                    class="comment">Integrações ext. (Cloudinary, Deezer)</span></div>
+            <div class="item"><span class="indent">│</span><span class="indent">└──</span><span class="icon"><i
+                        class="fas fa-cube"></i></span><span class="file">usecases/</span> <span class="comment">Classe
+                    base para Clean Architecture</span></div>
+
+            <!-- Features -->
+            <div class="item"><span class="indent">│</span><span class="icon"><i
+                        class="fas fa-folder-open"></i></span><span class="folder">features/</span> <span
+                    class="comment" style="color:#FFD700">Módulos Funcionais do Sistema</span></div>
+
+            <!-- Auth -->
+            <div class="item"><span class="indent">│</span><span class="indent">│</span><span class="icon"><i
+                        class="fas fa-folder feature-auth"></i></span><span class="folder feature-auth">auth/</span>
+                <span class="comment">Identidade e Login</span></div>
+            <div class="item"><span class="indent">│</span><span class="indent">│</span><span
+                    class="indent">├──</span><span class="icon"><i class="fas fa-code"></i></span><span
+                    class="file">domain/entities/user_profile.dart</span></div>
+            <div class="item"><span class="indent">│</span><span class="indent">│</span><span
+                    class="indent">└──</span><span class="icon"><i class="fas fa-desktop"></i></span><span
+                    class="file">presentation/pages/login_page.dart</span></div>
+
+            <!-- Community (Social) -->
+            <div class="item"><span class="indent">│</span><span class="indent">│</span><span class="icon"><i
+                        class="fas fa-folder feature-social"></i></span><span
+                    class="folder feature-social">community/</span> <span class="comment">Rede Social (Feed, Stories,
+                    Chat)</span></div>
+            <div class="item"><span class="indent">│</span><span class="indent">│</span><span
+                    class="indent">├──</span><span class="icon"><i class="fas fa-code"></i></span><span
+                    class="file">domain/entities/story_entity.dart</span></div>
+            <div class="item"><span class="indent">│</span><span class="indent">│</span><span
+                    class="indent">└──</span><span class="icon"><i class="fas fa-desktop"></i></span><span
+                    class="file">presentation/pages/artist_network_page.dart</span> <span class="comment">Hub
+                    Principal</span></div>
+
+            <!-- Musician Dashboard -->
+            <div class="item"><span class="indent">│</span><span class="indent">│</span><span class="icon"><i
+                        class="fas fa-folder feature-core"></i></span><span
+                    class="folder feature-core">musician_dashboard/</span> <span class="comment">Gestão
+                    Profissional</span></div>
+            <div class="item"><span class="indent">│</span><span class="indent">│</span><span
+                    class="indent">├──</span><span class="icon"><i class="fas fa-music"></i></span><span
+                    class="file">presentation/pages/repertoire_page.dart</span></div>
+            <div class="item"><span class="indent">│</span><span class="indent">│</span><span
+                    class="indent">└──</span><span class="icon"><i class="fas fa-list"></i></span><span
+                    class="file">domain/usecases/add_song.dart</span></div>
+
+            <!-- Client Menu (Fã) -->
+            <div class="item"><span class="indent">│</span><span class="indent">│</span><span class="icon"><i
+                        class="fas fa-folder feature-biz"></i></span><span
+                    class="folder feature-biz">client_menu/</span> <span class="comment">Menu Digital para Fãs</span>
+            </div>
+            <div class="item"><span class="indent">│</span><span class="indent">│</span><span
+                    class="indent">└──</span><span class="icon"><i class="fas fa-mobile-alt"></i></span><span
+                    class="file">presentation/pages/client_menu_page.dart</span></div>
+
+            <!-- Song Requests (Money) -->
+            <div class="item"><span class="indent">│</span><span class="indent">│</span><span class="icon"><i
+                        class="fas fa-folder feature-biz"></i></span><span
+                    class="folder feature-biz">song_requests/</span> <span class="comment">Pedidos e Gorjetas
+                    ($$$)</span></div>
+            <div class="item"><span class="indent">│</span><span class="indent">│</span><span
+                    class="indent">└──</span><span class="icon"><i class="fas fa-hand-holding-usd"></i></span><span
+                    class="file">domain/usecases/notify_musician.dart</span></div>
+
+            <!-- Smart Lyrics -->
+            <div class="item"><span class="indent">│</span><span class="indent">│</span><span class="icon"><i
+                        class="fas fa-folder feature-core"></i></span><span
+                    class="folder feature-core">smart_lyrics/</span> <span class="comment">Leitor de Cifras
+                    Inteligente</span></div>
+
+            <!-- Live Streaming -->
+            <div class="item"><span class="indent">│</span><span class="indent">│</span><span class="icon"><i
+                        class="fas fa-folder feature-social"></i></span><span class="folder feature-social">live/</span>
+                <span class="comment">Transmissão Ao Vivo</span></div>
+            <div class="item"><span class="indent">│</span><span class="indent">│</span><span
+                    class="indent">└──</span><span class="icon"><i class="fas fa-video"></i></span><span
+                    class="file">presentation/pages/live_page.dart</span></div>
+
+            <!-- Other Features -->
+            <div class="item"><span class="indent">│</span><span class="indent">│</span><span class="icon"><i
+                        class="fas fa-folder"></i></span><span class="folder">calendar/</span> <span
+                    class="comment">Agenda de Shows</span></div>
+            <div class="item"><span class="indent">│</span><span class="indent">│</span><span class="icon"><i
+                        class="fas fa-folder"></i></span><span class="folder">bands/</span> <span class="comment">Perfis
+                    de Banda</span></div>
+
+
+            <!-- Root Files -->
+            <div class="item"><span class="indent">│</span><span class="icon"><i
+                        class="fas fa-code-branch"></i></span><span class="file">injection_container.dart</span> <span
+                    class="comment">Injeção de Dependência (DI)</span></div>
+            <div class="item"><span class="indent">└──</span><span class="icon"><i
+                        class="fab fa-android"></i></span><span class="file">main.dart</span> <span
+                    class="comment">Entrada da aplicação</span></div>
+
+        </div>
+    </div>
+
+</body>
+
+</html>

@@ -11,6 +11,8 @@ class SendMessage {
     required String senderId,
     required String receiverId,
     required String text,
+    String type = 'text',
+    String? mediaUrl,
     String? senderName,
     String? senderPhoto,
   }) {
@@ -18,6 +20,8 @@ class SendMessage {
       senderId: senderId,
       receiverId: receiverId,
       text: text,
+      type: type,
+      mediaUrl: mediaUrl,
       senderName: senderName,
       senderPhoto: senderPhoto,
     );

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa Mental MUSICG - System Architecture</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+
+        body {
+            background-color: #f4f4f4;
+            /* Fundo claro tipo 'whiteboard' */
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        h1,
+        h3 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .chart-container {
+            background: #ffffff;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 40px;
+            overflow-x: auto;
+            text-align: center;
+            /* Centraliza o diagrama */
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Arquitetura do Sistema MUSICG</h1>
+
+    <div class="chart-container">
+        <pre class="mermaid">
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#FFF2CC', 'edgeLabelBackground':'#ffffff', 'tertiaryColor': '#fff'}}}%%
+graph LR
+    %% Estilos dos Nós (baseado na foto: Amarelo e Azul Pastel)
+    classDef yellow fill:#FFF2CC,stroke:#D6B656,stroke-width:2px,color:#333,rx:5,ry:5;
+    classDef blue fill:#DAE8FC,stroke:#6C8EBF,stroke-width:2px,color:#333,rx:5,ry:5;
+    classDef root fill:#f8cecc,stroke:#b85450,stroke-width:3px,color:#000,font-size:18px,font-weight:bold;
+
+    %% Raiz
+    Sistema[MUSICG System]:::root
+
+    %% Branch: Acesso ao Público (Foco no Cliente/Fã)
+    subgraph Publico [Acesso ao Público & Fãs]
+        direction TB
+        Acesso(Menu Digital / QR Code):::yellow
+        Busca(Busca Inteligente):::yellow
+        Pedidos(Pedidos & Gorjetas):::yellow
+        
+        Acesso --> Busca
+        Acesso --> Pedidos
+    end
+
+    %% Branch: Recursos Artista (Gestão)
+    subgraph Artista [Recursos para Artistas]
+        direction TB
+        Repertorio(Gestão de Repertório):::yellow
+        Lyrics(Smart Lyrics & Cifras):::yellow
+        Perfil(Perfil Social / Comunidade):::yellow
+        Fluxo(Fluxo de Pedidos & Interação):::yellow
+        Banda(Perfil de Banda):::blue
+        Agenda(Calendário de Shows):::blue
+    end
+
+    %% Branch: Fluxos de Negócio
+    subgraph Negocio [Fluxos de Negócio & Contratação]
+        direction TB
+        Estilo(Estilo Musical):::blue
+        Valor(Média de Valor / Cachê):::blue
+        Regiao(Região de Atuação):::blue
+        Contratar(Contratar Serviço):::blue
+        Escopo(Escopo Inicial):::blue
+        Projetos(Criação de Eventos/Projetos):::blue
+        Dash(Dashboard do Evento):::blue
+        Negociacao(Negociação Direta / Combos):::blue
+    end
+
+    %% Conexões Principais
+    Sistema --> Publico
+    Sistema --> Artista
+    Sistema --> Negocio
+
+    %% Conexões Internas Artista
+    Repertorio --> Lyrics
+    Repertorio --> Fluxo
+    Fluxo --- Perfil
+    Perfil --- Banda
+    Banda --- Agenda
+
+    %% Conexões Internas Negócio
+    Estilo --> Valor
+    Valor --> Regiao
+    Regiao --> Contratar
+
+    Escopo --> Projetos
+    Projetos --> Dash
+    Dash --> Negociacao
+
+    %% Link Styles 
+    linkStyle default stroke:#666,stroke-width:1px,fill:none,curved;
+        </pre>
+    </div>
+
+    <!-- Segundo Diagrama: Detalhamento Técnico -->
+    <div class="chart-container">
+        <h3>Fluxo Técnico de Dados</h3>
+        <pre class="mermaid">
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#E1D5E7', 'lineColor': '#555'}}}%%
+graph LR
+    classDef tech fill:#E1D5E7,stroke:#9673A6,color:#333;
+    classDef db fill:#D5E8D4,stroke:#82B366,color:#333;
+
+    User(Usuário App):::tech -->|Auth| Firebase[Firebase Auth]:::db
+    User -->|Lê/Escreve| Firestore[Firestore DB]:::db
+    User -->|Upload| Cloudinary[Cloudinary Media]:::db
+    
+    Firestore -->|Updates| Stream[Real-time Stream]:::tech
+    Stream -->|Notifica| Listener(Ouvinte: Artista/Fã):::tech
+         </pre>
+    </div>
+
+    <!-- Carregando Mermaid como Módulo ES -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+
+        mermaid.initialize({
+            startOnLoad: true,
+            securityLevel: 'loose', // Permite renderização mais flexível
+        });
+
+        // Alternativa: Forçar renderização se o automático falhar (para alguns browsers locais)
+        // await mermaid.run({
+        //   querySelector: '.mermaid',
+        // });
+    </script>
+</body>
+
+</html>

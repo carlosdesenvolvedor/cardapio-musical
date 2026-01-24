@@ -7,6 +7,8 @@ class MessageModel extends MessageEntity {
     required super.senderId,
     required super.receiverId,
     required super.text,
+    super.type,
+    super.mediaUrl,
     required super.createdAt,
     super.isRead,
   });
@@ -18,6 +20,8 @@ class MessageModel extends MessageEntity {
       senderId: data['senderId'] ?? '',
       receiverId: data['receiverId'] ?? '',
       text: data['text'] ?? '',
+      type: data['type'] ?? 'text',
+      mediaUrl: data['mediaUrl'],
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isRead: data['isRead'] ?? false,
     );
@@ -28,6 +32,8 @@ class MessageModel extends MessageEntity {
       'senderId': senderId,
       'receiverId': receiverId,
       'text': text,
+      'type': type,
+      'mediaUrl': mediaUrl,
       'createdAt': FieldValue.serverTimestamp(),
       'isRead': isRead,
     };

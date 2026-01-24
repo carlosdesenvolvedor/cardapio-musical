@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa Mental MUSICG</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap');
+
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            font-family: 'Outfit', sans-serif;
+            margin: 0;
+            padding: 40px;
+        }
+
+        h1,
+        h2 {
+            color: #FFFFD700;
+            /* MUSICG Yellow */
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 3em;
+            margin-bottom: 50px;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+
+        .section {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 40px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .description {
+            margin-bottom: 20px;
+            color: #ccc;
+            font-size: 1.1em;
+        }
+
+        /* Configuração do Mermaid para visibilidade no fundo escuro */
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            background-color: #1a1a1a;
+            padding: 20px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Ecossistema MUSICG</h1>
+    <p style="text-align: center; color: #888; font-size: 1.2em;">Arquitetura Estratégica e Técnica</p>
+
+    <!-- Seção 1 -->
+    <div class="section">
+        <h2>1. Visão Geral do Sistema (Core)</h2>
+        <p class="description">Estrutura central dos módulos e pilares do ecossistema.</p>
+        <div class="mermaid">
+            mindmap
+            root((MUSICG))
+            Modulos Principais
+            Rede Social Artistica
+            Feed de Posts
+            Studio Riffs (Stories)
+            Busca de Talentos
+            Comunidade (Fãs)
+            Gestão de Show
+            Repertório (CRUD)
+            Smart Lyrics
+            Pedidos de Música (Real-time)
+            Calendário de Shows
+            Live Streaming
+            Transmissão ao Vivo
+            Interação Digital
+            Perfis de Usuario
+            Artista
+            Fã / Cliente
+            Infraestrutura
+            Firebase
+            Cloudinary
+            Zego / LiveKit
+        </div>
+    </div>
+
+    <!-- Seção 2 -->
+    <div class="section">
+        <h2>2. Jornada do Artista</h2>
+        <p class="description">Fluxo de navegação para gestão de carreira e engajamento.</p>
+        <div class="mermaid">
+            graph TD
+            %% Estilos
+            classDef yellow fill:#FFFFD700,color:#000,stroke:#none,font-weight:bold;
+            classDef dark fill:#222,color:#fff,stroke:#FFFFD700;
+
+            A[Artista Context]:::yellow --> B[Login/Profile]:::dark
+            B --> C[Artist Network - Studio Riffs]:::dark
+            C --> D[Feed & Posts]:::dark
+            C --> E[Chat & Atividade]:::dark
+
+            A --> F[Show Management]:::yellow
+            F --> G[Gerenciar Repertório]:::dark
+            F --> H[Calendário & Agenda]:::dark
+            F --> I[Smart Lyrics Helper]:::dark
+
+            A --> J[Engagement]:::yellow
+            J --> K[Iniciar Live Streaming]:::dark
+            J --> L[Receber Pedidos]:::dark
+            J --> M[Receber Tips]:::dark
+
+            linkStyle default stroke:#666,stroke-width:2px;
+        </div>
+    </div>
+
+    <!-- Seção 3 -->
+    <div class="section">
+        <h2>3. Jornada do Cliente/Fã</h2>
+        <p class="description">Interação via Menu Digital e Rede Social.</p>
+        <div class="mermaid">
+            graph LR
+            %% Estilos
+            classDef yellow fill:#FFFFD700,color:#000,stroke:#none,font-weight:bold;
+            classDef dark fill:#222,color:#fff,stroke:#FFFFD700;
+
+            Fã((Fã / Cliente)):::yellow --> QR[QR Code]:::dark
+            QR --> Menu[Client Menu Page]:::dark
+
+            Menu --> Pedido[Fazer Pedido]:::dark
+            Menu --> Rep[Ver Repertório]:::dark
+            Menu --> Per[Ver Perfil]:::dark
+
+            Fã --> Social[Rede MUSICG]:::yellow
+            Social --> Follow[Seguir Artista]:::dark
+            Social --> Watch[Assistir Stories]:::dark
+
+            linkStyle default stroke:#666,stroke-width:2px;
+        </div>
+    </div>
+
+    <!-- Seção 4 -->
+    <div class="section">
+        <h2>4. Stack Tecnológica</h2>
+        <p class="description">Arquitetura técnica e integrações do sistema.</p>
+        <div class="mermaid">
+            graph TB
+            %% Estilos
+            classDef yellow fill:#FFFFD700,color:#000,stroke:#none,font-weight:bold;
+            classDef dark fill:#222,color:#fff,stroke:#FFFFD700;
+
+            subgraph Frontend_Flutter
+            direction TB
+            AppTheme[AppTheme - MUSICG Brand]:::yellow
+            Bloc[BLoC State Management]:::dark
+            GlassBar[Glassmorphism UI]:::dark
+            end
+
+            subgraph External_Services
+            direction TB
+            FB[Firebase]:::dark
+            CLD[Cloudinary]:::dark
+            ZG[Zego/LiveKit]:::dark
+            end
+
+            AppTheme --> GlassBar
+            Bloc --> FB
+            CLD --> FB
+            ZG --> Bloc
+
+            linkStyle default stroke:#666,stroke-width:2px;
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            themeVariables: {
+                primaryColor: '#FFFFD700',
+                primaryTextColor: '#000000',
+                primaryBorderColor: '#FFFFD700',
+                lineColor: '#FFFFD700',
+                secondaryColor: '#111111',
+                tertiaryColor: '#111111'
+            }
+        });
+    </script>
+</body>
+
+</html>

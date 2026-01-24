@@ -5,6 +5,7 @@ import 'share_page.dart';
 import 'artist_insights_page.dart';
 import '../../../bands/presentation/pages/my_bands_page.dart';
 import 'package:music_system/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:music_system/features/auth/domain/entities/user_entity.dart';
 import 'package:music_system/features/auth/presentation/pages/profile_page.dart';
 import 'package:music_system/features/smart_lyrics/presentation/pages/lyrics_view_page.dart';
 import 'package:music_system/features/song_requests/domain/entities/song_request.dart';
@@ -28,9 +29,22 @@ class _MusicianDashboardPageState extends State<MusicianDashboardPage> {
   void initState() {
     super.initState();
     final authState = context.read<AuthBloc>().state;
+    String? userId;
     if (authState is Authenticated) {
-      context.read<SongRequestBloc>().add(FetchSongRequests(authState.user.id));
+      userId = authState.user.id;
+    } else if (authState is ProfileLoaded) {
+      userId = authState.currentUser?.id;
     }
+
+    if (userId != null) {
+      context.read<SongRequestBloc>().add(FetchSongRequests(userId));
+    }
+  }
+
+  UserEntity? _getCurrentUser(AuthState state) {
+    if (state is Authenticated) return state.user;
+    if (state is ProfileLoaded) return state.currentUser;
+    return null;
   }
 
   @override
@@ -38,7 +52,8 @@ class _MusicianDashboardPageState extends State<MusicianDashboardPage> {
     return Scaffold(
       drawer: Drawer(
         backgroundColor: Colors.black,
-        child: Column(
+        child: ListView(
+          padding: EdgeInsets.zero,
           children: [
             const DrawerHeader(
               decoration: BoxDecoration(color: Color(0xFFE5B80B)),
@@ -83,14 +98,14 @@ class _MusicianDashboardPageState extends State<MusicianDashboardPage> {
               title: const Text('Meu Perfil'),
               onTap: () {
                 Navigator.pop(context);
-                final authState = context.read<AuthBloc>().state;
-                if (authState is Authenticated) {
+                final user = _getCurrentUser(context.read<AuthBloc>().state);
+                if (user != null) {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => ProfilePage(
-                        userId: authState.user.id,
-                        email: authState.user.email,
+                        userId: user.id,
+                        email: user.email,
                       ),
                     ),
                   );
@@ -111,6 +126,18 @@ class _MusicianDashboardPageState extends State<MusicianDashboardPage> {
                     builder: (context) => const ManageRepertoirePage(),
                   ),
                 );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.people, color: Color(0xFFE5B80B)),
+              title: const Text('Rede de Artistas'),
+              subtitle: const Text(
+                'Comunidade & Stories',
+                style: TextStyle(color: Colors.white38, fontSize: 10),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/network');
               },
             ),
             ListTile(
@@ -139,16 +166,16 @@ class _MusicianDashboardPageState extends State<MusicianDashboardPage> {
               ),
               onTap: () {
                 Navigator.pop(context);
-                final authState = context.read<AuthBloc>().state;
-                if (authState is Authenticated) {
+                final user = _getCurrentUser(context.read<AuthBloc>().state);
+                if (user != null) {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => LivePage(
-                        liveId: authState.user.id,
+                        liveId: user.id,
                         isHost: true,
-                        userId: authState.user.id,
-                        userName: authState.user.displayName,
+                        userId: user.id,
+                        userName: user.displayName,
                       ),
                     ),
                   );
@@ -175,7 +202,6 @@ class _MusicianDashboardPageState extends State<MusicianDashboardPage> {
                 }
               },
             ),
-            const Spacer(),
             const Divider(color: Colors.white10),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.redAccent),
@@ -184,9 +210,9 @@ class _MusicianDashboardPageState extends State<MusicianDashboardPage> {
                 style: TextStyle(color: Colors.redAccent),
               ),
               onTap: () {
-                Navigator.pop(context);
                 context.read<AuthBloc>().add(SignOutRequested());
-                Navigator.of(context).popUntil((route) => route.isFirst);
+                Navigator.of(context)
+                    .pushNamedAndRemoveUntil('/', (route) => false);
               },
             ),
             const SizedBox(height: 20),
@@ -200,12 +226,12 @@ class _MusicianDashboardPageState extends State<MusicianDashboardPage> {
             icon: const Icon(Icons.qr_code),
             tooltip: 'Link do Cardápio',
             onPressed: () {
-              final authState = context.read<AuthBloc>().state;
-              if (authState is Authenticated) {
+              final user = _getCurrentUser(context.read<AuthBloc>().state);
+              if (user != null) {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => SharePage(userId: authState.user.id),
+                    builder: (context) => SharePage(userId: user.id),
                   ),
                 );
               }
@@ -215,7 +241,8 @@ class _MusicianDashboardPageState extends State<MusicianDashboardPage> {
             icon: const Icon(Icons.logout),
             onPressed: () {
               context.read<AuthBloc>().add(SignOutRequested());
-              Navigator.of(context).popUntil((route) => route.isFirst);
+              Navigator.of(context)
+                  .pushNamedAndRemoveUntil('/', (route) => false);
             },
           ),
         ],

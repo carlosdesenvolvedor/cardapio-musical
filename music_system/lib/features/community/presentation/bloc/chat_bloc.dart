@@ -14,7 +14,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   String? _currentReceiverId;
 
   ChatBloc({required this.sendMessage, required this.streamMessages})
-    : super(const ChatState()) {
+      : super(const ChatState()) {
     on<ChatStarted>(_onChatStarted);
     on<MessagesUpdated>(_onMessagesUpdated);
     on<MessageSentRequested>(_onMessageSentRequested);
@@ -30,13 +30,12 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     emit(state.copyWith(status: ChatStatus.loading));
 
     await _messagesSubscription?.cancel();
-    _messagesSubscription =
-        streamMessages(
-          senderId: event.senderId,
-          receiverId: event.receiverId,
-        ).listen((messages) {
-          add(MessagesUpdated(messages));
-        });
+    _messagesSubscription = streamMessages(
+      senderId: event.senderId,
+      receiverId: event.receiverId,
+    ).listen((messages) {
+      add(MessagesUpdated(messages));
+    });
   }
 
   void _onMessagesUpdated(MessagesUpdated event, Emitter<ChatState> emit) {
@@ -53,6 +52,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       senderId: _currentSenderId!,
       receiverId: _currentReceiverId!,
       text: event.text,
+      type: event.type,
+      mediaUrl: event.mediaUrl,
       senderName: event.senderName,
       senderPhoto: event.senderPhoto,
     );

@@ -126,8 +126,10 @@ class _SharePageState extends State<SharePage> {
 
   @override
   Widget build(BuildContext context) {
-    final String url =
-        'https://music-system-421ee.web.app/menu/${widget.userId}';
+    // Use the current origin if on web to allow local testing
+    final String baseUrl =
+        kIsWeb ? Uri.base.origin : 'https://music-system-421ee.web.app';
+    final String url = '$baseUrl/menu/${widget.userId}';
 
     return Scaffold(
       appBar: AppBar(
@@ -228,10 +230,10 @@ class _SharePageState extends State<SharePage> {
                         ),
                       ),
                     ).animate().scale(
-                      delay: 600.ms,
-                      duration: 500.ms,
-                      curve: Curves.elasticOut,
-                    ),
+                          delay: 600.ms,
+                          duration: 500.ms,
+                          curve: Curves.elasticOut,
+                        ),
 
                     const SizedBox(height: 48),
 

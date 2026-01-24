@@ -9,6 +9,10 @@ import 'package:music_system/features/community/data/models/story_model.dart';
 import 'package:music_system/features/auth/domain/entities/user_profile.dart';
 import 'package:music_system/features/community/domain/repositories/story_repository.dart';
 import 'package:music_system/core/utils/cloudinary_sanitizer.dart';
+import 'package:music_system/config/theme/app_theme.dart';
+import 'package:music_system/features/community/domain/entities/story_effects.dart';
+import 'package:music_system/features/community/presentation/widgets/video_filter_selector.dart';
+import 'package:pro_image_editor/pro_image_editor.dart';
 
 class CreateStoryPage extends StatefulWidget {
   final UserProfile profile;
@@ -28,11 +32,166 @@ class _CreateStoryPageState extends State<CreateStoryPage> {
   VideoPlayerController? _videoController;
   String? _initError;
   bool _showUploadOnly = false;
+  String? _selectedFilterId;
+
+  ColorFilter? _getFilterMatrix(String? id) {
+    if (id == null) return null;
+
+    switch (id) {
+      case 'grayscale':
+        return const ColorFilter.matrix([
+          0.2126,
+          0.7152,
+          0.0722,
+          0,
+          0,
+          0.2126,
+          0.7152,
+          0.0722,
+          0,
+          0,
+          0.2126,
+          0.7152,
+          0.0722,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+        ]);
+      case 'sepia':
+        return const ColorFilter.matrix([
+          0.393,
+          0.769,
+          0.189,
+          0,
+          0,
+          0.349,
+          0.686,
+          0.168,
+          0,
+          0,
+          0.272,
+          0.534,
+          0.131,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+        ]);
+      case 'vintage':
+        return const ColorFilter.matrix([
+          0.9,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0.8,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0.5,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+        ]);
+      case 'warm':
+        return const ColorFilter.matrix([
+          1.2,
+          0,
+          0,
+          0,
+          10,
+          0,
+          1.0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0.8,
+          0,
+          -10,
+          0,
+          0,
+          0,
+          1,
+          0,
+        ]);
+      case 'cool':
+        return const ColorFilter.matrix([
+          0.8,
+          0,
+          0,
+          0,
+          -10,
+          0,
+          1.0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1.2,
+          0,
+          10,
+          0,
+          0,
+          0,
+          1,
+          0,
+        ]);
+      default:
+        return null;
+    }
+  }
 
   @override
   void dispose() {
     _videoController?.dispose();
     super.dispose();
+  }
+
+  Future<void> _openEditor() async {
+    if (_mediaBytes == null) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProImageEditor.memory(
+          _mediaBytes!,
+          callbacks: ProImageEditorCallbacks(
+            onImageEditingComplete: (bytes) async {
+              setState(() {
+                _mediaBytes = bytes;
+              });
+              Navigator.pop(context);
+            },
+          ),
+          configs: ProImageEditorConfigs(
+            designMode: ImageEditorDesignMode.material,
+            mainEditor: const MainEditorConfigs(
+              style: MainEditorStyle(
+                background: Colors.black,
+              ),
+            ),
+            textEditor: const TextEditorConfigs(),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _pickMedia(bool isVideo) async {
@@ -45,18 +204,17 @@ class _CreateStoryPageState extends State<CreateStoryPage> {
             );
 
       if (media != null) {
-        setState(() {
-          _pickedFile = media;
-          _mediaType = isVideo ? 'video' : 'image';
-          _mediaBytes = null;
-          _initError = null;
-        });
-
         if (isVideo) {
+          setState(() {
+            _pickedFile = media;
+            _mediaType = 'video';
+            _mediaBytes = null;
+            _initError = null;
+          });
           _videoController?.dispose();
-          // Usando .network para maior compatibilidade com Flutter Web em versões específicas
-          _videoController = VideoPlayerController.network(media.path)
-            ..setVolume(0);
+          _videoController =
+              VideoPlayerController.networkUrl(Uri.parse(media.path))
+                ..setVolume(0);
 
           _videoController!.initialize().then((_) {
             if (mounted) {
@@ -77,9 +235,15 @@ class _CreateStoryPageState extends State<CreateStoryPage> {
             }
           });
         } else {
-          // For images, we still read bytes for preview because it's safer and small
           final bytes = await media.readAsBytes();
-          setState(() => _mediaBytes = bytes);
+          setState(() {
+            _pickedFile = media;
+            _mediaType = 'image';
+            _mediaBytes = bytes;
+            _initError = null;
+          });
+          // Automatically open editor for images
+          _openEditor();
         }
       }
     } catch (e) {
@@ -98,7 +262,10 @@ class _CreateStoryPageState extends State<CreateStoryPage> {
     setState(() => _isUploading = true);
 
     try {
-      final bytes = await _pickedFile!.readAsBytes();
+      // Use edited bytes if available (for images) or read from file (for videos)
+      final bytes = _mediaType == 'image' && _mediaBytes != null
+          ? _mediaBytes!
+          : await _pickedFile!.readAsBytes();
       String? url;
 
       if (_mediaType == 'image') {
@@ -121,7 +288,7 @@ class _CreateStoryPageState extends State<CreateStoryPage> {
             'story_${widget.profile.id}_${DateTime.now().millisecondsSinceEpoch}',
           );
         } catch (e) {
-          print('Cloudinary Video Error, falling back to Firebase: $e');
+          debugPrint('Cloudinary Video Error, falling back to Firebase: $e');
           url = await sl<StorageService>().uploadFile(
             fileBytes: bytes,
             fileName:
@@ -133,7 +300,11 @@ class _CreateStoryPageState extends State<CreateStoryPage> {
 
       if (url != null) {
         // Otimizar URL do Cloudinary para compatibilidade máxima entre dispositivos
-        url = CloudinarySanitizer.sanitize(url, mediaType: _mediaType);
+        url = CloudinarySanitizer.sanitize(
+          url,
+          mediaType: _mediaType,
+          filterId: _selectedFilterId,
+        );
 
         final story = StoryModel(
           id: '',
@@ -145,6 +316,9 @@ class _CreateStoryPageState extends State<CreateStoryPage> {
           createdAt: DateTime.now(),
           expiresAt: DateTime.now().add(const Duration(hours: 24)),
           viewers: const [],
+          effects: _selectedFilterId != null
+              ? StoryEffects(filterId: _selectedFilterId)
+              : null,
         );
 
         await sl<StoryRepository>().createStory(story);
@@ -206,54 +380,59 @@ class _CreateStoryPageState extends State<CreateStoryPage> {
             )
           else
             Positioned.fill(
-              child: _mediaType == 'image'
-                  ? (_mediaBytes != null
-                      ? Image.memory(_mediaBytes!, fit: BoxFit.cover)
-                      : const Center(child: CircularProgressIndicator()))
-                  : (_showUploadOnly
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.video_file,
-                                color: Color(0xFFE5B80B),
-                                size: 80,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                _initError ?? 'Vídeo selecionado',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
+              child: ColorFiltered(
+                colorFilter: _getFilterMatrix(_selectedFilterId) ??
+                    const ColorFilter.mode(Colors.transparent, BlendMode.dst),
+                child: _mediaType == 'image'
+                    ? (_mediaBytes != null
+                        ? Image.memory(_mediaBytes!, fit: BoxFit.cover)
+                        : const Center(child: CircularProgressIndicator()))
+                    : (_showUploadOnly
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.video_file,
+                                  color: Color(0xFFE5B80B),
+                                  size: 80,
                                 ),
-                              ),
-                              const Text(
-                                'Toque em "Compartilhar" para publicar.',
-                                style: TextStyle(color: Colors.white54),
-                              ),
-                            ],
-                          ),
-                        )
-                      : (_videoController != null &&
-                              _videoController!.value.isInitialized
-                          ? Center(
-                              child: AspectRatio(
-                                aspectRatio:
-                                    _videoController!.value.aspectRatio,
-                                child: VideoPlayer(_videoController!),
-                              ),
-                            )
-                          : _initError != null
-                              ? Center(
-                                  child: Text(
-                                    _initError!,
-                                    style: const TextStyle(color: Colors.white),
+                                const SizedBox(height: 16),
+                                Text(
+                                  _initError ?? 'Vídeo selecionado',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                )
-                              : const Center(
-                                  child: CircularProgressIndicator(),
-                                ))),
+                                ),
+                                const Text(
+                                  'Toque em "Compartilhar" para publicar.',
+                                  style: TextStyle(color: Colors.white54),
+                                ),
+                              ],
+                            ),
+                          )
+                        : (_videoController != null &&
+                                _videoController!.value.isInitialized
+                            ? Center(
+                                child: AspectRatio(
+                                  aspectRatio:
+                                      _videoController!.value.aspectRatio,
+                                  child: VideoPlayer(_videoController!),
+                                ),
+                              )
+                            : _initError != null
+                                ? Center(
+                                    child: Text(
+                                      _initError!,
+                                      style:
+                                          const TextStyle(color: Colors.white),
+                                    ),
+                                  )
+                                : const Center(
+                                    child: CircularProgressIndicator(),
+                                  ))),
+              ),
             ),
 
           // Top Actions
@@ -272,7 +451,7 @@ class _CreateStoryPageState extends State<CreateStoryPage> {
                   TextButton(
                     onPressed: _isUploading ? null : _publish,
                     style: TextButton.styleFrom(
-                      backgroundColor: Colors.white,
+                      backgroundColor: AppTheme.primaryColor,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 20,
                         vertical: 10,
@@ -298,9 +477,29 @@ class _CreateStoryPageState extends State<CreateStoryPage> {
                             ),
                           ),
                   ),
+                if (_pickedFile != null && _mediaType == 'image')
+                  IconButton(
+                    icon: const Icon(Icons.text_fields,
+                        color: Colors.white, size: 28),
+                    onPressed: _openEditor,
+                  ),
               ],
             ),
           ),
+
+          // Filter Selector (Only for videos, as images have editor filters)
+          if (_pickedFile != null && !_isUploading && _mediaType == 'video')
+            Positioned(
+              bottom: 40,
+              left: 0,
+              right: 0,
+              child: VideoFilterSelector(
+                selectedFilterId: _selectedFilterId,
+                onFilterSelected: (id) {
+                  setState(() => _selectedFilterId = id);
+                },
+              ),
+            ),
         ],
       ),
     );

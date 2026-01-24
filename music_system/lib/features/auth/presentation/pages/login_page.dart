@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../config/theme/app_theme.dart';
-import '../../../musician_dashboard/presentation/pages/musician_dashboard_page.dart';
+
+import '../../../community/presentation/pages/artist_network_page.dart';
 import '../bloc/auth_bloc.dart';
 
 class LoginPage extends StatefulWidget {
@@ -27,7 +28,7 @@ class _LoginPageState extends State<LoginPage> {
             context,
             MaterialPageRoute(
               builder: (context) =>
-                  widget.destination ?? const MusicianDashboardPage(),
+                  widget.destination ?? const ArtistNetworkPage(),
             ),
           );
         } else if (state is AuthError) {

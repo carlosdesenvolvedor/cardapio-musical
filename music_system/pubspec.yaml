@@ -46,8 +46,11 @@ dependencies:
   livekit_client: ^2.5.0
   google_sign_in: ^6.2.1
   table_calendar: ^3.2.0
+  audioplayers: ^6.1.1
+  record: ^6.1.1
   flutter_web_plugins:
     sdk: flutter
+  pro_image_editor: ^11.17.0
 
 dev_dependencies:
   flutter_test:

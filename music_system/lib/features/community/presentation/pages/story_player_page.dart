@@ -55,32 +55,33 @@ class _StoryPlayerPageState extends State<StoryPlayerPage> {
     final mediaUrl = CloudinarySanitizer.sanitize(
       story.mediaUrl,
       mediaType: story.mediaType,
+      filterId: story.effects?.filterId,
+      startOffset: story.effects?.startOffset,
+      endOffset: story.effects?.endOffset,
     );
 
     if (story.mediaType == 'video') {
-      _videoController = VideoPlayerController.network(mediaUrl)
-        ..setVolume(
-          0,
-        ) // Crucial para Autoplay em navegadores mobile (Safari/iOS)
-        ..initialize().then((_) {
-          if (mounted) {
-            setState(() {});
-            _videoController?.play();
-            _startTimer();
-          }
-        }).catchError((error) {
-          debugPrint('Erro ao carregar vídeo: $error');
-          // Se falhar o vídeo, pula para o próximo ou mostra erro
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Aguardando carregamento do vídeo...'),
-                duration: Duration(seconds: 4),
-              ),
-            );
-            _startTimer(); // Inicia o timer mesmo assim para não travar o player
-          }
-        });
+      final uri = Uri.parse(mediaUrl);
+      debugPrint('Attempting to load video: $mediaUrl');
+
+      final controller = VideoPlayerController.networkUrl(uri);
+      _videoController = controller;
+
+      controller.setVolume(0);
+      controller.initialize().then((_) {
+        if (!mounted || _videoController != controller) {
+          controller.dispose();
+          return;
+        }
+        setState(() {});
+        controller.play();
+        _startTimer();
+      }).catchError((error) {
+        debugPrint('Fatal Error loading video: $error');
+        if (mounted) {
+          _startTimer(); // Inicia o timer mesmo assim para não travar o player
+        }
+      });
     } else {
       _startTimer();
     }

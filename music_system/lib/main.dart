@@ -8,6 +8,7 @@ import 'config/theme/app_theme.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/client_menu/presentation/pages/client_menu_page.dart';
+import 'features/musician_dashboard/presentation/pages/musician_dashboard_page.dart';
 import 'features/musician_dashboard/presentation/bloc/repertoire_bloc.dart';
 import 'features/smart_lyrics/presentation/bloc/lyrics_bloc.dart';
 import 'features/client_menu/presentation/bloc/repertoire_menu_bloc.dart';
@@ -103,13 +104,28 @@ class MusicSystemApp extends StatelessWidget {
             ),
           );
         },
-        initialRoute: '/',
         onGenerateRoute: (settings) {
           final uri = Uri.parse(settings.name ?? '/');
+          String path = uri.path;
 
-          // Improved path detection for /menu/ID
-          if (uri.path.startsWith('/menu/')) {
-            final segments = uri.pathSegments;
+          // Normalize path: ensure leading slash, remove trailing slash
+          if (!path.startsWith('/')) path = '/$path';
+          if (path.length > 1 && path.endsWith('/')) {
+            path = path.substring(0, path.length - 1);
+          }
+
+          // Root path
+          if (path == '/' || path == '/index.html') {
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (context) => const SplashPage(),
+            );
+          }
+
+          // /menu/ID
+          if (path.startsWith('/menu/')) {
+            final segments =
+                path.split('/').where((s) => s.isNotEmpty).toList();
             if (segments.length >= 2) {
               final musicianId = segments[1];
               return MaterialPageRoute(
@@ -119,8 +135,10 @@ class MusicSystemApp extends StatelessWidget {
             }
           }
 
-          if (uri.path.startsWith('/band/')) {
-            final segments = uri.pathSegments;
+          // /band/SLUG
+          if (path.startsWith('/band/')) {
+            final segments =
+                path.split('/').where((s) => s.isNotEmpty).toList();
             if (segments.length >= 2) {
               final slug = segments[1];
               return MaterialPageRoute(
@@ -130,25 +148,101 @@ class MusicSystemApp extends StatelessWidget {
             }
           }
 
-          if (uri.path == '/musician') {
+          if (path == '/musician') {
             return MaterialPageRoute(
               settings: settings,
               builder: (context) => const LoginPage(),
             );
           }
 
-          if (uri.path == '/client') {
+          if (path == '/client') {
             return MaterialPageRoute(
               settings: settings,
               builder: (context) => const ClientMenuPage(musicianId: ''),
             );
           }
 
+          if (path == '/home' || path == '/welcome') {
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (context) => const HomePage(),
+            );
+          }
+          if (path == '/network') {
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (context) => const ArtistNetworkPage(),
+            );
+          }
+          if (path == '/dashboard') {
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (context) => const MusicianDashboardPage(),
+            );
+          }
+
           return MaterialPageRoute(
             settings: settings,
-            builder: (context) => const HomePage(),
+            builder: (context) => const SplashPage(),
           );
         },
+      ),
+    );
+  }
+}
+
+class SplashPage extends StatefulWidget {
+  const SplashPage({super.key});
+
+  @override
+  State<SplashPage> createState() => _SplashPageState();
+}
+
+class _SplashPageState extends State<SplashPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _handleState(context.read<AuthBloc>().state);
+      }
+    });
+  }
+
+  void _handleState(AuthState state) {
+    if (!mounted) return;
+
+    // Wait a brief moment to allow the router to process any deep links
+    // that might be pushed on top of this initial splash route on Web.
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (!mounted) return;
+
+      final bool isCurrent = ModalRoute.of(context)?.isCurrent ?? false;
+      final String path = Uri.base.path;
+      final bool isActuallyAtRoot =
+          path == '/' || path == '/index.html' || path.isEmpty;
+
+      if (!isCurrent || !isActuallyAtRoot) {
+        return;
+      }
+
+      if (state is Authenticated ||
+          (state is ProfileLoaded && state.currentUser != null)) {
+        Navigator.pushReplacementNamed(context, '/network');
+      } else if (state is Unauthenticated) {
+        Navigator.pushReplacementNamed(context, '/home');
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, state) => _handleState(state),
+      child: const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: AppTheme.primaryColor),
+        ),
       ),
     );
   }
@@ -184,12 +278,20 @@ class HomePage extends StatelessWidget {
                   title: 'Sou Artista',
                   icon: Icons.dashboard,
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const LoginPage(),
-                      ),
-                    );
+                    final authState = context.read<AuthBloc>().state;
+                    if (authState is Authenticated ||
+                        (authState is ProfileLoaded &&
+                            authState.currentUser != null)) {
+                      Navigator.pushReplacementNamed(context, '/dashboard');
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const LoginPage(
+                              destination: MusicianDashboardPage()),
+                        ),
+                      );
+                    }
                   },
                 ),
                 const SizedBox(width: 20),
@@ -213,13 +315,10 @@ class HomePage extends StatelessWidget {
               child: ElevatedButton.icon(
                 onPressed: () {
                   final authState = context.read<AuthBloc>().state;
-                  if (authState is Authenticated) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ArtistNetworkPage(),
-                      ),
-                    );
+                  if (authState is Authenticated ||
+                      (authState is ProfileLoaded &&
+                          authState.currentUser != null)) {
+                    Navigator.pushReplacementNamed(context, '/network');
                   } else {
                     Navigator.push(
                       context,

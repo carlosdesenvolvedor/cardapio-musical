@@ -27,7 +27,7 @@ class UserProfileModel extends UserProfile {
     return UserProfileModel(
       id: id,
       email: json['email'] ?? '',
-      artisticName: json['artisticName'] ?? '',
+      artisticName: _getName(json),
       pixKey: json['pixKey'] ?? '',
       photoUrl: json['photoUrl'],
       bio: json['bio'],
@@ -52,6 +52,17 @@ class UserProfileModel extends UserProfile {
           ? (json['lastActiveAt'] as Timestamp).toDate()
           : null,
     );
+  }
+
+  static String _getName(Map<String, dynamic> json) {
+    final candidates = ['artisticName', 'name', 'displayName', 'username'];
+    for (final key in candidates) {
+      final val = json[key];
+      if (val != null && val is String && val.trim().isNotEmpty) {
+        return val;
+      }
+    }
+    return 'Artista Sem Nome';
   }
 
   Map<String, dynamic> toJson() {

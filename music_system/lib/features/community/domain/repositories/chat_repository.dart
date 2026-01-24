@@ -8,6 +8,8 @@ abstract class ChatRepository {
     required String senderId,
     required String receiverId,
     required String text,
+    String type = 'text',
+    String? mediaUrl,
     String? senderName,
     String? senderPhoto,
   });

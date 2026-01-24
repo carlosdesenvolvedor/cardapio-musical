@@ -27,11 +27,19 @@ class MessagesUpdated extends ChatEvent {
 
 class MessageSentRequested extends ChatEvent {
   final String text;
+  final String type;
+  final String? mediaUrl;
   final String? senderName;
   final String? senderPhoto;
 
-  MessageSentRequested(this.text, {this.senderName, this.senderPhoto});
+  MessageSentRequested(
+    this.text, {
+    this.type = 'text',
+    this.mediaUrl,
+    this.senderName,
+    this.senderPhoto,
+  });
 
   @override
-  List<Object?> get props => [text, senderName, senderPhoto];
+  List<Object?> get props => [text, type, mediaUrl, senderName, senderPhoto];
 }

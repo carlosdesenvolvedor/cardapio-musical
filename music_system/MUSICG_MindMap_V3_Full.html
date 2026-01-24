@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa Mental Completo MUSICG - System Architecture</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+
+        body {
+            background-color: #f4f4f4;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        h1,
+        p {
+            text-align: center;
+            color: #333;
+        }
+
+        p {
+            margin-bottom: 40px;
+            color: #666;
+        }
+
+        .chart-container {
+            background: #ffffff;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 40px;
+            overflow-x: auto;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Ecossistema Completo MUSICG</h1>
+    <p>Mapeamento detalhado de todos os módulos funcionais implementados.</p>
+
+    <div class="chart-container">
+        <pre class="mermaid">
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#FFF2CC', 'edgeLabelBackground':'#ffffff', 'tertiaryColor': '#fff', 'fontSize': '14px'}}}%%
+graph LR
+    %% Estilos dos Nós (baseado na foto: Amarelo e Azul Pastel + Cores Extras para diferenciar)
+    classDef yellow fill:#FFF2CC,stroke:#D6B656,stroke-width:2px,color:#333,rx:5,ry:5;
+    classDef blue fill:#DAE8FC,stroke:#6C8EBF,stroke-width:2px,color:#333,rx:5,ry:5;
+    classDef green fill:#D5E8D4,stroke:#82B366,stroke-width:2px,color:#333,rx:5,ry:5;
+    classDef purple fill:#E1D5E7,stroke:#9673A6,stroke-width:2px,color:#333,rx:5,ry:5;
+    classDef red fill:#F8CECC,stroke:#B85450,stroke-width:2px,color:#333,rx:5,ry:5;
+    classDef root fill:#f8cecc,stroke:#b85450,stroke-width:3px,color:#000,font-size:20px,font-weight:bold;
+
+    %% Raiz
+    Sistema[MUSICG System]:::root
+
+    %% --- MÓDULO 1: ACESSO & ONBOARDING ---
+    subgraph Acesso [Acesso & Identidade]
+        direction TB
+        Auth(Autenticação Social/E-mail):::red
+        Perfil(Perfil de Usuário):::red
+        Config(Configurações & PIX):::red
+    end
+
+    %% --- MÓDULO 2: CLIENTE / FÃ (Consumo) ---
+    subgraph Cliente [Jornada do Fã/Cliente]
+        direction TB
+        MenuDig(Menu Digital / QR Code):::yellow
+        BuscaFan(Busca de Artistas):::yellow
+        FazerPedido(Pedir Música):::yellow
+        DarGorjeta(Enviar Tip/PIX):::yellow
+        InteracaoSocial(Seguir/Chat/Like):::yellow
+    end
+    
+    %% --- MÓDULO 3: ARTISTA (Gestão & Performance) ---
+    subgraph Artista [Painel do Artista]
+        direction TB
+        GestaoRep(Gestão de Repertório):::blue
+        SmartLyr(Smart Lyrics / Cifras):::blue
+        GestaoShow(Fila de Pedidos):::blue
+        AgendaShow(Agenda & Calendário):::blue
+        BandaProf(Perfil Público Banda):::blue
+    end
+
+    %% --- MÓDULO 4: REDE SOCIAL & COMUNIDADE (O Novo Core) ---
+    subgraph Social [Comunidade MUSICG]
+        direction TB
+        StudioRiffs(Studio Riffs / Stories 24h):::purple
+        FeedPrin(Feed Principal / Posts):::purple
+        LiveStream(Transmissão Ao Vivo):::purple
+        Discovery(Descoberta / Ranking):::purple
+        Mensagens(Chat Direto / DM):::purple
+        Notificacoes(Central de Atividade):::purple
+    end
+
+    %% --- MÓDULO 5: NEGÓCIO (Monetização) ---
+    subgraph Biz [Negócio & Monetização]
+        direction TB
+        Shop(Loja / Marketplace):::green
+        Contratacao(Contratar Show):::green
+        Wallet(Carteira / Ganhos):::green
+    end
+
+    %% CONEXÕES GLOBAIS
+    Sistema --- Acesso
+    Sistema --> Cliente
+    Sistema --> Artista
+    Sistema --> Social
+    Sistema --> Biz
+
+    %% DETALHAMENTO DAS RELAÇÕES
+    Auth --> Perfil
+    Perfil --> Config
+
+    MenuDig --> FazerPedido
+    MenuDig --> BuscaFan
+    FazerPedido --> DarGorjeta
+    
+    GestaoShow --> FazerPedido
+    GestaoRep --> SmartLyr
+    GestaoRep --> MenuDig
+    
+    StudioRiffs --- FeedPrin
+    FeedPrin --- InteracaoSocial
+    LiveStream --- InteracaoSocial
+    
+    Contratacao --> AgendaShow
+    DarGorjeta --> Wallet
+
+    %% Link Styles
+    linkStyle default stroke:#666,stroke-width:1px,fill:none,curved;
+        </pre>
+    </div>
+
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true, securityLevel: 'loose' });
+    </script>
+</body>
+
+</html>

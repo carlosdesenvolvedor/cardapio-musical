@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  static const Color primaryColor = Color(0xFFE5B80B); // Brand Yellow
-  static const Color backgroundColor = Color(0xFF121212);
-  static const Color surfaceColor = Color(0xFF181818);
+  static const Color primaryColor = Color(0xFFFFD700); // Brand Yellow Vibrante
+  static const Color backgroundColor = Color(0xFF000000); // Pitch Black
+  static const Color surfaceColor = Color(0xFF121212);
   static const Color errorColor = Color(0xFFE91E63);
 
   static ThemeData get darkTheme {
@@ -21,7 +21,8 @@ class AppTheme {
         error: errorColor,
         onSurface: Colors.white,
       ),
-      textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme).copyWith(
+      textTheme:
+          GoogleFonts.interTextTheme(ThemeData.dark().textTheme).copyWith(
         displayLarge: GoogleFonts.outfit(
           color: Colors.white,
           fontWeight: FontWeight.bold,
@@ -54,8 +55,10 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primaryColor,
-          foregroundColor: Colors.black, // Spotify usually uses black text on green buttons
-          textStyle: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14),
+          foregroundColor:
+              Colors.black, // Spotify usually uses black text on green buttons
+          textStyle:
+              GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(500), // pill shape
           ),

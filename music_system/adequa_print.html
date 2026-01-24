@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Masterplan de Adequação CG Music 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --primary: #E5B80B;
+            --primary-dark: #B89409;
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #38bdf8;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        @media print {
+            body {
+                background: white !important;
+                color: black !important;
+                padding: 0 !important;
+            }
+
+            .no-print {
+                display: none;
+            }
+
+            .card {
+                border: 1px solid #e2e8f0 !important;
+                box-shadow: none !important;
+                break-inside: avoid;
+                margin-bottom: 15px !important;
+            }
+
+            .container {
+                max-width: 100% !important;
+                margin: 0 !important;
+            }
+
+            :root {
+                --bg: white;
+                --text: #1e293b;
+                --card-bg: #ffffff;
+                --border: #e2e8f0;
+            }
+
+            h2,
+            h3 {
+                color: #1e293b !important;
+                border-bottom: 2px solid var(--primary);
+                padding-bottom: 5px;
+            }
+
+            .badge {
+                border: 1px solid black !important;
+                color: black !important;
+                background: none !important;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 2rem;
+        }
+
+        header h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.8rem;
+            color: var(--primary);
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.8rem;
+            color: var(--primary);
+            margin: 2rem 0 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            position: relative;
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            border-color: var(--primary);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .badge {
+            background: var(--primary);
+            color: var(--bg);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 800;
+        }
+
+        .card-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--text);
+        }
+
+        .card-detail {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        .action-list {
+            margin-top: 1rem;
+            border-top: 1px solid var(--border);
+            padding-top: 1rem;
+        }
+
+        .action-item {
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+        }
+
+        .action-item strong {
+            color: var(--primary);
+            display: block;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-right: 5px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .tag-tech {
+            color: var(--accent);
+            border: 1px solid var(--accent);
+        }
+
+        .tag-legal {
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            border: 1px solid var(--border);
+            text-align: left;
+        }
+
+        th {
+            background: rgba(229, 184, 11, 0.05);
+            color: var(--primary);
+        }
+
+        .audit-box {
+            background: rgba(34, 197, 94, 0.05);
+            border: 2px dashed var(--success);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 2rem 0;
+        }
+
+        .audit-box h3 {
+            color: var(--success);
+            margin-bottom: 10px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 4rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .btn-print {
+            background: var(--primary);
+            color: var(--bg);
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Masterplan de Adequação 2026</h1>
+            <p>Estratégia Técnica & Jurídica para CG Music</p>
+        </header>
+
+        <h2>🛡️ Fase 0 & 0.5: Fundação e Base Legal</h2>
+        <div class="grid">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Blindagem Jurídica</span>
+                    <span class="badge">LEGAL</span>
+                </div>
+                <div class="action-list">
+                    <div class="action-item">
+                        <strong>Ação:</strong> Reescrever "Termos de Uso" para prever expressamente a coleta de
+                        Biometria (Selfie) e tratamento de dados de menores.
+                    </div>
+                    <div class="action-item">
+                        <strong>Dificuldade:</strong> Linguagem jurídica técnica.
+                    </div>
+                    <div class="action-item">
+                        <strong>Contorno:</strong> Usar sumários em "linguagem humana" no topo dos termos.
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Auditoria Imutável</span>
+                    <span class="badge">BACKEND</span>
+                </div>
+                <div class="action-list">
+                    <div class="action-item">
+                        <strong>Ação:</strong> Criar tabela `audit_logs` no Hyperf com restrição de DELETE ao nível de
+                        banco de dados.
+                    </div>
+                    <div class="action-item">
+                        <strong>Detalhe:</strong> Registrar: Quem + O que + Método + Resultado + Data.
+                    </div>
+                    <div class="action-item">
+                        <strong>Valor:</strong> Sua prova contra multas da ANPD e processos de pais.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h2>🔞 Fase 1: Proteção de Menores (Lei Felca)</h2>
+        <div class="grid">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Verificação Híbrida</span>
+                    <span class="badge">UX / IA</span>
+                </div>
+                <div class="action-list">
+                    <div class="action-item">
+                        <span class="tag tag-tech">Flutter</span> <strong>Fãs:</strong> IA Facial para estimativa de
+                        idade via Selfie. Baixa fricção.
+                    </div>
+                    <div class="action-item">
+                        <span class="tag tag-tech">Gov.br</span> <strong>Artistas:</strong> Integração Prata/Ouro para
+                        validar CPF e recebimento Pix.
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Consentimento Parental</span>
+                    <span class="badge">LOGIC</span>
+                </div>
+                <div class="action-list">
+                    <div class="action-item">
+                        <strong>Ação:</strong> Criar "Estado de Espera" para menores. O app envia Token/Link para o
+                        e-mail do pai indicado.
+                    </div>
+                    <div class="action-item">
+                        <strong>Trava Flutter:</strong> Botões de `Like`, `Comentar` e `Postar` ficam desabilitados até
+                        `parental_consent == true`.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h2>👁️ Fase 2: Governança de Conteúdo</h2>
+        <div class="grid">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">IA Content Safety</span>
+                    <span class="badge">API / COSTS</span>
+                </div>
+                <div class="action-list">
+                    <div class="action-item">
+                        <strong>Ação:</strong> Scanner automático no upload. Fotos de shows passam, nudez e violência
+                        vão para Quarentena.
+                    </div>
+                    <div class="action-item">
+                        <strong>Gestão de Custo:</strong> IA analisa o "grosso", humanos revisam apenas denúncias ou
+                        casos "cinzas".
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Transparência Algorítmica</span>
+                    <span class="badge">UI / PL 2338</span>
+                </div>
+                <div class="action-list">
+                    <div class="action-item">
+                        <strong>Ação:</strong> Selo "Post gerado por IA" automático via detecção de metadados.
+                    </div>
+                    <div class="action-item">
+                        <strong>Direito à Explicação:</strong> Botão "Por que vejo isso?" no feed detalhando o critério
+                        (ex: "Músico seguido").
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="audit-box">
+            <h3>📜 Repositório de Provas (Audit Trail)</h3>
+            <p>Para cada ação listada acima, o sistema gerará um log criptografado. Se em 2027 um órgão fiscalizador
+                questionar a plataforma, teremos o histórico completo de quem autorizou, como foi validado e qual
+                critério a IA utilizou.</p>
+        </div>
+
+        <h2>🗓️ Cronograma de Riscos</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Risco Identificado</th>
+                    <th>Impacto no App</th>
+                    <th>Estratégia de Mitigação</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Abandono no Cadastro</td>
+                    <td>Médio</td>
+                    <td>Verificação "Lazy" (Preguiçosa). Pedir dados pesados só no momento da interação.</td>
+                </tr>
+                <tr>
+                    <td>Erro de Julgamento da IA</td>
+                    <td>Baixo</td>
+                    <td>Recurso Humano. Permitir que o usuário conteste o bloqueio em um clique.</td>
+                </tr>
+                <tr>
+                    <td>Custos Elevados de API</td>
+                    <td>Alto</td>
+                    <td>Caching de perfis verificados e amostragem em contas antigas/confiáveis.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="footer">
+            <p>Gerado para Carlos Desenvolvedor | Music System</p>
+            <p style="font-size: 0.7rem; margin-top: 10px;">Este documento é um guia de implementação técnica e não
+                substitui assessoria jurídica especializada.</p>
+            <br>
+            <button class="btn-print no-print" onclick="window.print()">IMPRIMIR MASTERPLAN (PDF)</button>
+        </div>
+    </div>
+</body>
+
+</html>

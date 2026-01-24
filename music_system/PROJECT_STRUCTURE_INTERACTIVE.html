@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estrutura do Projeto MUSICG</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code&family=Outfit:wght@300;400;600;800&display=swap');
+
+        body {
+            background-color: #050505;
+            color: #ccc;
+            font-family: 'Outfit', sans-serif;
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: #FFD700;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 3em;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        }
+
+        h2 {
+            color: #666;
+            margin-top: 0;
+            margin-bottom: 50px;
+            font-weight: 300;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1100px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        /* Estilo da Árvore */
+        .tree-panel {
+            background: #111;
+            padding: 30px;
+            border-radius: 12px;
+            border: 1px solid #333;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            font-family: 'Fira Code', monospace;
+            line-height: 1.8;
+            overflow-x: auto;
+            max-height: 800px;
+            overflow-y: auto;
+        }
+
+        .item {
+            display: flex;
+            align-items: center;
+            padding: 5px 8px;
+            transition: background 0.2s;
+            cursor: pointer;
+            border-radius: 6px;
+        }
+
+        .item:hover {
+            background: #222;
+        }
+
+        .item.active {
+            background: #333;
+            border-left: 3px solid #FFD700;
+        }
+
+        .indent {
+            width: 20px;
+            display: inline-block;
+            color: #444;
+        }
+
+        .icon {
+            width: 20px;
+            text-align: center;
+            margin-right: 10px;
+            color: #666;
+        }
+
+        .folder {
+            color: #FFD700;
+            font-weight: 600;
+        }
+
+        .file {
+            color: #fff;
+        }
+
+        /* Cores de Destaque */
+        .feature-auth {
+            color: #FF6B6B !important;
+        }
+
+        .feature-social {
+            color: #BD93F9 !important;
+        }
+
+        .feature-core {
+            color: #8BE9FD !important;
+        }
+
+        .feature-biz {
+            color: #50FA7B !important;
+        }
+
+        /* Painel de Detalhes */
+        .details-panel {
+            background: #1a1a1a;
+            padding: 40px;
+            border-radius: 12px;
+            border: 1px solid #444;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: sticky;
+            top: 40px;
+            height: fit-content;
+        }
+
+        .details-title {
+            color: #FFD700;
+            font-size: 1.8em;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 15px;
+        }
+
+        .details-desc {
+            font-size: 1.1em;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .tech-tag {
+            background: #333;
+            color: #aaa;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-right: 5px;
+            display: inline-block;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #555;
+            font-style: italic;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>MUSICG</h1>
+    <h2>Arquitetura Técnica do Projeto</h2>
+
+    <div class="container">
+        <!-- Árvore de Arquivos -->
+        <div class="tree-panel">
+            <div class="item" onclick="showInfo('root')"><span class="icon"><i
+                        class="fas fa-folder-open"></i></span><span class="folder">lib/</span></div>
+
+            <!-- Config -->
+            <div class="item" onclick="showInfo('config')"><span class="indent">│</span><span class="icon"><i
+                        class="fas fa-folder"></i></span><span class="folder">config/</span></div>
+            <div class="item"><span class="indent">│</span><span class="indent">├──</span><span class="icon"><i
+                        class="fas fa-palette"></i></span><span class="file">theme/app_theme.dart</span></div>
+
+            <!-- Core -->
+            <div class="item" onclick="showInfo('core')"><span class="indent">│</span><span class="icon"><i
+                        class="fas fa-folder"></i></span><span class="folder">core/</span></div>
+
+            <!-- Features -->
+            <div class="item"><span class="indent">│</span><span class="icon"><i
+                        class="fas fa-folder-open"></i></span><span class="folder" style="color:#FFF">features/</span>
+            </div>
+
+            <!-- Auth -->
+            <div class="item" onclick="showInfo('auth')"><span class="indent">│</span><span class="indent">│</span><span
+                    class="icon"><i class="fas fa-folder feature-auth"></i></span><span
+                    class="folder feature-auth">auth/</span></div>
+            <div class="item"><span class="indent">│</span><span class="indent">│</span><span
+                    class="indent">├──</span><span class="icon"><i class="fas fa-code"></i></span><span
+                    class="file">domain/entities/user_profile.dart</span></div>
+            <div class="item"><span class="indent">│</span><span class="indent">│</span><span
+                    class="indent">└──</span><span class="icon"><i class="fas fa-desktop"></i></span><span
+                    class="file">presentation/pages/login_page.dart</span></div>
+
+            <!-- Community -->
+            <div class="item" onclick="showInfo('community')"><span class="indent">│</span><span
+                    class="indent">│</span><span class="icon"><i class="fas fa-folder feature-social"></i></span><span
+                    class="folder feature-social">community/</span></div>
+            <div class="item"><span class="indent">│</span><span class="indent">│</span><span
+                    class="indent">├──</span><span class="icon"><i class="fas fa-code"></i></span><span
+                    class="file">domain/entities/story_entity.dart</span></div>
+            <div class="item"><span class="indent">│</span><span class="indent">│</span><span
+                    class="indent">└──</span><span class="icon"><i class="fas fa-desktop"></i></span><span
+                    class="file">presentation/pages/artist_network_page.dart</span></div>
+
+            <!-- Musician Dashboard -->
+            <div class="item" onclick="showInfo('dashboard')"><span class="indent">│</span><span
+                    class="indent">│</span><span class="icon"><i class="fas fa-folder feature-core"></i></span><span
+                    class="folder feature-core">musician_dashboard/</span></div>
+            <div class="item"><span class="indent">│</span><span class="indent">│</span><span
+                    class="indent">├──</span><span class="icon"><i class="fas fa-music"></i></span><span
+                    class="file">presentation/pages/repertoire_page.dart</span></div>
+
+            <!-- Song Requests -->
+            <div class="item" onclick="showInfo('money')"><span class="indent">│</span><span
+                    class="indent">│</span><span class="icon"><i class="fas fa-folder feature-biz"></i></span><span
+                    class="folder feature-biz">song_requests/</span></div>
+
+            <!-- Smart Lyrics -->
+            <div class="item" onclick="showInfo('lyrics')"><span class="indent">│</span><span
+                    class="indent">│</span><span class="icon"><i class="fas fa-folder feature-core"></i></span><span
+                    class="folder feature-core">smart_lyrics/</span></div>
+
+            <!-- Live -->
+            <div class="item" onclick="showInfo('live')"><span class="indent">│</span><span class="indent">│</span><span
+                    class="icon"><i class="fas fa-folder feature-social"></i></span><span
+                    class="folder feature-social">live/</span></div>
+
+            <div class="item"><span class="indent">└──</span><span class="icon"><i
+                        class="fab fa-android"></i></span><span class="file">main.dart</span></div>
+
+        </div>
+
+        <!-- Painel de Explicação -->
+        <div class="details-panel" id="details">
+            <div class="empty-state">
+                <i class="fas fa-mouse-pointer" style="font-size: 3em; margin-bottom: 20px;"></i><br>
+                Clique em uma pasta para ver os detalhes técnicos.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const details = {
+            'root': {
+                title: 'Raiz do Projeto (lib/)',
+                desc: 'O coração da aplicação Flutter. Aqui reside todo o código Dart que compila para Web, Android e iOS.',
+                tags: ['Flutter', 'Dart']
+            },
+            'config': {
+                title: 'Módulo de Configuração',
+                desc: 'Define a identidade visual (AppTheme) e as rotas de navegação. É onde a "personalidade" do app é centralizada.',
+                tags: ['ThemeData', 'Routing']
+            },
+            'core': {
+                title: 'Núcleo Compartilhado (Core)',
+                desc: 'Contém tudo que é reutilizável: serviços de API, tratamento de erros e classes base para a Clean Architecture.',
+                tags: ['Utils', 'Services', 'Error Handling']
+            },
+            'auth': {
+                title: 'Autenticação & Perfis',
+                desc: 'Gerencia o login (Google/Email), criação de conta e o perfil do usuário (Artista ou Fã).',
+                tags: ['Firebase Auth', 'BLoC']
+            },
+            'community': {
+                title: 'Comunidade & Rede Social',
+                desc: 'O NOVO CORE PREMIUM. Engine que controla o Feed, os Stories (Studio Riffs), comentários e interações sociais.',
+                tags: ['Social Graph', 'Firestore', 'Glassmorphism']
+            },
+            'dashboard': {
+                title: 'Painel do Músico',
+                desc: 'Ferramentas de trabalho do dia a dia: Gestão de Repertório, Setlists e organização de shows.',
+                tags: ['CRUD', 'Productivity']
+            },
+            'money': {
+                title: 'Pedidos & Monetização',
+                desc: 'Onde o dinheiro circula. Gestão de pedidos de música em tempo real e integração com pagamentos/PIX.',
+                tags: ['Real-time', 'Payments']
+            },
+            'lyrics': {
+                title: 'Smart Lyrics (Cifras)',
+                desc: 'Visualizador inteligente de letras e cifras que rola automaticamente durante o show.',
+                tags: ['Automation', 'Music API']
+            },
+            'live': {
+                title: 'Live Streaming',
+                desc: 'Integração poderosa para transmissões ao vivo de áudio e vídeo direto do app.',
+                tags: ['ZegoCloud', 'WebRTC']
+            }
+        };
+
+        function showInfo(key) {
+            const data = details[key];
+            if (!data) return;
+
+            const html = `
+                <div class="details-title">${data.title}</div>
+                <div class="details-desc">${data.desc}</div>
+                <div>
+                    ${data.tags.map(tag => `<span class="tech-tag">${tag}</span>`).join('')}
+                </div>
+            `;
+            document.getElementById('details').innerHTML = html;
+
+            // Highlight active
+            document.querySelectorAll('.item').forEach(el => el.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+        }
+    </script>
+</body>
+
+</html>

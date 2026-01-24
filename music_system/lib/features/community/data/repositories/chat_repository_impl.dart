@@ -28,6 +28,8 @@ class ChatRepositoryImpl implements ChatRepository {
     required String senderId,
     required String receiverId,
     required String text,
+    String type = 'text',
+    String? mediaUrl,
     String? senderName,
     String? senderPhoto,
   }) async {
@@ -47,6 +49,8 @@ class ChatRepositoryImpl implements ChatRepository {
         senderId: senderId,
         receiverId: receiverId,
         text: text,
+        type: type,
+        mediaUrl: mediaUrl,
         createdAt: DateTime.now(),
       );
 
@@ -54,11 +58,19 @@ class ChatRepositoryImpl implements ChatRepository {
 
       // 2. Update/Create Chat Document (Last Message)
       final chatRef = firestore.collection('chats').doc(chatId);
-      batch.set(chatRef, {
-        'lastMessage': text,
-        'lastMessageAt': FieldValue.serverTimestamp(),
-        'participants': [senderId, receiverId],
-      }, SetOptions(merge: true));
+
+      String lastMessage = text;
+      if (type == 'image') lastMessage = '📷 Foto';
+      if (type == 'audio') lastMessage = '🎤 Mensagem de voz';
+
+      batch.set(
+          chatRef,
+          {
+            'lastMessage': lastMessage,
+            'lastMessageAt': FieldValue.serverTimestamp(),
+            'participants': [senderId, receiverId],
+          },
+          SetOptions(merge: true));
 
       await batch.commit();
 
@@ -97,10 +109,10 @@ class ChatRepositoryImpl implements ChatRepository {
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-          return snapshot.docs
-              .map((doc) => MessageModel.fromFirestore(doc))
-              .toList();
-        });
+      return snapshot.docs
+          .map((doc) => MessageModel.fromFirestore(doc))
+          .toList();
+    });
   }
 
   @override
@@ -111,10 +123,10 @@ class ChatRepositoryImpl implements ChatRepository {
         .orderBy('lastMessageAt', descending: true)
         .snapshots()
         .map((snapshot) {
-          return snapshot.docs
-              .map((doc) => ConversationModel.fromFirestore(doc))
-              .toList();
-        });
+      return snapshot.docs
+          .map((doc) => ConversationModel.fromFirestore(doc))
+          .toList();
+    });
   }
 
   @override

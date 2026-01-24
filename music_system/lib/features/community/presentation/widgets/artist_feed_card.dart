@@ -136,7 +136,7 @@ class _ArtistFeedCardState extends State<ArtistFeedCard> {
                     child: Text(
                       widget.isFollowing ? 'Sou fã' : 'Virar fã',
                       style: const TextStyle(
-                        color: Color(0xFFE5B80B),
+                        color: AppTheme.primaryColor,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
@@ -187,7 +187,8 @@ class _ArtistFeedCardState extends State<ArtistFeedCard> {
                   child: const Icon(Icons.repeat, size: 28), // Repost icon
                 ),
                 const Spacer(),
-                const Icon(Icons.bookmark_border, size: 28),
+                const Icon(Icons.bookmark_outline,
+                    size: 26, color: Colors.white),
               ],
             ),
           ),

@@ -148,7 +148,8 @@ Future<void> init() async {
   );
 
   //! Features - Client Menu (Repertoire)
-  sl.registerFactory(() => RepertoireMenuBloc(getSongs: sl()));
+  sl.registerFactory(
+      () => RepertoireMenuBloc(getSongs: sl(), authRepository: sl()));
   sl.registerLazySingleton(() => GetSongs(sl()));
   sl.registerLazySingleton<SongRepository>(
     () => SongRepositoryImpl(remoteDataSource: sl()),

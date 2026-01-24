@@ -11,6 +11,8 @@ class ArtistAvatar extends StatelessWidget {
   final bool allStoriesViewed;
   final double radius;
   final VoidCallback? onTap;
+  final bool isSquare;
+  final String? label;
 
   const ArtistAvatar({
     super.key,
@@ -22,10 +24,14 @@ class ArtistAvatar extends StatelessWidget {
     this.allStoriesViewed = false,
     this.radius = 30,
     this.onTap,
+    this.isSquare = false,
+    this.label,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (isSquare) return _buildSquareLayout(context);
+
     return GestureDetector(
       onTap: onTap,
       child: Stack(
@@ -43,7 +49,7 @@ class ArtistAvatar extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: allStoriesViewed
                     ? null
-                    : LinearGradient(
+                    : const LinearGradient(
                         colors: [
                           AppTheme.primaryColor,
                           Colors.orange,
@@ -121,6 +127,98 @@ class ArtistAvatar extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSquareLayout(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 100,
+        height: 120,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          border: hasStories && !allStoriesViewed
+              ? Border.all(color: AppTheme.primaryColor, width: 2)
+              : Border.all(color: Colors.white10, width: 0.5),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(13),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (photoUrl != null)
+                AppNetworkImage(
+                  imageUrl: photoUrl!,
+                  fit: BoxFit.cover,
+                )
+              else
+                Container(
+                  color: Colors.white10,
+                  child: const Icon(Icons.person, color: Colors.white24),
+                ),
+
+              // Gradient Overlay
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.8),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Play Icon in Center
+              if (hasStories)
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.play_arrow,
+                        color: Colors.white, size: 20),
+                  ),
+                ),
+
+              // Plus icon if isMe and no stories
+              if (isMe && !hasStories)
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: AppTheme.primaryColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.add, color: Colors.black, size: 20),
+                  ),
+                ),
+
+              // Label at bottom
+              Positioned(
+                bottom: 8,
+                left: 8,
+                right: 8,
+                child: Text(
+                  label ?? (isMe ? 'Seu Studio' : ''),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
