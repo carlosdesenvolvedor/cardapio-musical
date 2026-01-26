@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shimmer/shimmer.dart';
 import 'package:music_system/core/utils/cloudinary_sanitizer.dart';
 
@@ -30,6 +31,25 @@ class AppNetworkImage extends StatelessWidget {
     final sanitizedUrl =
         CloudinarySanitizer.sanitize(imageUrl, mediaType: 'image');
 
+    if (kIsWeb) {
+      // No Web, o CachedNetworkImage causa problemas de CORS ao tentar buscar bytes.
+      // O Image.network usa a tag <img> nativa que costuma ignorar CORS simples.
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: Image.network(
+          sanitizedUrl,
+          width: width,
+          height: height,
+          fit: fit,
+          errorBuilder: (context, error, stackTrace) => _buildErrorWidget(),
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return _buildPlaceholder();
+          },
+        ),
+      );
+    }
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
       child: CachedNetworkImage(
@@ -39,26 +59,40 @@ class AppNetworkImage extends StatelessWidget {
         fit: fit,
         memCacheWidth: memCacheWidth,
         memCacheHeight: memCacheHeight,
-        placeholder: (context, url) {
-          if (!useShimmer)
-            return const Center(child: CircularProgressIndicator());
-          return Shimmer.fromColors(
-            baseColor: Colors.grey[900]!,
-            highlightColor: Colors.grey[800]!,
-            child: Container(
-              width: width ?? double.infinity,
-              height: height ?? double.infinity,
-              color: Colors.black,
-            ),
-          );
-        },
-        errorWidget: (context, url, error) => Container(
-          width: width,
-          height: height,
-          color: Colors.grey[900],
-          child: const Icon(Icons.error, color: Colors.white24),
-        ),
+        placeholder: (context, url) => _buildPlaceholder(),
+        errorWidget: (context, url, error) => _buildErrorWidget(),
       ),
     );
+  }
+
+  Widget _buildPlaceholder() {
+    if (!useShimmer) return const Center(child: CircularProgressIndicator());
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[900]!,
+      highlightColor: Colors.grey[800]!,
+      child: Container(
+        width: width ?? double.infinity,
+        height: height ?? double.infinity,
+        color: Colors.black,
+      ),
+    );
+  }
+
+  Widget _buildErrorWidget() {
+    return Container(
+      width: width,
+      height: height,
+      color: Colors.grey[900],
+      child: const Icon(Icons.error, color: Colors.white24),
+    );
+  }
+
+  /// Utility to get an ImageProvider that works on Web and Mobile
+  static ImageProvider provider(String url) {
+    final sanitizedUrl = CloudinarySanitizer.sanitize(url, mediaType: 'image');
+    if (kIsWeb) {
+      return NetworkImage(sanitizedUrl);
+    }
+    return CachedNetworkImageProvider(sanitizedUrl);
   }
 }

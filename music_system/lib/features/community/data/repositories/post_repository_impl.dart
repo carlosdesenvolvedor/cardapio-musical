@@ -55,11 +55,24 @@ class PostRepositoryImpl implements PostRepository {
         return Right(PostResponse(posts: const []));
       }
 
-      final idsToQuery = followingIds.take(30).toList();
+      // Firestore whereIn supports up to 30 unique IDs.
+      final uniqueIds = followingIds.toSet().toList();
+      List<String> idsToQuery;
+      if (uniqueIds.length > 30) {
+        // Garante que o usuário logado (último da lista) está incluído
+        final lastId = uniqueIds.last;
+        idsToQuery = uniqueIds.sublist(0, 29);
+        if (!idsToQuery.contains(lastId)) {
+          idsToQuery.add(lastId);
+        }
+      } else {
+        idsToQuery = uniqueIds;
+      }
 
       Query query = firestore
           .collection('posts')
           .where('authorId', whereIn: idsToQuery)
+          .orderBy('createdAt', descending: true) // Critical: Server-side sort
           .limit(limit);
 
       if (lastDoc != null) {
@@ -70,13 +83,14 @@ class PostRepositoryImpl implements PostRepository {
       final posts =
           snapshot.docs.map((doc) => PostModel.fromFirestore(doc)).toList();
 
-      // Sort in memory to avoid "Composite Index" requirement
+      // Memory sort is no longer strictly needed but kept as fallback/protection
       posts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
       final nextLastDoc = snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
 
       return Right(PostResponse(posts: posts, lastDoc: nextLastDoc));
     } catch (e) {
+      print('!!! ERRO CRÍTICO NO FEED: $e');
       return Left(ServerFailure(e.toString()));
     }
   }
@@ -90,9 +104,14 @@ class PostRepositoryImpl implements PostRepository {
         authorName: post.authorName,
         authorPhotoUrl: post.authorPhotoUrl,
         imageUrl: post.imageUrl,
+        mediaUrls: post.mediaUrls,
+        postType: post.postType,
         caption: post.caption,
         likes: post.likes,
         createdAt: post.createdAt,
+        taggedUserIds: post.taggedUserIds,
+        collaboratorIds: post.collaboratorIds,
+        musicData: post.musicData,
       );
       await firestore.collection('posts').add(postModel.toFirestore());
       return const Right(null);
@@ -172,6 +191,59 @@ class PostRepositoryImpl implements PostRepository {
   }
 
   @override
+  Future<Either<Failure, void>> addReply({
+    required String postId,
+    required String commentId,
+    required String commentAuthorId,
+    required Map<String, dynamic> reply,
+  }) async {
+    try {
+      await firestore
+          .collection('posts')
+          .doc(postId)
+          .collection('comments')
+          .doc(commentId)
+          .collection('replies')
+          .add(reply);
+
+      // Create Notification for comment author if not the same person
+      if (reply['authorId'] != commentAuthorId) {
+        notificationRepository.createNotification(
+          NotificationEntity(
+            id: '',
+            recipientId: commentAuthorId,
+            senderId: reply['authorId'],
+            senderName: reply['authorName'] ?? 'Alguém',
+            senderPhotoUrl: reply['authorPhotoUrl'],
+            type:
+                NotificationType.comment, // Using comment type for replies too
+            postId: postId,
+            message: 'respondeu: ${reply['text']}',
+            createdAt: DateTime.now(),
+          ),
+        );
+      }
+
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Stream<QuerySnapshot> getReplies(String postId, String commentId) {
+    return firestore
+        .collection('posts')
+        .doc(postId)
+        .collection('comments')
+        .doc(commentId)
+        .collection('replies')
+        .orderBy('createdAt',
+            descending: false) // Replies usually ascending (chronological)
+        .snapshots();
+  }
+
+  @override
   Future<Either<Failure, PostEntity>> getPost(String postId) async {
     try {
       final doc = await firestore.collection('posts').doc(postId).get();
@@ -194,7 +266,8 @@ class PostRepositoryImpl implements PostRepository {
       Query query = firestore
           .collection('posts')
           .where('authorId', isEqualTo: userId)
-          //.orderBy('createdAt', descending: true) // Removed to avoid index error
+          .orderBy('createdAt',
+              descending: true) // Re-added with server-side sort requirement
           .limit(limit);
 
       if (lastDoc != null) {
@@ -211,6 +284,56 @@ class PostRepositoryImpl implements PostRepository {
       final nextLastDoc = snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
 
       return Right(PostResponse(posts: posts, lastDoc: nextLastDoc));
+    } catch (e) {
+      print('!!! ERRO CRÍTICO NO PERFIL: $e');
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> savePost(String userId, String postId) async {
+    try {
+      await firestore
+          .collection('users')
+          .doc(userId)
+          .collection('saved_posts')
+          .doc(postId)
+          .set({
+        'savedAt': Timestamp.now(),
+        'postId': postId,
+      });
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> unsavePost(String userId, String postId) async {
+    try {
+      await firestore
+          .collection('users')
+          .doc(userId)
+          .collection('saved_posts')
+          .doc(postId)
+          .delete();
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, bool>> isPostSaved(
+      String userId, String postId) async {
+    try {
+      final doc = await firestore
+          .collection('users')
+          .doc(userId)
+          .collection('saved_posts')
+          .doc(postId)
+          .get();
+      return Right(doc.exists);
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

@@ -43,8 +43,10 @@ class SocialGraphRepositoryImpl implements SocialGraphRepository {
       final currentUserRef = firestore.collection('users').doc(currentUserId);
       final targetUserRef = firestore.collection('users').doc(targetUserId);
 
-      batch.update(currentUserRef, {'followingCount': FieldValue.increment(1)});
-      batch.update(targetUserRef, {'followersCount': FieldValue.increment(1)});
+      batch.set(currentUserRef, {'followingCount': FieldValue.increment(1)},
+          SetOptions(merge: true));
+      batch.set(targetUserRef, {'followersCount': FieldValue.increment(1)},
+          SetOptions(merge: true));
 
       await batch.commit();
 

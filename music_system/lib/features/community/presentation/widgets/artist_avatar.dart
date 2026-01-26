@@ -49,14 +49,15 @@ class ArtistAvatar extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: allStoriesViewed
                     ? null
-                    : const LinearGradient(
+                    : const SweepGradient(
                         colors: [
                           AppTheme.primaryColor,
-                          Colors.orange,
-                          Colors.purple,
+                          Colors.black,
+                          Colors.white,
+                          AppTheme.primaryColor,
                         ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                        stops: [0.0, 0.4, 0.7, 1.0],
+                        transform: GradientRotation(3.14 / 2),
                       ),
                 border: allStoriesViewed
                     ? Border.all(color: Colors.white24, width: 2)

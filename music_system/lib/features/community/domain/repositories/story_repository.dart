@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../entities/story_entity.dart';
@@ -10,4 +11,10 @@ abstract class StoryRepository {
     String userId,
   );
   Future<Either<Failure, void>> deleteStory(String storyId);
+  Future<Either<Failure, void>> addStoryComment({
+    required String storyId,
+    required String storyAuthorId,
+    required Map<String, dynamic> comment,
+  });
+  Stream<QuerySnapshot> getStoryComments(String storyId);
 }

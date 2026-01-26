@@ -5,11 +5,17 @@ import '../../../../core/error/failures.dart';
 import '../../data/models/story_model.dart';
 import '../../domain/entities/story_entity.dart';
 import '../../domain/repositories/story_repository.dart';
+import '../../domain/repositories/notification_repository.dart';
+import '../../domain/entities/notification_entity.dart';
 
 class StoryRepositoryImpl implements StoryRepository {
   final FirebaseFirestore firestore;
+  final NotificationRepository notificationRepository;
 
-  StoryRepositoryImpl({required this.firestore});
+  StoryRepositoryImpl({
+    required this.firestore,
+    required this.notificationRepository,
+  });
 
   @override
   Future<Either<Failure, List<StoryEntity>>> getActiveStories() async {
@@ -95,5 +101,51 @@ class StoryRepositoryImpl implements StoryRepository {
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
+  }
+
+  @override
+  Future<Either<Failure, void>> addStoryComment({
+    required String storyId,
+    required String storyAuthorId,
+    required Map<String, dynamic> comment,
+  }) async {
+    try {
+      await firestore
+          .collection('stories')
+          .doc(storyId)
+          .collection('comments')
+          .add(comment);
+
+      // Create Notification if not the author
+      if (comment['authorId'] != storyAuthorId) {
+        notificationRepository.createNotification(
+          NotificationEntity(
+            id: '',
+            recipientId: storyAuthorId,
+            senderId: comment['authorId'],
+            senderName: comment['authorName'] ?? 'Alguém',
+            senderPhotoUrl: comment['authorPhotoUrl'],
+            type: NotificationType.comment,
+            storyId: storyId,
+            message: 'comentou no seu story: ${comment['text']}',
+            createdAt: DateTime.now(),
+          ),
+        );
+      }
+
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Stream<QuerySnapshot> getStoryComments(String storyId) {
+    return firestore
+        .collection('stories')
+        .doc(storyId)
+        .collection('comments')
+        .orderBy('createdAt', descending: true)
+        .snapshots();
   }
 }

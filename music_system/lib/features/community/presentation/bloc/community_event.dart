@@ -58,3 +58,16 @@ class ToggleLikeRequested extends CommunityEvent {
         postAuthorId,
       ];
 }
+
+class MarkStoryAsViewedRequested extends CommunityEvent {
+  final String storyId;
+  final String userId;
+
+  const MarkStoryAsViewedRequested({
+    required this.storyId,
+    required this.userId,
+  });
+
+  @override
+  List<Object?> get props => [storyId, userId];
+}

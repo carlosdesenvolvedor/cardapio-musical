@@ -14,6 +14,7 @@ class StoryModel extends StoryEntity {
     required super.expiresAt,
     required super.viewers,
     super.effects,
+    super.caption,
   });
 
   factory StoryModel.fromFirestore(DocumentSnapshot doc) {
@@ -25,12 +26,17 @@ class StoryModel extends StoryEntity {
       authorPhotoUrl: data['authorPhotoUrl'],
       mediaUrl: data['mediaUrl'] ?? data['imageUrl'] ?? '',
       mediaType: data['mediaType'] ?? 'image',
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-      expiresAt: (data['expiresAt'] as Timestamp).toDate(),
+      createdAt: (data['createdAt'] is Timestamp)
+          ? (data['createdAt'] as Timestamp).toDate()
+          : DateTime.now(),
+      expiresAt: (data['expiresAt'] is Timestamp)
+          ? (data['expiresAt'] as Timestamp).toDate()
+          : DateTime.now().add(const Duration(hours: 24)),
       viewers: List<String>.from(data['viewers'] ?? []),
       effects: data['effects'] != null
           ? StoryEffects.fromJson(data['effects'] as Map<String, dynamic>)
           : null,
+      caption: data['caption'],
     );
   }
 
@@ -45,6 +51,7 @@ class StoryModel extends StoryEntity {
       'expiresAt': Timestamp.fromDate(expiresAt),
       'viewers': viewers,
       'effects': effects?.toJson(),
+      'caption': caption,
     };
   }
 }

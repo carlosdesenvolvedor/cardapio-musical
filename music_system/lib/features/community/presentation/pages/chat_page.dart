@@ -1,11 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:record/record.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:music_system/core/presentation/widgets/app_network_image.dart';
 import 'package:music_system/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:music_system/core/services/storage_service.dart';
 import 'package:path_provider/path_provider.dart';
@@ -129,7 +129,7 @@ class _ChatPageState extends State<ChatPage> {
                 radius: 18,
                 backgroundImage: widget.targetUserPhoto != null &&
                         widget.targetUserPhoto!.isNotEmpty
-                    ? CachedNetworkImageProvider(widget.targetUserPhoto!)
+                    ? AppNetworkImage.provider(widget.targetUserPhoto!)
                     : null,
                 child: (widget.targetUserPhoto == null ||
                         widget.targetUserPhoto!.isEmpty)
@@ -224,14 +224,9 @@ class _ChatPageState extends State<ChatPage> {
             else if (type == 'image' && mediaUrl != null)
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: CachedNetworkImage(
+                child: AppNetworkImage(
                   imageUrl: mediaUrl,
-                  placeholder: (context, url) => const SizedBox(
-                    width: 200,
-                    height: 200,
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-                  errorWidget: (context, url, error) => const Icon(Icons.error),
+                  borderRadius: 12,
                 ),
               )
             else if (type == 'audio' && mediaUrl != null)

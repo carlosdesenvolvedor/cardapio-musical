@@ -27,10 +27,20 @@ abstract class PostRepository {
     required Map<String, dynamic> comment,
   });
   Stream<QuerySnapshot> getComments(String postId);
+  Future<Either<Failure, void>> addReply({
+    required String postId,
+    required String commentId,
+    required String commentAuthorId,
+    required Map<String, dynamic> reply,
+  });
+  Stream<QuerySnapshot> getReplies(String postId, String commentId);
   Future<Either<Failure, PostEntity>> getPost(String postId);
   Future<Either<Failure, PostResponse>> getPostsByUser({
     required String userId,
     int limit = 10,
     DocumentSnapshot? lastDoc,
   });
+  Future<Either<Failure, void>> savePost(String userId, String postId);
+  Future<Either<Failure, void>> unsavePost(String userId, String postId);
+  Future<Either<Failure, bool>> isPostSaved(String userId, String postId);
 }

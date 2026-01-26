@@ -5,6 +5,7 @@ class UserEntity extends Equatable {
   final String email;
   final String displayName;
   final String? photoUrl;
+  final String? nickname;
   final List<String> followingIds;
 
   const UserEntity({
@@ -12,6 +13,7 @@ class UserEntity extends Equatable {
     required this.email,
     required this.displayName,
     this.photoUrl,
+    this.nickname,
     this.followingIds = const [],
   });
 
@@ -20,6 +22,7 @@ class UserEntity extends Equatable {
     String? email,
     String? displayName,
     String? photoUrl,
+    String? nickname,
     List<String>? followingIds,
   }) {
     return UserEntity(
@@ -27,10 +30,12 @@ class UserEntity extends Equatable {
       email: email ?? this.email,
       displayName: displayName ?? this.displayName,
       photoUrl: photoUrl ?? this.photoUrl,
+      nickname: nickname ?? this.nickname,
       followingIds: followingIds ?? this.followingIds,
     );
   }
 
   @override
-  List<Object?> get props => [id, email, displayName, photoUrl, followingIds];
+  List<Object?> get props =>
+      [id, email, displayName, photoUrl, nickname, followingIds];
 }

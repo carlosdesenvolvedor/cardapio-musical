@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:music_system/main.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'manage_repertoire_page.dart';
 import 'share_page.dart';
@@ -192,7 +193,7 @@ class _MusicianDashboardPageState extends State<MusicianDashboardPage> {
                 Navigator.pop(context);
                 await sl<PushNotificationService>().initialize();
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  messengerKey.currentState?.showSnackBar(
                     const SnackBar(
                       content: Text(
                         'Tentando ativar notificações... Verifique o pop-up do navegador.',
@@ -258,7 +259,8 @@ class _MusicianDashboardPageState extends State<MusicianDashboardPage> {
         listener: (context, state) {
           if (state is SongRequestsLoaded) {
             final newRequest = state.requests.first; // Stream handles ordering
-            ScaffoldMessenger.of(context).showSnackBar(
+            messengerKey.currentState?.removeCurrentSnackBar();
+            messengerKey.currentState?.showSnackBar(
               SnackBar(
                 content: Row(
                   children: [

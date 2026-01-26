@@ -12,6 +12,7 @@ class StoryEntity extends Equatable {
   final DateTime expiresAt;
   final List<String> viewers;
   final StoryEffects? effects;
+  final String? caption;
 
   const StoryEntity({
     required this.id,
@@ -24,10 +25,39 @@ class StoryEntity extends Equatable {
     required this.expiresAt,
     required this.viewers,
     this.effects,
+    this.caption,
   });
 
   bool get isExpired => DateTime.now().isAfter(expiresAt);
   bool get isVideo => mediaType == 'video';
+
+  StoryEntity copyWith({
+    String? id,
+    String? authorId,
+    String? authorName,
+    String? authorPhotoUrl,
+    String? mediaUrl,
+    String? mediaType,
+    DateTime? createdAt,
+    DateTime? expiresAt,
+    List<String>? viewers,
+    StoryEffects? effects,
+    String? caption,
+  }) {
+    return StoryEntity(
+      id: id ?? this.id,
+      authorId: authorId ?? this.authorId,
+      authorName: authorName ?? this.authorName,
+      authorPhotoUrl: authorPhotoUrl ?? this.authorPhotoUrl,
+      mediaUrl: mediaUrl ?? this.mediaUrl,
+      mediaType: mediaType ?? this.mediaType,
+      createdAt: createdAt ?? this.createdAt,
+      expiresAt: expiresAt ?? this.expiresAt,
+      viewers: viewers ?? this.viewers,
+      effects: effects ?? this.effects,
+      caption: caption ?? this.caption,
+    );
+  }
 
   @override
   List<Object?> get props => [

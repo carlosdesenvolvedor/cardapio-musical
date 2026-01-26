@@ -62,6 +62,8 @@ import 'features/community/presentation/bloc/notifications_bloc.dart';
 import 'features/community/presentation/bloc/chat_bloc.dart';
 import 'features/community/presentation/bloc/conversations_bloc.dart';
 import 'features/community/presentation/bloc/community_bloc.dart';
+import 'features/community/presentation/bloc/story_upload_bloc.dart';
+import 'features/community/presentation/bloc/post_upload_bloc.dart';
 
 import 'features/bands/domain/repositories/band_repository.dart';
 import 'features/bands/data/repositories/band_repository_impl.dart';
@@ -180,7 +182,7 @@ Future<void> init() async {
   sl.registerLazySingleton(() => UnfollowUser(sl()));
 
   sl.registerLazySingleton<StoryRepository>(
-    () => StoryRepositoryImpl(firestore: sl()),
+    () => StoryRepositoryImpl(firestore: sl(), notificationRepository: sl()),
   );
   sl.registerLazySingleton(() => GetActiveStories(sl()));
   sl.registerLazySingleton(() => MarkStoryAsViewed(sl()));
@@ -214,6 +216,23 @@ Future<void> init() async {
       streamConversations: sl(),
       authRepository: sl(),
       socialGraphRepository: sl(),
+    ),
+  );
+
+  sl.registerLazySingleton(
+    () => StoryUploadBloc(
+      cloudinaryService: sl(),
+      storageService: sl(),
+      storyRepository: sl(),
+    ),
+  );
+
+  sl.registerLazySingleton(
+    () => PostUploadBloc(
+      cloudinaryService: sl(),
+      storageService: sl(),
+      postRepository: sl(),
+      authRepository: sl(),
     ),
   );
 

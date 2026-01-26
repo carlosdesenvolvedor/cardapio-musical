@@ -16,6 +16,9 @@ import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../auth/domain/entities/user_profile.dart';
 import '../../../auth/domain/entities/user_entity.dart';
+import '../../../../features/auth/data/models/user_profile_model.dart';
+import '../../../auth/presentation/pages/login_page.dart';
+import '../../../auth/presentation/pages/profile_page.dart';
 
 class ClientMenuPage extends StatefulWidget {
   final String musicianId;
@@ -298,14 +301,21 @@ class _ClientMenuPageState extends State<ClientMenuPage> {
                 icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
                 onPressed: () => Navigator.pop(context),
               ),
-              expandedHeight: 300.0,
+              expandedHeight: 340.0,
               title: _showTitleInAppBar
-                  ? BlocBuilder<RepertoireMenuBloc, RepertoireMenuState>(
-                      builder: (context, state) {
-                        if (state is RepertoireMenuLoaded &&
-                            state.musicianProfile != null) {
+                  ? StreamBuilder<DocumentSnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(_currentMusicianId)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData && snapshot.data!.exists) {
+                          final data =
+                              snapshot.data!.data() as Map<String, dynamic>;
+                          final profile = UserProfileModel.fromJson(
+                              data, snapshot.data!.id);
                           return Text(
-                            state.musicianProfile!.artisticName,
+                            profile.artisticName,
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -323,30 +333,37 @@ class _ClientMenuPageState extends State<ClientMenuPage> {
                     )
                   : null,
               flexibleSpace: FlexibleSpaceBar(
-                background:
-                    BlocBuilder<RepertoireMenuBloc, RepertoireMenuState>(
-                  builder: (context, state) {
+                background: StreamBuilder<DocumentSnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(_currentMusicianId)
+                      .snapshots(),
+                  builder: (context, snapshot) {
                     String name = 'Músico';
                     String? photoUrl;
                     String pix = '';
                     bool isLive = false;
-                    String userId = '';
-                    bool isLoading = state is RepertoireMenuLoading;
+                    String userId = _currentMusicianId;
+                    bool isLoading =
+                        snapshot.connectionState == ConnectionState.waiting;
 
-                    if (state is RepertoireMenuLoaded) {
-                      if (state.musicianProfile != null) {
-                        name = state.musicianProfile!.artisticName;
-                        photoUrl = state.musicianProfile!.photoUrl;
-                        pix = state.musicianProfile!.pixKey;
-                        isLive = state.musicianProfile!.isLive;
-                        userId = state.musicianProfile!.id;
-                      } else {
-                        name = 'Artista não encontrado';
-                      }
+                    if (snapshot.hasData && snapshot.data!.exists) {
+                      final data =
+                          snapshot.data!.data() as Map<String, dynamic>;
+                      final profile =
+                          UserProfileModel.fromJson(data, snapshot.data!.id);
+                      name = profile.artisticName;
+                      photoUrl = profile.photoUrl;
+                      pix = profile.pixKey;
+
+                      // Lógica refinada para status Live
+                      isLive = profile.isLive &&
+                          (profile.liveUntil == null ||
+                              profile.liveUntil!.isAfter(DateTime.now()));
+                    } else if (!isLoading && !snapshot.hasData) {
+                      name = 'Artista não encontrado';
                     } else if (isLoading) {
                       name = 'Carregando...';
-                    } else if (state is RepertoireMenuError) {
-                      name = 'Erro ao carregar';
                     }
 
                     return Container(
@@ -363,20 +380,70 @@ class _ClientMenuPageState extends State<ClientMenuPage> {
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.end,
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           GestureDetector(
                             onTap: () {
-                              if (isLive && userId.isNotEmpty) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => LivePage(
-                                      liveId: userId,
-                                      isHost: false,
-                                      userId:
-                                          'viewer_${DateTime.now().millisecondsSinceEpoch}',
-                                      userName: 'Espectador',
+                              if (photoUrl != null && photoUrl.isNotEmpty) {
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => Dialog(
+                                    backgroundColor: Colors.black87,
+                                    insetPadding: const EdgeInsets.all(20),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Align(
+                                            alignment: Alignment.topRight,
+                                            child: IconButton(
+                                              icon: const Icon(Icons.close,
+                                                  color: Colors.white),
+                                              onPressed: () =>
+                                                  Navigator.pop(context),
+                                            ),
+                                          ),
+                                          Flexible(
+                                            child: ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(15),
+                                              child: InteractiveViewer(
+                                                minScale: 0.5,
+                                                maxScale: 4.0,
+                                                child: CachedNetworkImage(
+                                                  imageUrl: photoUrl!,
+                                                  fit: BoxFit.contain,
+                                                  placeholder: (context, url) =>
+                                                      const Center(
+                                                    child:
+                                                        CircularProgressIndicator(),
+                                                  ),
+                                                  errorWidget:
+                                                      (context, url, error) =>
+                                                          const Icon(
+                                                    Icons.error,
+                                                    size: 50,
+                                                    color: Colors.white24,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                vertical: 20),
+                                            child: Text(
+                                              name,
+                                              style: GoogleFonts.outfit(
+                                                color: Colors.white,
+                                                fontSize: 22,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 );
@@ -411,9 +478,12 @@ class _ClientMenuPageState extends State<ClientMenuPage> {
                                         photoUrl != null && photoUrl.isNotEmpty
                                             ? NetworkImage(photoUrl)
                                             : null,
-                                    onBackgroundImageError: (_, __) {
-                                      // Image failed to load
-                                    },
+                                    onBackgroundImageError:
+                                        photoUrl != null && photoUrl.isNotEmpty
+                                            ? (_, __) {
+                                                // Image failed to load
+                                              }
+                                            : null,
                                     child: photoUrl == null || photoUrl.isEmpty
                                         ? const Icon(
                                             Icons.person,
@@ -426,28 +496,47 @@ class _ClientMenuPageState extends State<ClientMenuPage> {
                                 if (isLive)
                                   Positioned(
                                     bottom: -2,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        gradient: const LinearGradient(
-                                          colors: [
-                                            Color(0xFFFD1D1D),
-                                            Color(0xFF833AB4)
-                                          ],
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        if (userId.isNotEmpty) {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => LivePage(
+                                                liveId: userId,
+                                                isHost: false,
+                                                userId:
+                                                    'viewer_${DateTime.now().millisecondsSinceEpoch}',
+                                                userName: 'Espectador',
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
                                         ),
-                                        borderRadius: BorderRadius.circular(4),
-                                        border: Border.all(
-                                            color: Colors.black, width: 2),
-                                      ),
-                                      child: const Text(
-                                        'AO VIVO',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 10,
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient(
+                                            colors: [
+                                              Color(0xFFFD1D1D),
+                                              Color(0xFF833AB4)
+                                            ],
+                                          ),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                          border: Border.all(
+                                              color: Colors.black, width: 2),
+                                        ),
+                                        child: const Text(
+                                          'AO VIVO',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 10,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -455,100 +544,92 @@ class _ClientMenuPageState extends State<ClientMenuPage> {
                               ],
                             ),
                           ).animate().scale(duration: 400.ms),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
                                 name,
                                 style: GoogleFonts.outfit(
-                                  fontSize: 36,
+                                  fontSize: 32,
                                   fontWeight: FontWeight.w900,
                                   color: Colors.white,
                                 ),
                               ).animate().fadeIn().slideX(),
-                              if (state is RepertoireMenuLoaded &&
-                                  state.musicianProfile != null) ...[
-                                const SizedBox(width: 12),
-                                BlocBuilder<AuthBloc, AuthState>(
-                                  builder: (context, authState) {
-                                    UserEntity? currentUser;
-                                    if (authState is Authenticated) {
-                                      currentUser = authState.user;
-                                    } else if (authState is ProfileLoaded) {
-                                      currentUser = authState.currentUser;
-                                    }
+                              const SizedBox(width: 8),
+                              BlocBuilder<AuthBloc, AuthState>(
+                                builder: (context, authState) {
+                                  UserEntity? currentUser;
+                                  if (authState is Authenticated) {
+                                    currentUser = authState.user;
+                                  } else if (authState is ProfileLoaded) {
+                                    currentUser = authState.currentUser;
+                                  }
 
-                                    if (currentUser != null &&
-                                        currentUser.id !=
-                                            state.musicianProfile!.id) {
-                                      final isFollowing = currentUser
-                                          .followingIds
-                                          .contains(state.musicianProfile!.id);
-                                      return SizedBox(
-                                        height: 32,
-                                        child: ElevatedButton(
-                                          onPressed: () {
-                                            if (isFollowing) {
-                                              context.read<AuthBloc>().add(
-                                                  UnfollowUserRequested(
-                                                      currentUser!.id,
-                                                      state.musicianProfile!
-                                                          .id));
-                                            } else {
-                                              context.read<AuthBloc>().add(
-                                                  FollowUserRequested(
-                                                      currentUser!.id,
-                                                      state.musicianProfile!
-                                                          .id));
-                                            }
-                                          },
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: isFollowing
-                                                ? Colors.transparent
-                                                : AppTheme.primaryColor,
-                                            side: const BorderSide(
-                                                color: AppTheme.primaryColor),
-                                            shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(20)),
-                                            elevation: 0,
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 16),
-                                          ),
-                                          child: Text(
-                                            isFollowing ? 'Seguindo' : 'Seguir',
-                                            style: TextStyle(
-                                              color: isFollowing
-                                                  ? AppTheme.primaryColor
-                                                  : Colors.black,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 12,
-                                            ),
+                                  if (currentUser != null &&
+                                      currentUser.id != userId) {
+                                    final isFollowing = currentUser.followingIds
+                                        .contains(userId);
+                                    return SizedBox(
+                                      height: 28,
+                                      child: ElevatedButton(
+                                        onPressed: () {
+                                          if (isFollowing) {
+                                            context.read<AuthBloc>().add(
+                                                UnfollowUserRequested(
+                                                    currentUser!.id, userId));
+                                          } else {
+                                            context.read<AuthBloc>().add(
+                                                FollowUserRequested(
+                                                    currentUser!.id, userId));
+                                          }
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: isFollowing
+                                              ? Colors.transparent
+                                              : AppTheme.primaryColor,
+                                          side: const BorderSide(
+                                              color: AppTheme.primaryColor),
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(20)),
+                                          elevation: 0,
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 12),
+                                        ),
+                                        child: Text(
+                                          isFollowing ? 'Seguindo' : 'Seguir',
+                                          style: TextStyle(
+                                            color: isFollowing
+                                                ? AppTheme.primaryColor
+                                                : Colors.black,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 11,
                                           ),
                                         ),
-                                      );
-                                    }
-                                    return const SizedBox.shrink();
-                                  },
-                                ),
-                              ]
+                                      ),
+                                    );
+                                  }
+                                  return const SizedBox.shrink();
+                                },
+                              ),
                             ],
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 4),
                           Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               const Icon(
                                 Icons.verified,
                                 color: Colors.blueAccent,
-                                size: 16,
+                                size: 14,
                               ),
                               const SizedBox(width: 4),
                               Text(
                                 'Artista Verificado',
                                 style: GoogleFonts.outfit(
                                   color: Colors.white70,
-                                  fontSize: 12,
+                                  fontSize: 11,
                                 ),
                               ),
                             ],
@@ -556,18 +637,84 @@ class _ClientMenuPageState extends State<ClientMenuPage> {
                           const SizedBox(height: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
+                              horizontal: 10,
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: Colors.white10),
                             ),
                             child: Text(
                               'PIX: $pix',
                               style: const TextStyle(
                                 fontSize: 10,
-                                color: Colors.white54,
+                                color: Colors.white70,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          TextButton.icon(
+                            onPressed: () {
+                              final authState = context.read<AuthBloc>().state;
+                              final musicianId = _currentMusicianId;
+                              final musicianEmail = snapshot.data != null &&
+                                      snapshot.data!.exists
+                                  ? (snapshot.data!.data()
+                                          as Map<String, dynamic>)['email'] ??
+                                      ''
+                                  : '';
+
+                              if (authState is Authenticated ||
+                                  (authState is ProfileLoaded &&
+                                      authState.currentUser != null)) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ProfilePage(
+                                      userId: musicianId,
+                                      email: musicianEmail,
+                                      showAppBar: true,
+                                    ),
+                                  ),
+                                );
+                              } else {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => LoginPage(
+                                      destination: ProfilePage(
+                                        userId: musicianId,
+                                        email: musicianEmail,
+                                        showAppBar: true,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                            icon: const Icon(
+                              Icons.people_outline,
+                              color: AppTheme.primaryColor,
+                              size: 16,
+                            ),
+                            label: const Text(
+                              'Conheça nossa rede de artistas',
+                              style: TextStyle(
+                                color: AppTheme.primaryColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              backgroundColor: Colors.white.withOpacity(0.05),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
                               ),
                             ),
                           ),
@@ -644,27 +791,46 @@ class _ClientMenuPageState extends State<ClientMenuPage> {
                             ),
                           ),
                         ),
-                      SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            if (filteredSongs.isEmpty && query.isNotEmpty) {
-                              return const Padding(
-                                padding: EdgeInsets.all(32.0),
-                                child: Center(
-                                  child: Text(
-                                    'Nada encontrado...',
-                                    style: TextStyle(color: Colors.white54),
-                                  ),
-                                ),
-                              );
-                            }
-                            if (index >= filteredSongs.length) return null;
-                            return SongCard(song: filteredSongs[index]);
-                          },
-                          childCount: filteredSongs.isEmpty && query.isNotEmpty
-                              ? 1
-                              : filteredSongs.length,
-                        ),
+                      StreamBuilder<DocumentSnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(_currentMusicianId)
+                            .snapshots(),
+                        builder: (context, profileSnapshot) {
+                          final isLive = profileSnapshot.hasData &&
+                                  profileSnapshot.data!.exists
+                              ? (profileSnapshot.data!.data()
+                                      as Map<String, dynamic>)['isLive'] ??
+                                  false
+                              : false;
+
+                          return SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) {
+                                if (filteredSongs.isEmpty && query.isNotEmpty) {
+                                  return const Padding(
+                                    padding: EdgeInsets.all(32.0),
+                                    child: Center(
+                                      child: Text(
+                                        'Nada encontrado...',
+                                        style: TextStyle(color: Colors.white54),
+                                      ),
+                                    ),
+                                  );
+                                }
+                                if (index >= filteredSongs.length) return null;
+                                return SongCard(
+                                  song: filteredSongs[index],
+                                  isMusicianLive: isLive,
+                                );
+                              },
+                              childCount:
+                                  filteredSongs.isEmpty && query.isNotEmpty
+                                      ? 1
+                                      : filteredSongs.length,
+                            ),
+                          );
+                        },
                       ),
                       if (_deezerSongs.isNotEmpty || _isSearchingDeezer) ...[
                         SliverToBoxAdapter(
@@ -702,23 +868,41 @@ class _ClientMenuPageState extends State<ClientMenuPage> {
                             ),
                           ),
                         ),
-                        SliverList(
-                          delegate: SliverChildBuilderDelegate((
-                            context,
-                            index,
-                          ) {
-                            if (index >= _deezerSongs.length) return null;
-                            final dSong = _deezerSongs[index];
-                            final song = Song(
-                              id: 'deezer_${dSong.id}',
-                              title: dSong.title,
-                              artist: dSong.artist,
-                              musicianId: _currentMusicianId,
-                              albumCoverUrl: dSong.albumCover,
-                              genre: 'Digital',
+                        StreamBuilder<DocumentSnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(_currentMusicianId)
+                              .snapshots(),
+                          builder: (context, profileSnapshot) {
+                            final isLive = profileSnapshot.hasData &&
+                                    profileSnapshot.data!.exists
+                                ? (profileSnapshot.data!.data()
+                                        as Map<String, dynamic>)['isLive'] ??
+                                    false
+                                : false;
+
+                            return SliverList(
+                              delegate: SliverChildBuilderDelegate((
+                                context,
+                                index,
+                              ) {
+                                if (index >= _deezerSongs.length) return null;
+                                final dSong = _deezerSongs[index];
+                                final song = Song(
+                                  id: 'deezer_${dSong.id}',
+                                  title: dSong.title,
+                                  artist: dSong.artist,
+                                  musicianId: _currentMusicianId,
+                                  albumCoverUrl: dSong.albumCover,
+                                  genre: 'Digital',
+                                );
+                                return SongCard(
+                                  song: song,
+                                  isMusicianLive: isLive,
+                                );
+                              }, childCount: _deezerSongs.length),
                             );
-                            return SongCard(song: song);
-                          }, childCount: _deezerSongs.length),
+                          },
                         ),
                       ],
                     ],
@@ -807,60 +991,78 @@ class _ArtistAvatarItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: context.read<AuthBloc>().repository.getProfile(artistId),
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(artistId)
+          .snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return Container(
-            width: 70,
-            height: 70,
-            decoration: const BoxDecoration(
-                color: Colors.black26, shape: BoxShape.circle),
-          );
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return const SizedBox.shrink();
         }
-        return snapshot.data!.fold(
-            (l) => const SizedBox.shrink(),
-            (profile) => GestureDetector(
-                  onTap: () => onTap(artistId),
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                              color: const Color(0xFFE5B80B), width: 1.5),
-                        ),
-                        child: CircleAvatar(
-                          radius: 32,
-                          backgroundImage: profile.photoUrl != null
-                              ? NetworkImage(profile.photoUrl!)
+
+        final data = snapshot.data!.data() as Map<String, dynamic>;
+        final profile = UserProfileModel.fromJson(data, snapshot.data!.id);
+
+        return GestureDetector(
+          onTap: () => onTap(artistId),
+          child: Column(
+            children: [
+              Stack(
+                alignment: Alignment.bottomCenter,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: profile.isLive
+                          ? Border.all(color: const Color(0xFFE5B80B), width: 2)
+                          : null,
+                    ),
+                    child: CircleAvatar(
+                      radius: 30,
+                      backgroundImage: profile.photoUrl != null &&
+                              profile.photoUrl!.isNotEmpty
+                          ? NetworkImage(profile.photoUrl!)
+                          : null,
+                      child:
+                          profile.photoUrl == null || profile.photoUrl!.isEmpty
+                              ? const Icon(Icons.person)
                               : null,
-                          backgroundColor: Colors.grey[800],
-                          child: profile.photoUrl == null
-                              ? Text(
-                                  profile.artisticName.isNotEmpty
-                                      ? profile.artisticName[0].toUpperCase()
-                                      : '?',
-                                  style: const TextStyle(color: Colors.white))
-                              : null,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        width: 80,
-                        child: Text(
-                          profile.artisticName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.outfit(
-                              color: Colors.white70, fontSize: 12),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ));
+                  if (profile.isLive)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'LIVE',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              SizedBox(
+                width: 70,
+                child: Text(
+                  profile.artisticName,
+                  style: const TextStyle(color: Colors.white, fontSize: 10),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        );
       },
     );
   }

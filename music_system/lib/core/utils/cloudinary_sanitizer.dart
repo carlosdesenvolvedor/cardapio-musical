@@ -84,7 +84,8 @@ class CloudinarySanitizer {
         }
 
         // 4. Construct dynamic effects
-        List<String> transformations = ['f_mp4', 'q_auto', 'vc_h264'];
+        // Force H.264 and MP4 for universal browser compatibility (avoids AV1/WebM issues on web)
+        List<String> transformations = ['vc_h264:main', 'q_auto:eco'];
 
         if (filterId != null) {
           switch (filterId) {
@@ -119,6 +120,7 @@ class CloudinarySanitizer {
         final trStr = transformations.join(',');
 
         // 5. Reconstruct with new transformations
+        // We ensure .mp4 is added to the publicId to bypass f_auto default behavior
         sanitized = '${prefix}$trStr/$finalRest.mp4';
       }
     }

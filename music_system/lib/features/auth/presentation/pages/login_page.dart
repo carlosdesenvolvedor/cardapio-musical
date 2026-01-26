@@ -8,7 +8,15 @@ import '../bloc/auth_bloc.dart';
 
 class LoginPage extends StatefulWidget {
   final Widget? destination;
-  const LoginPage({super.key, this.destination});
+  final String? title;
+  final String? logoPath;
+
+  const LoginPage({
+    super.key,
+    this.destination,
+    this.title,
+    this.logoPath,
+  });
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -61,22 +69,23 @@ class _LoginPageState extends State<LoginPage> {
                 Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(
-                      maxWidth: 3000,
-                    ), // increased max width
+                      maxWidth: 400,
+                    ),
                     child: SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.95,
-                      height:
-                          180, // Reduced height to remove empty vertical space
+                      width: MediaQuery.of(context).size.width * 0.7,
+                      height: 120,
                       child: Image.asset(
-                        'assets/images/logo_dark.jpg',
-                        fit: BoxFit.fitWidth,
+                        widget.logoPath ?? 'assets/images/logo_CG.png',
+                        fit: BoxFit.contain,
                       ),
                     ),
                   ),
                 ).animate().scale(duration: 800.ms, curve: Curves.easeOutBack),
                 const SizedBox(height: 10),
                 Text(
-                  _isSignUp ? 'Criar Conta' : 'Painel do Artista',
+                  _isSignUp
+                      ? 'Criar Conta'
+                      : (widget.title ?? 'Painel do Artista'),
                   style: Theme.of(context).textTheme.displayLarge,
                   textAlign: TextAlign.center,
                 ),

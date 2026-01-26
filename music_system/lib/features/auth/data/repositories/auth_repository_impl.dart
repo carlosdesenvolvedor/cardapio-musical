@@ -66,11 +66,23 @@ class AuthRepositoryImpl implements AuthRepository {
 
       final user = userCredential.user!;
 
-      // Auto-criação do perfil se for novo usuário ou se não tiver DisplayName
-      if (user.displayName == null ||
-          userCredential.additionalUserInfo?.isNewUser == true) {
-        // Aqui poderíamos chamar um método interno para garantir a criação no Firestore
-        // Mas o _mapFirebaseUser já resolve a entidade.
+      // Garantir criação do perfil no Firestore
+      final userDoc = await firestore.collection('users').doc(user.uid).get();
+      if (!userDoc.exists) {
+        final profile = UserProfileModel(
+          id: user.uid,
+          email: user.email ?? '',
+          artisticName:
+              user.displayName ?? user.email?.split('@')[0] ?? 'Usuário',
+          pixKey: '', // Inicializar como vazio
+          photoUrl: user.photoURL,
+          followersCount: 0,
+          followingCount: 0,
+          profileViewsCount: 0,
+          isLive: false,
+          verificationLevel: VerificationLevel.none,
+        );
+        await firestore.collection('users').doc(user.uid).set(profile.toJson());
       }
 
       return Right(_mapFirebaseUser(user));
@@ -174,6 +186,8 @@ class AuthRepositoryImpl implements AuthRepository {
         id: profile.id,
         email: profile.email,
         artisticName: profile.artisticName,
+        nickname: profile.nickname,
+        searchName: profile.searchName,
         pixKey: profile.pixKey,
         photoUrl: profile.photoUrl,
         bio: profile.bio,
@@ -184,7 +198,12 @@ class AuthRepositoryImpl implements AuthRepository {
         fcmToken: profile.fcmToken,
         isLive: profile.isLive,
         liveUntil: profile.liveUntil,
-        scheduledShow: profile.scheduledShow,
+        scheduledShows: profile.scheduledShows,
+        birthDate: profile.birthDate,
+        verificationLevel: profile.verificationLevel,
+        isParentalConsentGranted: profile.isParentalConsentGranted,
+        isDobVisible: profile.isDobVisible,
+        isPixVisible: profile.isPixVisible,
       );
 
       final data = model.toJson();
@@ -243,25 +262,41 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Either<Failure, void>> followUser(
       String currentUserId, String targetUserId) async {
     try {
+      final batch = firestore.batch();
+
       // Adiciona na subcoleção 'following' do usuário atual
-      await firestore
+      final followingRef = firestore
           .collection('users')
           .doc(currentUserId)
           .collection('following')
-          .doc(targetUserId)
-          .set({
+          .doc(targetUserId);
+
+      batch.set(followingRef, {
         'followedAt': FieldValue.serverTimestamp(),
       });
 
       // Opcional: Adicionar na subcoleção 'followers' do alvo (para contagem)
-      await firestore
+      final followersRef = firestore
           .collection('users')
           .doc(targetUserId)
           .collection('followers')
-          .doc(currentUserId)
-          .set({
+          .doc(currentUserId);
+
+      batch.set(followersRef, {
         'followedAt': FieldValue.serverTimestamp(),
       });
+
+      // Garantir que os contadores sejam incrementados usando merge no set caso o doc não exista
+      // Mas aqui usamos a referência direta se soubermos que o doc existe (ou criamos se não existe)
+      final userRef = firestore.collection('users').doc(currentUserId);
+      final targetRef = firestore.collection('users').doc(targetUserId);
+
+      batch.set(userRef, {'followingCount': FieldValue.increment(1)},
+          SetOptions(merge: true));
+      batch.set(targetRef, {'followersCount': FieldValue.increment(1)},
+          SetOptions(merge: true));
+
+      await batch.commit();
 
       return const Right(null);
     } catch (e) {

@@ -19,6 +19,8 @@ import 'features/community/presentation/bloc/chat_bloc.dart';
 import 'features/community/presentation/bloc/notifications_bloc.dart';
 import 'features/community/presentation/bloc/notifications_event.dart';
 import 'features/community/presentation/bloc/conversations_event.dart';
+import 'features/community/presentation/bloc/story_upload_bloc.dart';
+import 'features/community/presentation/bloc/post_upload_bloc.dart';
 import 'firebase_options.dart';
 import 'injection_container.dart' as di;
 import 'features/community/presentation/pages/artist_network_page.dart';
@@ -27,6 +29,9 @@ import 'features/bands/presentation/bloc/band_bloc.dart';
 import 'features/calendar/presentation/bloc/calendar_bloc.dart';
 import 'core/constants/app_version.dart';
 import 'package:intl/date_symbol_data_local.dart';
+
+final GlobalKey<ScaffoldMessengerState> messengerKey =
+    GlobalKey<ScaffoldMessengerState>();
 
 void main() async {
   // Configures the URL strategy to remove the '#' from the URL
@@ -74,11 +79,14 @@ class MusicSystemApp extends StatelessWidget {
         BlocProvider(create: (_) => di.sl<NotificationsBloc>()),
         BlocProvider(create: (_) => di.sl<BandBloc>()),
         BlocProvider(create: (_) => di.sl<CalendarBloc>()),
+        BlocProvider(create: (_) => di.sl<StoryUploadBloc>()),
+        BlocProvider(create: (_) => di.sl<PostUploadBloc>()),
       ],
       child: MaterialApp(
         title: 'MusicRequest System',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.darkTheme,
+        scaffoldMessengerKey: messengerKey,
         builder: (context, child) {
           if (child == null) return const SizedBox.shrink();
           return BlocListener<AuthBloc, AuthState>(
@@ -258,15 +266,22 @@ class HomePage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.music_note,
-              size: 80,
-              color: AppTheme.primaryColor,
+            Image.asset(
+              'assets/images/logo_dark.jpg',
+              height: 180,
             ),
-            const SizedBox(height: 20),
-            Text(
-              'MusicRequest System',
-              style: Theme.of(context).textTheme.displayLarge,
+            const SizedBox(height: 16),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                'Onde a inspiração cria conexões',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
             ),
             const SizedBox(height: 10),
             const Text('Selecione seu modo de acesso'),
@@ -323,8 +338,11 @@ class HomePage extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            const LoginPage(destination: ArtistNetworkPage()),
+                        builder: (context) => const LoginPage(
+                          destination: ArtistNetworkPage(),
+                          title: 'Junte-se a Rede MixArt!',
+                          logoPath: 'assets/images/logo_mixArt_Gilmar.jpeg',
+                        ),
                       ),
                     );
                   }

@@ -10,6 +10,7 @@ class NotificationEntity extends Equatable {
   final String? senderPhotoUrl;
   final NotificationType type;
   final String? postId;
+  final String? storyId;
   final String? message;
   final DateTime createdAt;
   final bool isRead;
@@ -22,6 +23,7 @@ class NotificationEntity extends Equatable {
     this.senderPhotoUrl,
     required this.type,
     this.postId,
+    this.storyId,
     this.message,
     required this.createdAt,
     this.isRead = false,
@@ -36,6 +38,7 @@ class NotificationEntity extends Equatable {
         senderPhotoUrl,
         type,
         postId,
+        storyId,
         message,
         createdAt,
         isRead,

@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:collection/collection.dart';
 import 'package:rxdart/rxdart.dart';
 import '../../domain/usecases/get_community_feed.dart';
 import '../../domain/usecases/get_active_stories.dart';
@@ -29,6 +30,25 @@ class CommunityBloc extends Bloc<CommunityEvent, CommunityState> {
           .debounceTime(const Duration(milliseconds: 500))
           .switchMap(mapper),
     );
+    on<MarkStoryAsViewedRequested>(_onMarkStoryAsViewedRequested);
+  }
+
+  Future<void> _onMarkStoryAsViewedRequested(
+    MarkStoryAsViewedRequested event,
+    Emitter<CommunityState> emit,
+  ) async {
+    final updatedStories = state.stories.map((story) {
+      if (story.id == event.storyId) {
+        if (!story.viewers.contains(event.userId)) {
+          final newViewers = List<String>.from(story.viewers)
+            ..add(event.userId);
+          return story.copyWith(viewers: newViewers);
+        }
+      }
+      return story;
+    }).toList();
+
+    emit(state.copyWith(stories: updatedStories));
   }
 
   Future<void> _onFetchFeedStarted(
@@ -157,8 +177,8 @@ class CommunityBloc extends Bloc<CommunityEvent, CommunityState> {
 
     // Check if it was a LIKE (userId was added)
     bool isLike = false;
-    final post = state.posts.firstWhere((p) => p.id == event.postId);
-    if (post.likes.contains(event.userId)) {
+    final post = state.posts.firstWhereOrNull((p) => p.id == event.postId);
+    if (post != null && post.likes.contains(event.userId)) {
       isLike = true;
     }
 

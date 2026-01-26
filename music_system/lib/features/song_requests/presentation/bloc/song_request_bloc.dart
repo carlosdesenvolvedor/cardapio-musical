@@ -30,10 +30,11 @@ class SongRequestBloc extends Bloc<SongRequestEvent, SongRequestState> {
     on<DeleteSongRequestEvent>(_onDeleteRequest);
   }
 
-  Future<void> _onCreateRequest(CreateSongRequest event, Emitter<SongRequestState> emit) async {
+  Future<void> _onCreateRequest(
+      CreateSongRequest event, Emitter<SongRequestState> emit) async {
     emit(SongRequestLoading());
     final result = await createRequest(event.request);
-    
+
     await result.fold(
       (failure) async => emit(SongRequestError(failure.message)),
       (_) async {
@@ -47,7 +48,8 @@ class SongRequestBloc extends Bloc<SongRequestEvent, SongRequestState> {
     );
   }
 
-  Future<void> _onFetchRequests(FetchSongRequests event, Emitter<SongRequestState> emit) async {
+  Future<void> _onFetchRequests(
+      FetchSongRequests event, Emitter<SongRequestState> emit) async {
     emit(SongRequestLoading());
     _subscription?.cancel();
     _subscription = streamRequests(event.musicianId).listen((result) {
@@ -58,7 +60,8 @@ class SongRequestBloc extends Bloc<SongRequestEvent, SongRequestState> {
     });
   }
 
-  Future<void> _onUpdateRequestStatus(UpdateSongRequestStatus event, Emitter<SongRequestState> emit) async {
+  Future<void> _onUpdateRequestStatus(
+      UpdateSongRequestStatus event, Emitter<SongRequestState> emit) async {
     final result = await updateRequestStatus(UpdateRequestStatusParams(
       requestId: event.requestId,
       status: event.status,
@@ -69,15 +72,18 @@ class SongRequestBloc extends Bloc<SongRequestEvent, SongRequestState> {
     );
   }
 
-  Future<void> _onDeleteRequest(DeleteSongRequestEvent event, Emitter<SongRequestState> emit) async {
-    final result = await deleteRequest(DeleteRequestParams(requestId: event.requestId));
+  Future<void> _onDeleteRequest(
+      DeleteSongRequestEvent event, Emitter<SongRequestState> emit) async {
+    final result =
+        await deleteRequest(DeleteRequestParams(requestId: event.requestId));
     result.fold(
       (failure) => emit(SongRequestError(failure.message)),
       (_) => null, // Success handled by stream
     );
   }
 
-  void _onRequestsUpdated(SongRequestsUpdated event, Emitter<SongRequestState> emit) {
+  void _onRequestsUpdated(
+      SongRequestsUpdated event, Emitter<SongRequestState> emit) {
     emit(SongRequestsLoaded(event.requests));
   }
 

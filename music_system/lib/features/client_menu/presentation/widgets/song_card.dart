@@ -15,8 +15,9 @@ import '../../../song_requests/presentation/bloc/song_request_event.dart';
 
 class SongCard extends StatelessWidget {
   final Song song;
+  final bool isMusicianLive;
 
-  const SongCard({super.key, required this.song});
+  const SongCard({super.key, required this.song, this.isMusicianLive = false});
 
   @override
   Widget build(BuildContext context) {
@@ -65,33 +66,26 @@ class SongCard extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        trailing: BlocBuilder<AuthBloc, AuthState>(
-          builder: (context, state) {
-            final bool isLive = state is ProfileLoaded && state.profile.isLive;
-            return IconButton(
-              icon: Icon(
-                Icons.add_circle_outline,
-                color: isLive ? const Color(0xFFB3B3B3) : Colors.white10,
-              ),
-              onPressed: () {
-                if (isLive) {
-                  _showRequestModal(context);
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Músico offline. Pedidos suspensos.'),
-                      backgroundColor: Colors.redAccent,
-                    ),
-                  );
-                }
-              },
-            );
+        trailing: IconButton(
+          icon: Icon(
+            Icons.add_circle_outline,
+            color: isMusicianLive ? const Color(0xFFB3B3B3) : Colors.white10,
+          ),
+          onPressed: () {
+            if (isMusicianLive) {
+              _showRequestModal(context);
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Músico offline. Pedidos suspensos.'),
+                  backgroundColor: Colors.redAccent,
+                ),
+              );
+            }
           },
         ),
         onTap: () {
-          final state = context.read<AuthBloc>().state;
-          final bool isLive = state is ProfileLoaded && state.profile.isLive;
-          if (isLive) {
+          if (isMusicianLive) {
             _showRequestModal(context);
           } else {
             ScaffoldMessenger.of(context).showSnackBar(

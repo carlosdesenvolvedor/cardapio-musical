@@ -6,6 +6,8 @@ class UserProfileModel extends UserProfile {
     required super.id,
     required super.email,
     required super.artisticName,
+    super.nickname,
+    super.searchName,
     required super.pixKey,
     super.photoUrl,
     super.bio,
@@ -19,8 +21,13 @@ class UserProfileModel extends UserProfile {
     super.profileViewsCount = 0,
     super.isLive = false,
     super.liveUntil,
-    super.scheduledShow,
+    super.scheduledShows,
     super.lastActiveAt,
+    super.birthDate,
+    super.verificationLevel = VerificationLevel.none,
+    super.isParentalConsentGranted = false,
+    super.isDobVisible = true,
+    super.isPixVisible = true,
   });
 
   factory UserProfileModel.fromJson(Map<String, dynamic> json, String id) {
@@ -28,6 +35,8 @@ class UserProfileModel extends UserProfile {
       id: id,
       email: json['email'] ?? '',
       artisticName: _getName(json),
+      nickname: json['nickname'],
+      searchName: json['searchName'],
       pixKey: json['pixKey'] ?? '',
       photoUrl: json['photoUrl'],
       bio: json['bio'],
@@ -45,20 +54,48 @@ class UserProfileModel extends UserProfile {
       liveUntil: json['liveUntil'] != null
           ? (json['liveUntil'] as Timestamp).toDate()
           : null,
-      scheduledShow: json['scheduledShow'] != null
-          ? (json['scheduledShow'] as Timestamp).toDate()
-          : null,
       lastActiveAt: json['lastActiveAt'] != null
           ? (json['lastActiveAt'] as Timestamp).toDate()
           : null,
+      scheduledShows: json['scheduledShows'] != null
+          ? (json['scheduledShows'] as List).map((i) {
+              return ShowInfo(
+                date: (i['date'] as Timestamp).toDate(),
+                location: i['location'] ?? '',
+              );
+            }).toList()
+          : null,
+      birthDate: json['birthDate'] != null
+          ? (json['birthDate'] as Timestamp).toDate()
+          : null,
+      verificationLevel: VerificationLevel.values.firstWhere(
+        (e) => e.name == (json['verificationLevel'] ?? 'none'),
+        orElse: () => VerificationLevel.none,
+      ),
+      isParentalConsentGranted: json['isParentalConsentGranted'] ?? false,
+      isDobVisible: json['isDobVisible'] ?? true,
+      isPixVisible: json['isPixVisible'] ?? true,
     );
   }
 
   static String _getName(Map<String, dynamic> json) {
-    final candidates = ['artisticName', 'name', 'displayName', 'username'];
+    final candidates = [
+      'artisticName',
+      'artistic_name',
+      'name',
+      'displayName',
+      'display_name',
+      'username',
+      'full_name',
+      'fullName',
+      'email'
+    ];
     for (final key in candidates) {
       final val = json[key];
       if (val != null && val is String && val.trim().isNotEmpty) {
+        if (key == 'email' && val.contains('@')) {
+          return val.split('@')[0];
+        }
         return val;
       }
     }
@@ -69,6 +106,8 @@ class UserProfileModel extends UserProfile {
     return {
       'email': email,
       'artisticName': artisticName,
+      'nickname': nickname,
+      'searchName': searchName,
       'pixKey': pixKey,
       'photoUrl': photoUrl,
       'bio': bio,
@@ -82,10 +121,19 @@ class UserProfileModel extends UserProfile {
       'profileViewsCount': profileViewsCount,
       'isLive': isLive,
       'liveUntil': liveUntil != null ? Timestamp.fromDate(liveUntil!) : null,
-      'scheduledShow':
-          scheduledShow != null ? Timestamp.fromDate(scheduledShow!) : null,
+      'scheduledShows': scheduledShows?.map((i) {
+        return {
+          'date': Timestamp.fromDate(i.date),
+          'location': i.location,
+        };
+      }).toList(),
       'lastActiveAt':
           lastActiveAt != null ? Timestamp.fromDate(lastActiveAt!) : null,
+      'birthDate': birthDate != null ? Timestamp.fromDate(birthDate!) : null,
+      'verificationLevel': verificationLevel.name,
+      'isParentalConsentGranted': isParentalConsentGranted,
+      'isDobVisible': isDobVisible,
+      'isPixVisible': isPixVisible,
     };
   }
 }

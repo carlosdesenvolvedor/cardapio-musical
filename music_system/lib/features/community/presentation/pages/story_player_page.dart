@@ -11,6 +11,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/community_bloc.dart';
 import '../bloc/community_event.dart';
 import '../../../../core/utils/cloudinary_sanitizer.dart';
+import 'package:music_system/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:music_system/config/theme/app_theme.dart';
+import '../widgets/story_comment_sheet.dart';
 
 class StoryPlayerPage extends StatefulWidget {
   final List<StoryEntity> stories;
@@ -36,6 +39,8 @@ class _StoryPlayerPageState extends State<StoryPlayerPage> {
   Timer? _timer;
   bool _isPaused = false;
   VideoPlayerController? _videoController;
+  VideoPlayerController? _prefetchedController;
+  bool _isDisposed = false;
 
   @override
   void initState() {
@@ -45,52 +50,102 @@ class _StoryPlayerPageState extends State<StoryPlayerPage> {
     _markAsViewed();
   }
 
-  void _loadStory() {
+  void _loadStory({bool useRawUrl = false}) {
     _timer?.cancel();
     _percent = 0.0;
-    _videoController?.dispose();
+
+    // Clean up current controller safely
+    final oldController = _videoController;
     _videoController = null;
+    oldController?.pause().then((_) => oldController.dispose());
 
     final story = widget.stories[_currentIndex];
-    final mediaUrl = CloudinarySanitizer.sanitize(
-      story.mediaUrl,
-      mediaType: story.mediaType,
-      filterId: story.effects?.filterId,
-      startOffset: story.effects?.startOffset,
-      endOffset: story.effects?.endOffset,
-    );
 
-    if (story.mediaType == 'video') {
-      final uri = Uri.parse(mediaUrl);
-      debugPrint('Attempting to load video: $mediaUrl');
+    // Use pre-fetched controller if available and matching the current story
+    if (_prefetchedController != null &&
+        _prefetchedController!.dataSource
+            .contains(story.mediaUrl.split('/').last.split('.').first)) {
+      _videoController = _prefetchedController;
+      _prefetchedController = null;
 
-      final controller = VideoPlayerController.networkUrl(uri);
-      _videoController = controller;
-
-      controller.setVolume(0);
-      controller.initialize().then((_) {
-        if (!mounted || _videoController != controller) {
-          controller.dispose();
-          return;
-        }
-        setState(() {});
-        controller.play();
-        _startTimer();
-      }).catchError((error) {
-        debugPrint('Fatal Error loading video: $error');
-        if (mounted) {
-          _startTimer(); // Inicia o timer mesmo assim para não travar o player
-        }
-      });
+      if (_videoController!.value.isInitialized) {
+        _onVideoInitialized();
+      } else {
+        _videoController!.initialize().then((_) => _onVideoInitialized());
+      }
     } else {
-      _startTimer();
+      // Clean pre-fetched if not used
+      _prefetchedController?.dispose();
+      _prefetchedController = null;
+
+      if (story.mediaType == 'video') {
+        final mediaUrl = useRawUrl
+            ? story.mediaUrl
+            : CloudinarySanitizer.sanitize(
+                story.mediaUrl,
+                mediaType: story.mediaType,
+                filterId: story.effects?.filterId,
+                startOffset: story.effects?.startOffset,
+                endOffset: story.effects?.endOffset,
+              );
+
+        final controller =
+            VideoPlayerController.networkUrl(Uri.parse(mediaUrl));
+        _videoController = controller;
+
+        controller.initialize().then((_) {
+          if (_isDisposed || _videoController != controller) {
+            controller.dispose();
+            return;
+          }
+          _onVideoInitialized();
+        }).catchError((error) {
+          debugPrint('Error loading video: $error');
+          if (!useRawUrl) {
+            debugPrint('Attempting fallback to RAW URL...');
+            _loadStory(useRawUrl: true);
+          } else {
+            _startTimer();
+          }
+        });
+      } else {
+        _startTimer();
+      }
+    }
+
+    _prefetchNext();
+  }
+
+  void _onVideoInitialized() {
+    if (_isDisposed || _videoController == null) return;
+    setState(() {});
+    _videoController!.play();
+    _videoController!.setLooping(false);
+    _startTimer();
+  }
+
+  void _prefetchNext() {
+    if (_currentIndex + 1 < widget.stories.length) {
+      final nextStory = widget.stories[_currentIndex + 1];
+      if (nextStory.mediaType == 'video') {
+        final nextUrl = CloudinarySanitizer.sanitize(nextStory.mediaUrl,
+            mediaType: 'video');
+        debugPrint('Prefetching next story: $nextUrl');
+        _prefetchedController =
+            VideoPlayerController.networkUrl(Uri.parse(nextUrl));
+        _prefetchedController!.initialize().then((_) {
+          return null;
+        }).catchError((e) {
+          return null;
+        });
+      }
     }
   }
 
   void _startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
-      if (!mounted) {
+      if (_isDisposed) {
         timer.cancel();
         return;
       }
@@ -98,19 +153,22 @@ class _StoryPlayerPageState extends State<StoryPlayerPage> {
         setState(() {
           if (_videoController != null &&
               _videoController!.value.isInitialized) {
-            // Sync with video progress
             final duration = _videoController!.value.duration.inMilliseconds;
             final position = _videoController!.value.position.inMilliseconds;
-            _percent = position / duration;
+            if (duration > 0) {
+              _percent = position / duration;
+            }
 
-            if (_percent >= 1.0) {
+            if (_percent >= 1.0 ||
+                (!_videoController!.value.isPlaying &&
+                    _videoController!.value.position >=
+                        _videoController!.value.duration)) {
               _timer?.cancel();
               _nextStory();
             }
-          } else {
-            // Default 5s for images
+          } else if (widget.stories[_currentIndex].mediaType == 'image') {
             if (_percent < 1) {
-              _percent += 0.01; // 50ms * 100 = 5000ms = 5s
+              _percent += 0.01; // 5s approx
             } else {
               _timer?.cancel();
               _nextStory();
@@ -129,6 +187,11 @@ class _StoryPlayerPageState extends State<StoryPlayerPage> {
           story.id,
           widget.currentUserId!,
         );
+        // Atualiza o estado local reativamente
+        context.read<CommunityBloc>().add(MarkStoryAsViewedRequested(
+              storyId: story.id,
+              userId: widget.currentUserId!,
+            ));
       }
     }
   }
@@ -141,7 +204,7 @@ class _StoryPlayerPageState extends State<StoryPlayerPage> {
       _loadStory();
       _markAsViewed();
     } else {
-      Navigator.pop(context);
+      if (mounted) Navigator.pop(context);
     }
   }
 
@@ -157,8 +220,14 @@ class _StoryPlayerPageState extends State<StoryPlayerPage> {
 
   @override
   void dispose() {
+    _isDisposed = true;
     _timer?.cancel();
-    _videoController?.dispose();
+    final c1 = _videoController;
+    final c2 = _prefetchedController;
+    _videoController = null;
+    _prefetchedController = null;
+    c1?.pause().then((_) => c1.dispose());
+    c2?.dispose();
     super.dispose();
   }
 
@@ -220,6 +289,7 @@ class _StoryPlayerPageState extends State<StoryPlayerPage> {
         children: [
           // Story Media
           GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onLongPressStart: (_) {
               setState(() => _isPaused = true);
               _videoController?.pause();
@@ -228,11 +298,23 @@ class _StoryPlayerPageState extends State<StoryPlayerPage> {
               setState(() => _isPaused = false);
               _videoController?.play();
             },
-            onTapDown: (details) {
+            onHorizontalDragEnd: (details) {
+              if (details.primaryVelocity != null) {
+                if (details.primaryVelocity! > 500) {
+                  // Swipe right -> Previous
+                  _previousStory();
+                } else if (details.primaryVelocity! < -500) {
+                  // Swipe left -> Next
+                  _nextStory();
+                }
+              }
+            },
+            onTapUp: (details) {
               final width = MediaQuery.of(context).size.width;
-              if (details.globalPosition.dx < width / 3) {
+              final x = details.localPosition.dx;
+              if (x < width / 3) {
                 _previousStory();
-              } else if (details.globalPosition.dx > 2 * width / 3) {
+              } else if (x > 2 * width / 3) {
                 _nextStory();
               }
             },
@@ -329,6 +411,103 @@ class _StoryPlayerPageState extends State<StoryPlayerPage> {
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      if (widget.currentUserId != null &&
+                          widget.currentUserId != story.authorId)
+                        TextButton(
+                          onPressed: () {
+                            if (widget.followingIds?.contains(story.authorId) ??
+                                false) {
+                              context.read<AuthBloc>().add(
+                                  UnfollowUserRequested(
+                                      widget.currentUserId!, story.authorId));
+                            } else {
+                              context.read<AuthBloc>().add(FollowUserRequested(
+                                  widget.currentUserId!, story.authorId));
+                            }
+                          },
+                          child: Text(
+                            (widget.followingIds?.contains(story.authorId) ??
+                                    false)
+                                ? 'Sou fã'
+                                : 'Virar fã',
+                            style: const TextStyle(
+                              color: AppTheme.primaryColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      PopupMenuButton<String>(
+                        icon: const Icon(Icons.more_vert, color: Colors.white),
+                        onSelected: (value) {
+                          if (value == 'report') {
+                            _showReportDialog(context);
+                          } else if (value == 'like') {
+                            _showLikeInfo();
+                          } else if (value == 'comment') {
+                            _showCommentInfo();
+                          } else if (value == 'unfollow') {
+                            if (widget.currentUserId != null) {
+                              context.read<AuthBloc>().add(
+                                  UnfollowUserRequested(
+                                      widget.currentUserId!, story.authorId));
+                            }
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'like',
+                            child: Row(
+                              children: [
+                                Icon(Icons.favorite_border,
+                                    color: Colors.white70),
+                                SizedBox(width: 10),
+                                Text('Curtir',
+                                    style: TextStyle(color: Colors.white)),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'comment',
+                            child: Row(
+                              children: [
+                                Icon(Icons.chat_bubble_outline,
+                                    color: Colors.white70),
+                                SizedBox(width: 10),
+                                Text('Comentar',
+                                    style: TextStyle(color: Colors.white)),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'report',
+                            child: Row(
+                              children: [
+                                Icon(Icons.report_problem_outlined,
+                                    color: Colors.redAccent),
+                                SizedBox(width: 10),
+                                Text('Denunciar',
+                                    style: TextStyle(color: Colors.white)),
+                              ],
+                            ),
+                          ),
+                          if (widget.followingIds?.contains(story.authorId) ??
+                              false)
+                            const PopupMenuItem(
+                              value: 'unfollow',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.person_remove_outlined,
+                                      color: Colors.white70),
+                                  SizedBox(width: 10),
+                                  Text('Deixar de ser fã',
+                                      style: TextStyle(color: Colors.white)),
+                                ],
+                              ),
+                            ),
+                        ],
+                        color: Colors.grey[900],
+                      ),
                       if (isOwner)
                         IconButton(
                           icon: const Icon(Icons.delete, color: Colors.white70),
@@ -472,8 +651,74 @@ class _StoryPlayerPageState extends State<StoryPlayerPage> {
         );
       },
     ).whenComplete(() {
+      if (mounted) {
+        setState(() => _isPaused = false);
+        _videoController?.play();
+      }
+    });
+  }
+
+  void _showReportDialog(BuildContext context) {
+    setState(() => _isPaused = true);
+    _videoController?.pause();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text('Denunciar Story',
+            style: TextStyle(color: Colors.white)),
+        content: const Text(
+            'Deseja denunciar este conteúdo por violação das diretrizes?',
+            style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Denúncia enviada para análise.')),
+              );
+            },
+            child: const Text('Denunciar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    ).then((_) {
       setState(() => _isPaused = false);
       _videoController?.play();
+    });
+  }
+
+  void _showLikeInfo() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Curtidas em stories estarão disponíveis em breve!'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _showCommentInfo() {
+    setState(() => _isPaused = true);
+    _videoController?.pause();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StoryCommentSheet(
+        story: widget.stories[_currentIndex],
+        currentUserId: widget.currentUserId ?? '',
+      ),
+    ).then((_) {
+      if (mounted) {
+        setState(() => _isPaused = false);
+        _videoController?.play();
+      }
     });
   }
 }

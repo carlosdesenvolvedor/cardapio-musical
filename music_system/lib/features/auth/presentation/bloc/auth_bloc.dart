@@ -200,7 +200,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final result = await repository.getProfile(event.userId);
       result.fold(
         (failure) => emit(AuthError(failure.message)),
-        (profile) => emit(ProfileLoaded(profile, currentUser: currentUser)),
+        (profile) {
+          final user = currentUser;
+          // If the profile being viewed is the current user's profile, update the user entity data
+          if (user != null && user.id == profile.id) {
+            currentUser = user.copyWith(
+              displayName: profile.artisticName,
+              photoUrl: profile.photoUrl,
+              nickname: profile.nickname,
+            );
+          }
+          emit(ProfileLoaded(profile, currentUser: currentUser));
+        },
       );
     });
 
