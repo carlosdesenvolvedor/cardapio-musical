@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Livekit;
+using Livekit.Server.Sdk.Dotnet;
 
 namespace MusicSystem.Backend.Controllers;
 
@@ -28,18 +28,11 @@ public class LiveController : ControllerBase
 
         try
         {
-            // Forçando o namespace Livekit para garantir o uso da classe correta
-            var tokenGenerator = new Livekit.AccessToken(apiKey, apiSecret);
-            tokenGenerator.Identity = request.ParticipantName;
-            tokenGenerator.Name = request.ParticipantName;
-            
-            var videoGrant = new VideoGrant
-            {
-                RoomJoin = true,
-                Room = request.RoomName
-            };
-            
-            tokenGenerator.AddGrant(videoGrant);
+            // Usando a API fluente oficial do pacote Livekit.Server.Sdk.Dotnet
+            var tokenGenerator = new AccessToken(apiKey, apiSecret)
+                .WithIdentity(request.ParticipantName)
+                .WithName(request.ParticipantName)
+                .WithGrants(new VideoGrants { RoomJoin = true, Room = request.RoomName });
 
             var token = tokenGenerator.ToJwt();
 
