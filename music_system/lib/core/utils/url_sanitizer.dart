@@ -11,8 +11,11 @@ class UrlSanitizer {
             'http://minio:9000/music-system-media/', 'http://$serverIp/media/')
         .replaceFirst(
             'minio:9000/music-system-media/', 'http://$serverIp/media/')
-        .replaceFirst('localhost:5000', '$serverIp')
-        .replaceFirst('127.0.0.1:5000', '$serverIp');
+        .replaceAll('137.131.245.169', serverIp)
+        .replaceAll('137.131.245.16', serverIp)
+        .replaceAll('140.238.191.244', serverIp)
+        .replaceFirst('localhost:5000', serverIp)
+        .replaceFirst('127.0.0.1:5000', serverIp);
 
     return sanitized;
   }
