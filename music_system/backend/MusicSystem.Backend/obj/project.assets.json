@@ -44,7 +44,7 @@
           }
         }
       },
-      "Livekit.Server.Sdk.Dotnet/1.1.0": {
+      "Livekit.Server.Sdk.Dotnet/1.2.0": {
         "type": "package",
         "dependencies": {
           "Google.Protobuf": "3.32.1",
@@ -270,17 +270,17 @@
         "lib/netstandard2.0/Google.Protobuf.xml"
       ]
     },
-    "Livekit.Server.Sdk.Dotnet/1.1.0": {
-      "sha512": "Zyz27Al4m8iLY9nrktWcYPbRwXqv1zSsc4IBwvXuuTwImqsaQ8mahIojoKyxBu35Q+/vSKI5Lhv5EwkUPl32SQ==",
+    "Livekit.Server.Sdk.Dotnet/1.2.0": {
+      "sha512": "rq0agmz1wBj+VmSRvu5kht8C962Ohhjy3RK3o1vEjTeJZB0QeFrXl0nza69miqyoF0WlNaV/Ozkoq/oFqQhtyA==",
       "type": "package",
-      "path": "livekit.server.sdk.dotnet/1.1.0",
+      "path": "livekit.server.sdk.dotnet/1.2.0",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "README.md",
         "lib/netstandard2.0/LivekitApi.dll",
         "lib/netstandard2.0/LivekitApi.xml",
-        "livekit.server.sdk.dotnet.1.1.0.nupkg.sha512",
+        "livekit.server.sdk.dotnet.1.2.0.nupkg.sha512",
         "livekit.server.sdk.dotnet.nuspec"
       ]
     },
@@ -543,7 +543,7 @@
   "projectFileDependencyGroups": {
     "net9.0": [
       "AWSSDK.S3 >= 4.0.17.3",
-      "Livekit.Server.Sdk.Dotnet >= 1.1.0"
+      "Livekit.Server.Sdk.Dotnet >= 1.2.0"
     ]
   },
   "packageFolders": {
@@ -602,7 +602,7 @@
           },
           "Livekit.Server.Sdk.Dotnet": {
             "target": "Package",
-            "version": "[1.1.0, )"
+            "version": "[1.2.0, )"
           }
         },
         "imports": [

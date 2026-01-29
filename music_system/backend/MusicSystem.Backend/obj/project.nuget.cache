@@ -1,13 +1,13 @@
 {
   "version": 2,
-  "dgSpecHash": "c3jUL+CAWx4=",
+  "dgSpecHash": "BvZa/y3P1VU=",
   "success": true,
   "projectFilePath": "C:\\Users\\user\\geomar-proj\\music_system\\backend\\MusicSystem.Backend\\MusicSystem.Backend.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\user\\.nuget\\packages\\awssdk.core\\4.0.3.10\\awssdk.core.4.0.3.10.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\awssdk.s3\\4.0.17.3\\awssdk.s3.4.0.17.3.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\google.protobuf\\3.32.1\\google.protobuf.3.32.1.nupkg.sha512",
-    "C:\\Users\\user\\.nuget\\packages\\livekit.server.sdk.dotnet\\1.1.0\\livekit.server.sdk.dotnet.1.1.0.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\livekit.server.sdk.dotnet\\1.2.0\\livekit.server.sdk.dotnet.1.2.0.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\8.0.0\\microsoft.extensions.dependencyinjection.abstractions.8.0.0.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\microsoft.extensions.logging.abstractions\\8.0.0\\microsoft.extensions.logging.abstractions.8.0.0.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\microsoft.identitymodel.abstractions\\8.14.0\\microsoft.identitymodel.abstractions.8.14.0.nupkg.sha512",
