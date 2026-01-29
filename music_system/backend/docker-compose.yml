@@ -61,6 +61,7 @@ services:
     container_name: music_system_proxy
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - nginx_cache:/var/cache/nginx
