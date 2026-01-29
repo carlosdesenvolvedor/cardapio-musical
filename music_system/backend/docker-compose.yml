@@ -65,6 +65,7 @@ services:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - nginx_cache:/var/cache/nginx
       - /home/ubuntu/certbot/www:/var/www/certbot
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - backend
       - minio
