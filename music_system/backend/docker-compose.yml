@@ -26,6 +26,9 @@ services:
       - Minio__SecretKey=minioadmin
       - Minio__BucketName=music-system-media
       - Minio__ForcePathStyle=true
+      - LiveKit__ApiKey=devkey
+      - LiveKit__ApiSecret=secret
+      - LiveKit__ServerUrl=http://136.248.64.90/livekit/
     depends_on:
       - minio
 

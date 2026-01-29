@@ -8,13 +8,15 @@ class CloudinarySanitizer {
   }) {
     if (url.startsWith('http://minio:9000/music-system-media/')) {
       url = url.replaceFirst('http://minio:9000/music-system-media/',
-          'http://137.131.245.169/media/');
+          'http://136.248.64.90/media/');
     } else if (url.contains('minio:9000/music-system-media/')) {
       url = url.replaceFirst(
-          'minio:9000/music-system-media/', 'http://137.131.245.169/media/');
-    } else if (url.contains('137.131.245.169/media/music-system-media/')) {
-      url = url.replaceFirst('137.131.245.169/media/music-system-media/',
-          '137.131.245.169/media/');
+          'minio:9000/music-system-media/', 'http://136.248.64.90/media/');
+    } else if (url.contains('136.248.64.90/media/music-system-media/')) {
+      url = url.replaceFirst(
+          '136.248.64.90/media/music-system-media/', '136.248.64.90/media/');
+    } else if (url.contains('137.131.245.169/media/')) {
+      url = url.replaceFirst('137.131.245.169', '136.248.64.90');
     } else if (url.contains('firebasestorage.googleapis.com')) {
       // Forçamos o uso do nosso proxy que adiciona cabeçalhos CORS
       // Agora capturamos o bucket dinamicamente para passar ao Nginx
@@ -24,7 +26,7 @@ class CloudinarySanitizer {
       if (match != null) {
         final bucket = match.group(1);
         final path = match.group(2);
-        url = 'http://137.131.245.169/firebase/$bucket/$path';
+        url = 'http://136.248.64.90/firebase/$bucket/$path';
       }
     }
 
