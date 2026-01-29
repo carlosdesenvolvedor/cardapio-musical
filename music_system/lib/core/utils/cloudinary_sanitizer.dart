@@ -8,7 +8,7 @@ class CloudinarySanitizer {
   }) {
     if (url.startsWith('http://minio:9000/music-system-media/')) {
       url = url.replaceFirst('http://minio:9000/music-system-media/',
-          'http://136.248.64.90/media/');
+          'https://136.248.64.90.nip.io/media/');
     } else if (url.contains('minio:9000/music-system-media/')) {
       url = url.replaceFirst(
           'minio:9000/music-system-media/', 'http://136.248.64.90/media/');
@@ -18,15 +18,16 @@ class CloudinarySanitizer {
     } else if (url.contains('137.131.245.169/media/')) {
       url = url.replaceFirst('137.131.245.169', '136.248.64.90');
     } else if (url.contains('firebasestorage.googleapis.com')) {
-      // Forçamos o uso do nosso proxy que adiciona cabeçalhos CORS
-      // Agora capturamos o bucket dinamicamente para passar ao Nginx
+      // Force use of our Nginx proxy which adds CORS headers
+      // We capture the bucket dynamically to pass to Nginx
       final match = RegExp(
               r'https://firebasestorage\.googleapis\.com/v0/b/([^/]+)/o/(.*)')
           .firstMatch(url);
       if (match != null) {
         final bucket = match.group(1);
         final path = match.group(2);
-        url = 'http://136.248.64.90/firebase/$bucket/$path';
+        // Rewrite to our HTTPS proxy
+        url = 'https://136.248.64.90.nip.io/firebase/$bucket/$path';
       }
     }
 
