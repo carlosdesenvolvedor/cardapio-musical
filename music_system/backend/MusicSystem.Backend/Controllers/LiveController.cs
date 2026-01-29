@@ -1,5 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
-using Livekit.Server.Sdk.Dotnet;
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using System.Collections.Generic;
+using System;
+using Microsoft.Extensions.Configuration;
 
 namespace MusicSystem.Backend.Controllers;
 
@@ -15,6 +20,8 @@ public class LiveController : ControllerBase
     }
 
     [HttpPost("token")]
+    public IActionResult GetToken([FromBody] TokenRequest request)
+    {
         Console.WriteLine($"[DEBUG] Token Request: Room={request.RoomName}, Participant={request.ParticipantName}");
 
         if (string.IsNullOrEmpty(request.RoomName) || string.IsNullOrEmpty(request.ParticipantName))
@@ -29,13 +36,32 @@ public class LiveController : ControllerBase
 
         try
         {
-            // Usando a API fluente oficial do pacote Livekit.Server.Sdk.Dotnet
-            var tokenGenerator = new AccessToken(apiKey, apiSecret)
-                .WithIdentity(request.ParticipantName)
-                .WithName(request.ParticipantName)
-                .WithGrants(new VideoGrants { RoomJoin = true, Room = request.RoomName });
+            // Manual JWT Generation for LiveKit
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(apiSecret));
+            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
-            var token = tokenGenerator.ToJwt();
+            var header = new JwtHeader(credentials);
+            
+            // LiveKit expects video grants object
+            var videoGrants = new Dictionary<string, object>
+            {
+                { "room", request.RoomName },
+                { "roomJoin", true }
+            };
+
+            var payload = new JwtPayload
+            {
+                { "iss", apiKey },
+                { "sub", request.ParticipantName },
+                { "nbf", DateTimeOffset.UtcNow.ToUnixTimeSeconds() },
+                { "exp", DateTimeOffset.UtcNow.AddHours(6).ToUnixTimeSeconds() },
+                { "name", request.ParticipantName },
+                { "video", videoGrants }
+            };
+
+            var secToken = new JwtSecurityToken(header, payload);
+            var handler = new JwtSecurityTokenHandler();
+            var token = handler.WriteToken(secToken);
 
             return Ok(new
             {
@@ -45,7 +71,7 @@ public class LiveController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[CRITICAL] Error generating token: {ex}");
+            Console.WriteLine($"[CRITICAL] Error generating token (Manual JWT): {ex}");
             return StatusCode(500, $"Error generating token: {ex.Message}");
         }
     }
