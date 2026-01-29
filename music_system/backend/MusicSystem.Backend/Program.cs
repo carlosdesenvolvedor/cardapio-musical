@@ -36,9 +36,12 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+app.UseCors("AllowAll");
+
+
 app.MapControllers();
 
-app.UseCors("AllowAll");
+
 
 
 
