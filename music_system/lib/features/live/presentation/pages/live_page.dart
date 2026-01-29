@@ -198,10 +198,19 @@ class _LivePageState extends State<LivePage> {
     }
   }
 
+  AuthBloc? _authBloc;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _authBloc = context.read<AuthBloc>();
+  }
+
   @override
   void dispose() {
-    if (widget.isHost) {
-      context.read<AuthBloc>().add(ToggleLiveStatus(widget.userId, false));
+    // Use cached bloc reference to avoid "unsafe ancestor lookup"
+    if (widget.isHost && _authBloc != null) {
+      _authBloc!.add(ToggleLiveStatus(widget.userId, false));
     }
     _listener?.dispose();
     _liveKitService.disconnect();
