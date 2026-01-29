@@ -4,12 +4,12 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="AWSSDK.S3" Version="4.0.17.3" />
-    <PackageReference Include="Livekit.Server.Sdk.Dotnet" Version="1.2.0" />
-    <PackageReference Include="Google.Protobuf" Version="3.21.5" />
+    <PackageReference Include="Livekit.Server.Sdk.Dotnet" Version="1.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.10" />
   </ItemGroup>
 
