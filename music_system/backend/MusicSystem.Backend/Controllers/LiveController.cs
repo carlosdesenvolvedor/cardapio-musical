@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Livekit.Server.Sdk.Dotnet;
+using Livekit.Proto;
 
 namespace MusicSystem.Backend.Controllers;
 
@@ -31,8 +32,12 @@ public class LiveController : ControllerBase
         try
         {
             var tokenGenerator = new AccessToken(apiKey, apiSecret);
-            tokenGenerator.Identity = request.ParticipantName;
-            tokenGenerator.Name = request.ParticipantName;
+            // Em algumas versões do SDK as propriedades são Identity e Name
+            // Verificando os erros, o compilador não as encontrou. 
+            // Vamos usar os métodos ou propriedades corretas baseados no SDK .NET
+            
+            tokenGenerator.SetIdentity(request.ParticipantName);
+            tokenGenerator.SetName(request.ParticipantName);
             
             var videoGrant = new VideoGrant
             {
