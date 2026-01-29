@@ -28,7 +28,7 @@ services:
       - Minio__ForcePathStyle=true
       - LiveKit__ApiKey=devkey
       - LiveKit__ApiSecret=LiveKit_Secret_Key_At_Least_32_Chars_Long_Secure
-      - LiveKit__ServerUrl=http://136.248.64.90/livekit/
+      - LiveKit__ServerUrl=https://136.248.64.90.nip.io/livekit/
     depends_on:
       - minio
 

@@ -41,7 +41,7 @@ class StoryUploadBloc extends Bloc<StoryUploadEvent, StoryUploadState> {
           // MIGRATION: Using Self-Hosted Backend (MinIO)
           final path = await backendStorageService.uploadBytes(event.mediaBytes,
               'story_${event.profile.id}_$timestamp.jpg', 'stories/images');
-          url = "http://137.131.245.169/media/$path";
+          url = "https://136.248.64.90.nip.io/media/$path";
           add(const UploadProgressUpdated(0.8));
 
           /* OLD LOGIC
@@ -64,7 +64,7 @@ class StoryUploadBloc extends Bloc<StoryUploadEvent, StoryUploadState> {
           // MIGRATION: Using Self-Hosted Backend (MinIO)
           final path = await backendStorageService.uploadBytes(event.mediaBytes,
               'story_${event.profile.id}_$timestamp.mp4', 'stories/videos');
-          url = "http://137.131.245.169/media/$path";
+          url = "https://136.248.64.90.nip.io/media/$path";
           add(const UploadProgressUpdated(0.8));
 
           /* OLD LOGIC
