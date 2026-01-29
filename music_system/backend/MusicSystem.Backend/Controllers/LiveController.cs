@@ -15,10 +15,11 @@ public class LiveController : ControllerBase
     }
 
     [HttpPost("token")]
-    public IActionResult GetToken([FromBody] TokenRequest request)
-    {
+        Console.WriteLine($"[DEBUG] Token Request: Room={request.RoomName}, Participant={request.ParticipantName}");
+
         if (string.IsNullOrEmpty(request.RoomName) || string.IsNullOrEmpty(request.ParticipantName))
         {
+            Console.WriteLine("[ERROR] Missing RoomName or ParticipantName");
             return BadRequest("RoomName and ParticipantName are required.");
         }
 
