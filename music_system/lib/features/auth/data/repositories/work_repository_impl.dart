@@ -61,7 +61,7 @@ class WorkRepositoryImpl implements WorkRepository {
         // Assuming BackendStorageService.baseUrl is reachable.
         // Actually, we should store the Path and let the UI resolve the streaming URL.
         // BUT to keep compatibility with existing Code that expects a full URL (http...), let's construct it.
-        fileUrl = "http://137.131.245.169/media/$path";
+        fileUrl = "https://136.248.64.90.nip.io/media/$path";
       }
 
       final workModel = WorkModel(

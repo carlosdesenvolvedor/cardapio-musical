@@ -588,7 +588,7 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
                                         body: Center(
                                             child: LiveStreamViewer(
                                           streamUrl:
-                                              "http://137.131.245.169:8888/live/mystream/index.m3u8",
+                                              "https://136.248.64.90.nip.io:8888/live/mystream/index.m3u8",
                                           isLive: true,
                                         )))));
                           }),

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:video_player/video_player.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 import 'package:music_system/features/community/domain/entities/post_entity.dart';
@@ -18,6 +18,7 @@ import 'package:music_system/features/community/domain/repositories/post_reposit
 import 'package:music_system/features/community/presentation/bloc/community_bloc.dart';
 import 'package:music_system/features/community/presentation/bloc/community_event.dart';
 import 'package:music_system/config/theme/app_theme.dart';
+import 'feed_video_player.dart';
 
 class ArtistFeedCard extends StatefulWidget {
   final PostEntity post;
@@ -38,7 +39,6 @@ class ArtistFeedCard extends StatefulWidget {
 class _ArtistFeedCardState extends State<ArtistFeedCard> {
   late bool _isLiked;
   late int _likeCount;
-  VideoPlayerController? _videoController;
   bool _isVideo = false;
   bool _isSaved = false;
   final PageController _pageController = PageController();
@@ -90,36 +90,10 @@ class _ArtistFeedCardState extends State<ArtistFeedCard> {
                 url.contains('/api/storage/stream/') || // MinIO Stream
                 url.endsWith('.mp4') ||
                 url.contains('.mp4?')));
-
-    if (_isVideo) {
-      _initVideo();
-    } else {
-      _videoController?.dispose();
-      _videoController = null;
-    }
-  }
-
-  void _initVideo() {
-    _videoController?.dispose();
-    final sanitizedUrl = CloudinarySanitizer.sanitize(
-      widget.post.imageUrl,
-      mediaType: 'video',
-    );
-    _videoController = VideoPlayerController.networkUrl(
-      Uri.parse(sanitizedUrl),
-    )..initialize().then((_) {
-        if (mounted) {
-          setState(() {});
-          _videoController?.setLooping(true);
-          _videoController?.setVolume(1.0);
-          _videoController?.play();
-        }
-      });
   }
 
   @override
   void dispose() {
-    _videoController?.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -293,23 +267,12 @@ class _ArtistFeedCardState extends State<ArtistFeedCard> {
                 ),
                 width: double.infinity,
                 child: _isVideo
-                    ? GestureDetector(
+                    ? FeedVideoPlayer(
                         onDoubleTap: () => _toggleLike(),
-                        child: (_videoController != null &&
-                                _videoController!.value.isInitialized
-                            ? Center(
-                                child: AspectRatio(
-                                  aspectRatio:
-                                      _videoController!.value.aspectRatio,
-                                  child: VideoPlayer(_videoController!),
-                                ),
-                              )
-                            : Container(
-                                height: MediaQuery.of(context).size.width,
-                                color: Colors.black,
-                                child: const Center(
-                                    child: CircularProgressIndicator()),
-                              )),
+                        videoUrl: CloudinarySanitizer.sanitize(
+                          widget.post.imageUrl,
+                          mediaType: 'video',
+                        ),
                       )
                     : widget.post.postType == 'carousel'
                         ? Stack(

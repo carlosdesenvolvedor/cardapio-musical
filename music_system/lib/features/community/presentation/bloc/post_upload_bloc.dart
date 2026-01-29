@@ -67,12 +67,12 @@ class PostUploadBloc extends Bloc<PostUploadEvent, PostUploadState> {
             // Upload Video
             final path = await backendStorageService.uploadBytes(
                 bytes, name, 'posts/videos');
-            url = "http://137.131.245.169/media/$path";
+            url = "https://136.248.64.90.nip.io/media/$path";
           } else {
             // Upload Image
             final path = await backendStorageService.uploadBytes(
                 bytes, name, 'posts/images');
-            url = "http://137.131.245.169/media/$path";
+            url = "https://136.248.64.90.nip.io/media/$path";
           }
 
           /* OLD LOGIC
