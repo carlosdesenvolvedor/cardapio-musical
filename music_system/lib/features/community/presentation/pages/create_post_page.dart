@@ -69,8 +69,11 @@ class _CreatePostPageState extends State<CreatePostPage> {
       );
 
       if (source == 'images') {
-        final List<XFile> images =
-            await _picker.pickMultiImage(imageQuality: 70);
+        final List<XFile> images = await _picker.pickMultiImage(
+          imageQuality: 80,
+          maxWidth: 1080,
+          maxHeight: 1080,
+        );
         if (images.isNotEmpty) {
           final List<Uint8List> bytesList = [];
           for (var img in images) {

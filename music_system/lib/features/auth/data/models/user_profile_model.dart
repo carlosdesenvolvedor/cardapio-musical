@@ -28,6 +28,8 @@ class UserProfileModel extends UserProfile {
     super.isParentalConsentGranted = false,
     super.isDobVisible = true,
     super.isPixVisible = true,
+    super.profileType,
+    super.subType,
   });
 
   factory UserProfileModel.fromJson(Map<String, dynamic> json, String id) {
@@ -75,6 +77,8 @@ class UserProfileModel extends UserProfile {
       isParentalConsentGranted: json['isParentalConsentGranted'] ?? false,
       isDobVisible: json['isDobVisible'] ?? true,
       isPixVisible: json['isPixVisible'] ?? true,
+      profileType: json['profileType'],
+      subType: json['subType'],
     );
   }
 
@@ -134,6 +138,8 @@ class UserProfileModel extends UserProfile {
       'isParentalConsentGranted': isParentalConsentGranted,
       'isDobVisible': isDobVisible,
       'isPixVisible': isPixVisible,
+      'profileType': profileType,
+      'subType': subType,
     };
   }
 }

@@ -1,8 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/services/cloudinary_service.dart';
 import '../../../../core/services/storage_service.dart';
-import '../../../../core/utils/cloudinary_sanitizer.dart';
+import '../../../../core/services/backend_storage_service.dart';
 import '../../domain/entities/post_entity.dart';
+
 import '../../domain/repositories/post_repository.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
 import 'post_upload_event.dart';
@@ -11,12 +12,14 @@ import 'post_upload_state.dart';
 class PostUploadBloc extends Bloc<PostUploadEvent, PostUploadState> {
   final CloudinaryService cloudinaryService;
   final StorageService storageService;
+  final BackendStorageService backendStorageService;
   final PostRepository postRepository;
   final AuthRepository authRepository;
 
   PostUploadBloc({
     required this.cloudinaryService,
     required this.storageService,
+    required this.backendStorageService,
     required this.postRepository,
     required this.authRepository,
   }) : super(const PostUploadState()) {
@@ -57,21 +60,36 @@ class PostUploadBloc extends Bloc<PostUploadEvent, PostUploadState> {
         emit(state.copyWith(progress: 0.05 + baseProgress));
 
         try {
+          // MIGRATION: Using Self-Hosted Backend (MinIO)
+          // We prefer MinIO over Cloudinary/Firebase for cost reasons.
+
+          if (event.isVideo) {
+            // Upload Video
+            final path = await backendStorageService.uploadBytes(
+                bytes, name, 'posts/videos');
+            url = "http://137.131.245.169/media/$path";
+          } else {
+            // Upload Image
+            final path = await backendStorageService.uploadBytes(
+                bytes, name, 'posts/images');
+            url = "http://137.131.245.169/media/$path";
+          }
+
+          /* OLD LOGIC
           if (event.isVideo) {
             url = await cloudinaryService.uploadVideo(bytes, name);
           } else {
             url = await cloudinaryService.uploadImage(bytes, name);
           }
+          */
         } catch (e) {
+          // Fallback to old storage if MinIO fails (Optional)
           url = await storageService.uploadImage(bytes, name);
         }
 
         if (url != null) {
-          final sanitizedUrl = CloudinarySanitizer.sanitize(
-            url,
-            mediaType: event.isVideo ? 'video' : 'image',
-          );
-          uploadedUrls.add(sanitizedUrl);
+          // No need to sanitize Cloudinary URL anymore if using MinIO
+          uploadedUrls.add(url);
         }
       }
 

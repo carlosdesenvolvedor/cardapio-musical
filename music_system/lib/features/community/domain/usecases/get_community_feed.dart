@@ -16,8 +16,8 @@ class GetCommunityFeed {
     // Se logado (followingIds != null)
     if (followingIds != null) {
       if (followingIds.isEmpty) {
-        // Se segue ninguém, feed vazio (ou poderia ser recomendações, mas por hora vazio para ser restritivo)
-        return Right(PostResponse(posts: [], lastDoc: null));
+        // Se segue ninguém, mostra feed global como "Descoberta"
+        return repository.getGlobalPosts(limit: limit, lastDoc: lastDoc);
       }
       return repository.getFollowingPosts(
         followingIds: followingIds,

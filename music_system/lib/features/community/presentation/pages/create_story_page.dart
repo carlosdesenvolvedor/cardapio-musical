@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/rendering.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
@@ -69,6 +70,8 @@ class _CreateStoryPageState extends State<CreateStoryPage> {
           : await _picker.pickImage(
               source: ImageSource.gallery,
               imageQuality: 80,
+              maxWidth: 1080,
+              maxHeight: 1920,
             );
 
       if (media != null) {
@@ -137,11 +140,35 @@ class _CreateStoryPageState extends State<CreateStoryPage> {
     setState(() => _isUploading = true);
 
     try {
-      // Sempre capturamos o RepaintBoundary pois agora temos multicamadas e transformações
+      // Check if we have a single video layer (Video Story)
+      final videoLayer = _layers.length == 1 && _layers.first.type == 'video'
+          ? _layers.first
+          : null;
+
+      if (videoLayer != null && videoLayer.videoFile != null) {
+        // Upload Raw Video
+        final videoBytes = await videoLayer.videoFile!.readAsBytes();
+        if (mounted) {
+          context.read<StoryUploadBloc>().add(
+                StartStoryUploadRequested(
+                  mediaBytes: videoBytes,
+                  mediaType: 'video',
+                  profile: widget.profile,
+                  caption: _captionController.text.isNotEmpty
+                      ? _captionController.text
+                      : null,
+                ),
+              );
+          Navigator.pop(context);
+          return;
+        }
+      }
+
+      // Image/Collage Story (Default)
       final boundary = _repaintKey.currentContext?.findRenderObject()
           as RenderRepaintBoundary?;
       if (boundary != null) {
-        final image = await boundary.toImage(pixelRatio: 3.0);
+        final image = await boundary.toImage(pixelRatio: kIsWeb ? 1.5 : 3.0);
         final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
         if (byteData != null) {
           final finalBytes = byteData.buffer.asUint8List();

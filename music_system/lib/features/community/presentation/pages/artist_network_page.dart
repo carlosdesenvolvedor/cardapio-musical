@@ -21,13 +21,14 @@ import 'package:music_system/features/community/presentation/bloc/notifications_
 import 'package:music_system/features/community/presentation/widgets/glass_nav_bar.dart';
 import 'package:music_system/features/community/presentation/widgets/artist_feed_card.dart';
 import 'package:music_system/features/community/presentation/widgets/feed_shimmer.dart';
+import 'package:music_system/features/live/presentation/widgets/live_stream_viewer.dart';
 import 'package:music_system/injection_container.dart';
+
 import 'package:music_system/features/auth/domain/repositories/auth_repository.dart';
 import 'package:music_system/features/auth/domain/entities/user_entity.dart';
 import 'package:music_system/features/community/presentation/bloc/story_upload_bloc.dart';
 import 'package:music_system/features/community/presentation/bloc/story_upload_state.dart';
 import 'package:music_system/features/community/presentation/bloc/post_upload_bloc.dart';
-import 'package:music_system/features/community/presentation/bloc/post_upload_event.dart';
 import 'package:music_system/features/community/presentation/bloc/post_upload_state.dart';
 import 'package:music_system/main.dart'; // Import to use messengerKey
 
@@ -73,24 +74,50 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
 
   Future<void> _loadData(String userId) async {
     if (mounted) setState(() => _isLoadingData = true);
-    context.read<AuthBloc>().add(ProfileRequested(userId));
-    final followingResult = await sl<AuthRepository>().getFollowedUsers(userId);
-    List<String> loadedFollowingIds = [];
-    followingResult.fold(
-      (failure) =>
-          debugPrint('Error fetching followed users: ${failure.message}'),
-      (ids) => loadedFollowingIds = ids,
-    );
-    final feedIds = List<String>.from(loadedFollowingIds)..add(userId);
-    if (mounted) {
-      _localFollowingIds = loadedFollowingIds;
-      context
-          .read<CommunityBloc>()
-          .add(FetchFeedStarted(followingIds: feedIds));
-      context
-          .read<CommunityBloc>()
-          .add(FetchStoriesStarted(followingIds: feedIds));
-      setState(() => _isLoadingData = false);
+
+    try {
+      // Firing profile and following requests in parallel
+      context.read<AuthBloc>().add(ProfileRequested(userId));
+      final followingFuture = sl<AuthRepository>().getFollowedUsers(userId);
+
+      final results = await Future.wait([
+        followingFuture,
+      ]).timeout(const Duration(seconds: 15));
+
+      final followingResult = results[0];
+
+      List<String> loadedFollowingIds = [];
+      followingResult.fold(
+        (failure) =>
+            debugPrint('Error fetching followed users: ${failure.message}'),
+        (ids) => loadedFollowingIds = ids,
+      );
+
+      if (mounted) {
+        _localFollowingIds = loadedFollowingIds;
+        final feedIds = List<String>.from(loadedFollowingIds)..add(userId);
+
+        // Parallelize feed and stories fetches
+        context
+            .read<CommunityBloc>()
+            .add(FetchFeedStarted(followingIds: feedIds));
+        context
+            .read<CommunityBloc>()
+            .add(FetchStoriesStarted(followingIds: feedIds));
+      }
+    } catch (e) {
+      debugPrint('Error in _loadData: $e');
+      if (mounted) {
+        // Ensure the Bloc knows about the failure so the UI updates
+        context.read<CommunityBloc>().add(FetchFeedStarted(
+            followingIds: const [])); // Or a specific failure event if available, but this might trigger error state if empty
+        // Better yet, we can't easily force an error state from here without a specific event.
+        // Let's rely on the finally block to stop the spinner, and the UI checking _isLoadingData
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingData = false);
+      }
     }
   }
 
@@ -373,10 +400,63 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
       color: AppTheme.primaryColor,
       child: BlocBuilder<CommunityBloc, CommunityState>(
         builder: (context, state) {
-          if (state.status == CommunityStatus.initial ||
+          // If we are locally loading OR the bloc is loading with empty posts, show shimmer
+          if (_isLoadingData ||
               (state.status == CommunityStatus.loading &&
                   state.posts.isEmpty)) {
             return const FeedShimmer();
+          }
+
+          // If we are NOT loading anymore, but status is failure OR initial (which means it didn't start properly), show error
+          if (state.status == CommunityStatus.failure ||
+              state.status == CommunityStatus.initial) {
+            return SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: MediaQuery.of(context).size.height - 200,
+                ),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline,
+                            color: Colors.red, size: 48),
+                        const SizedBox(height: 16),
+                        Text(
+                          state.status == CommunityStatus.initial
+                              ? 'Não foi possível carregar os dados.'
+                              : 'Erro ao carregar o feed:',
+                          style: const TextStyle(
+                              color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        if (state.errorMessage != null)
+                          SelectableText(
+                            state.errorMessage!,
+                            style: const TextStyle(
+                                color: Colors.white70, fontSize: 12),
+                            textAlign: TextAlign.center,
+                          ),
+                        const SizedBox(height: 24),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryColor,
+                            foregroundColor: Colors.black,
+                          ),
+                          onPressed: () {
+                            if (currentUserId != null) _loadData(currentUserId);
+                          },
+                          child: const Text('Tentar Novamente'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
           }
           final posts = state.posts;
           final List<String> followingIds = List.from(_localFollowingIds);
@@ -395,32 +475,42 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
             }
           }
 
-          final List<String> sortedIds = idsToShow.toList();
-          sortedIds.sort((a, b) {
-            final aStories = List<StoryEntity>.from(groupedStories[a] ?? []);
-            final bStories = List<StoryEntity>.from(groupedStories[b] ?? []);
+          // Optimization: Pre-calculate sorting metadata to avoid O(N^2)
+          final Map<String, ({bool allViewed, DateTime latestStory})>
+              sortingMeta = {};
 
-            if (aStories.isEmpty && bStories.isEmpty) return 0;
-            if (aStories.isEmpty) return 1;
-            if (bStories.isEmpty) return -1;
-
-            final aAllViewed =
-                aStories.every((s) => s.viewers.contains(currentUserId));
-            final bAllViewed =
-                bStories.every((s) => s.viewers.contains(currentUserId));
-
-            if (aAllViewed != bAllViewed) {
-              return aAllViewed ? 1 : -1;
+          for (var id in idsToShow) {
+            final stories = groupedStories[id] ?? [];
+            if (stories.isEmpty) {
+              sortingMeta[id] = (
+                allViewed: true,
+                latestStory: DateTime(2000),
+              );
+              continue;
             }
 
-            // Both viewed or both not viewed, sort by latest story (descending)
-            final aLatest = aStories
+            final allViewed =
+                stories.every((s) => s.viewers.contains(currentUserId));
+            final latest = stories
                 .map((s) => s.createdAt)
                 .reduce((v, e) => v.isAfter(e) ? v : e);
-            final bLatest = bStories
-                .map((s) => s.createdAt)
-                .reduce((v, e) => v.isAfter(e) ? v : e);
-            return bLatest.compareTo(aLatest);
+
+            sortingMeta[id] = (
+              allViewed: allViewed,
+              latestStory: latest,
+            );
+          }
+
+          final List<String> sortedIds = idsToShow.toList();
+          sortedIds.sort((a, b) {
+            final metaA = sortingMeta[a]!;
+            final metaB = sortingMeta[b]!;
+
+            if (metaA.allViewed != metaB.allViewed) {
+              return metaA.allViewed ? 1 : -1;
+            }
+
+            return metaB.latestStory.compareTo(metaA.latestStory);
           });
 
           return CustomScrollView(
@@ -487,6 +577,22 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
                               }
                             },
                           ),
+                          // --- LIVE TEST ITEM (MOCKED) ---
+                          _buildStoryItem('Live Test', null, isLive: true,
+                              onTap: () {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const Scaffold(
+                                        backgroundColor: Colors.black,
+                                        body: Center(
+                                            child: LiveStreamViewer(
+                                          streamUrl:
+                                              "http://137.131.245.169:8888/live/mystream/index.m3u8",
+                                          isLive: true,
+                                        )))));
+                          }),
+                          // -------------------------------
                           ...sortedIds.map((userId) {
                             final stories = groupedStories[userId] ?? [];
                             if (stories.isEmpty) return const SizedBox();
@@ -531,6 +637,42 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
                   ],
                 ),
               ),
+              if (_localFollowingIds.isEmpty)
+                SliverToBoxAdapter(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 20, horizontal: 16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppTheme.primaryColor.withOpacity(0.1),
+                          Colors.transparent
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
+                    child: const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '🎨 DESCOBERTA',
+                          style: TextStyle(
+                            color: AppTheme.primaryColor,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.5,
+                            fontSize: 14,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Explore novos talentos na rede MixArt',
+                          style: TextStyle(color: Colors.white54, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               const SliverToBoxAdapter(
                   child: Divider(color: Colors.white10, height: 1)),
               if (state.status == CommunityStatus.failure)

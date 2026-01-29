@@ -12,6 +12,7 @@ import 'package:music_system/features/auth/presentation/pages/profile_page.dart'
 import 'package:music_system/features/community/presentation/widgets/artist_avatar.dart';
 import 'comment_tile.dart';
 import 'package:music_system/core/presentation/widgets/app_network_image.dart';
+import 'package:music_system/core/utils/cloudinary_sanitizer.dart';
 import 'package:music_system/injection_container.dart';
 import 'package:music_system/features/community/domain/repositories/post_repository.dart';
 import 'package:music_system/features/community/presentation/bloc/community_bloc.dart';
@@ -86,6 +87,7 @@ class _ArtistFeedCardState extends State<ArtistFeedCard> {
     _isVideo = type == 'video' ||
         (type == 'image' &&
             (url.contains('/video/upload/') ||
+                url.contains('/api/storage/stream/') || // MinIO Stream
                 url.endsWith('.mp4') ||
                 url.contains('.mp4?')));
 
@@ -99,8 +101,12 @@ class _ArtistFeedCardState extends State<ArtistFeedCard> {
 
   void _initVideo() {
     _videoController?.dispose();
+    final sanitizedUrl = CloudinarySanitizer.sanitize(
+      widget.post.imageUrl,
+      mediaType: 'video',
+    );
     _videoController = VideoPlayerController.networkUrl(
-      Uri.parse(widget.post.imageUrl),
+      Uri.parse(sanitizedUrl),
     )..initialize().then((_) {
         if (mounted) {
           setState(() {});

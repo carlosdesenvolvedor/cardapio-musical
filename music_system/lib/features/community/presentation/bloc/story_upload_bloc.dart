@@ -1,7 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/services/cloudinary_service.dart';
 import '../../../../core/services/storage_service.dart';
-import '../../../../core/utils/cloudinary_sanitizer.dart';
+import '../../../../core/services/backend_storage_service.dart';
 import '../../data/models/story_model.dart';
 import '../../domain/entities/story_effects.dart';
 import '../../domain/repositories/story_repository.dart';
@@ -11,11 +11,13 @@ import 'story_upload_state.dart';
 class StoryUploadBloc extends Bloc<StoryUploadEvent, StoryUploadState> {
   final CloudinaryService cloudinaryService;
   final StorageService storageService;
+  final BackendStorageService backendStorageService;
   final StoryRepository storyRepository;
 
   StoryUploadBloc({
     required this.cloudinaryService,
     required this.storageService,
+    required this.backendStorageService,
     required this.storyRepository,
   }) : super(const StoryUploadState()) {
     on<StartStoryUploadRequested>(_onStartStoryUploadRequested);
@@ -36,13 +38,22 @@ class StoryUploadBloc extends Bloc<StoryUploadEvent, StoryUploadState> {
 
       if (event.mediaType == 'image') {
         try {
+          // MIGRATION: Using Self-Hosted Backend (MinIO)
+          final path = await backendStorageService.uploadBytes(event.mediaBytes,
+              'story_${event.profile.id}_$timestamp.jpg', 'stories/images');
+          url = "http://137.131.245.169/media/$path";
+          add(const UploadProgressUpdated(0.8));
+
+          /* OLD LOGIC
           url = await cloudinaryService.uploadImage(
             event.mediaBytes,
             'story_${event.profile.id}_$timestamp',
             onProgress: (p) => add(UploadProgressUpdated(
                 p * 0.8)), // Reserved 20% for metadata save
           );
+          */
         } catch (e) {
+          // Fallback
           url = await storageService.uploadImage(
             event.mediaBytes,
             'stories/${event.profile.id}_$timestamp.jpg',
@@ -50,12 +61,20 @@ class StoryUploadBloc extends Bloc<StoryUploadEvent, StoryUploadState> {
         }
       } else {
         try {
+          // MIGRATION: Using Self-Hosted Backend (MinIO)
+          final path = await backendStorageService.uploadBytes(event.mediaBytes,
+              'story_${event.profile.id}_$timestamp.mp4', 'stories/videos');
+          url = "http://137.131.245.169/media/$path";
+          add(const UploadProgressUpdated(0.8));
+
+          /* OLD LOGIC
           url = await cloudinaryService.uploadVideo(
             event.mediaBytes,
             'story_${event.profile.id}_$timestamp',
             onProgress: (p) => add(UploadProgressUpdated(
                 p * 0.8)), // Reserved 20% for metadata save
           );
+          */
         } catch (e) {
           url = await storageService.uploadFile(
             fileBytes: event.mediaBytes,
@@ -68,11 +87,9 @@ class StoryUploadBloc extends Bloc<StoryUploadEvent, StoryUploadState> {
       if (url != null) {
         emit(state.copyWith(progress: 0.8));
 
-        final sanitizedUrl = CloudinarySanitizer.sanitize(
-          url,
-          mediaType: event.mediaType,
-          filterId: event.filterId,
-        );
+        // No sanitization needed for MinIO.
+        // If reusing CloudinarySanitizer for something, keep it, but here it was mainly for Cloudinary URLs.
+        final sanitizedUrl = url;
 
         final story = StoryModel(
           id: '',

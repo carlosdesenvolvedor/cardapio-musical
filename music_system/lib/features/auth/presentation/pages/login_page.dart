@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../config/theme/app_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'registration_page.dart';
+import '../../../../core/constants/app_version.dart';
 
 import '../../../community/presentation/pages/artist_network_page.dart';
 import '../bloc/auth_bloc.dart';
@@ -11,12 +14,7 @@ class LoginPage extends StatefulWidget {
   final String? title;
   final String? logoPath;
 
-  const LoginPage({
-    super.key,
-    this.destination,
-    this.title,
-    this.logoPath,
-  });
+  const LoginPage({super.key, this.destination, this.title, this.logoPath});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -65,30 +63,36 @@ class _LoginPageState extends State<LoginPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Branding Logo (Responsive)
+                // Branding MixArt (Replacing fixed logo path with the styled text as requested)
                 Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: 400,
-                    ),
-                    child: SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.7,
-                      height: 120,
-                      child: Image.asset(
-                        widget.logoPath ?? 'assets/images/logo_CG.png',
-                        fit: BoxFit.contain,
+                  child: Column(
+                    children: [
+                      const Text(
+                        'MixArt',
+                        style: TextStyle(
+                          color: Color(0xFFE5B80B),
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2,
+                          fontFamily: 'Outfit',
+                          fontSize: 48, // Larger for the login screen
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _isSignUp
+                            ? 'CRIAR CONTA'
+                            : (widget.title ?? 'PAINEL DO ARTISTA'),
+                        style: GoogleFonts.outfit(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1,
+                          fontSize: 18,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
                 ).animate().scale(duration: 800.ms, curve: Curves.easeOutBack),
-                const SizedBox(height: 10),
-                Text(
-                  _isSignUp
-                      ? 'Criar Conta'
-                      : (widget.title ?? 'Painel do Artista'),
-                  style: Theme.of(context).textTheme.displayLarge,
-                  textAlign: TextAlign.center,
-                ),
                 const SizedBox(height: 40),
                 TextField(
                   controller: _emailController,
@@ -135,19 +139,19 @@ class _LoginPageState extends State<LoginPage> {
                           onPressed: () {
                             if (_isSignUp) {
                               context.read<AuthBloc>().add(
-                                    SignUpRequested(
-                                      _emailController.text,
-                                      _passwordController.text,
-                                      "Músico",
-                                    ),
-                                  );
+                                SignUpRequested(
+                                  _emailController.text,
+                                  _passwordController.text,
+                                  "Músico",
+                                ),
+                              );
                             } else {
                               context.read<AuthBloc>().add(
-                                    SignInRequested(
-                                      _emailController.text,
-                                      _passwordController.text,
-                                    ),
-                                  );
+                                SignInRequested(
+                                  _emailController.text,
+                                  _passwordController.text,
+                                ),
+                              );
                             }
                           },
                           style: ElevatedButton.styleFrom(
@@ -158,9 +162,9 @@ class _LoginPageState extends State<LoginPage> {
                         const SizedBox(height: 16),
                         OutlinedButton.icon(
                           onPressed: () {
-                            context
-                                .read<AuthBloc>()
-                                .add(GoogleSignInRequested());
+                            context.read<AuthBloc>().add(
+                              GoogleSignInRequested(),
+                            );
                           },
                           icon: Image.network(
                             'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_\"G\"_logo.svg/768px-Google_\"G\"_logo.svg.png',
@@ -182,8 +186,9 @@ class _LoginPageState extends State<LoginPage> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            backgroundColor:
-                                AppTheme.primaryColor.withOpacity(0.05),
+                            backgroundColor: AppTheme.primaryColor.withOpacity(
+                              0.05,
+                            ),
                           ),
                         ),
                       ],
@@ -192,12 +197,25 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 16),
                 TextButton(
-                  onPressed: () => setState(() => _isSignUp = !_isSignUp),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const RegistrationPage(),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    'Novo por aqui? Crie uma conta',
+                    style: TextStyle(color: Colors.white54),
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+                Center(
                   child: Text(
-                    _isSignUp
-                        ? 'Já tem uma conta? Entre aqui'
-                        : 'Novo por aqui? Crie uma conta',
-                    style: const TextStyle(color: Colors.white54),
+                    'Versão $APP_VERSION',
+                    style: const TextStyle(color: Colors.white24, fontSize: 12),
                   ),
                 ),
               ],

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:music_system/features/auth/presentation/pages/privacy_settings_page.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../bloc/auth_bloc.dart';
@@ -22,6 +22,8 @@ import 'package:music_system/features/client_menu/presentation/pages/client_menu
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/usecases/log_profile_view.dart';
+import '../../presentation/bloc/works/works_bloc.dart';
+import '../../presentation/widgets/work_list_widget.dart';
 
 class ProfilePage extends StatefulWidget {
   final String userId;
@@ -93,9 +95,16 @@ class _ProfilePageState extends State<ProfilePage>
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) =>
-          sl<ProfileViewBloc>()..add(LoadProfileRequested(widget.userId)),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (context) =>
+              sl<ProfileViewBloc>()..add(LoadProfileRequested(widget.userId)),
+        ),
+        BlocProvider(
+          create: (context) => sl<WorksBloc>(),
+        ),
+      ],
       child: MultiBlocListener(
         listeners: [
           BlocListener<AuthBloc, AuthState>(
@@ -230,9 +239,9 @@ class _ProfilePageState extends State<ProfilePage>
                                         const Tab(text: 'Sobre'),
                                         const Tab(text: 'Posts'),
                                         const Tab(text: 'Social'),
-                                        const Tab(text: 'Meus Trabalhos'),
+                                        const Tab(text: 'Work'),
                                         if (_isOwner)
-                                          const Tab(text: 'Visitantes'),
+                                          const Tab(text: 'Visitas'),
                                       ],
                                     ),
                                   ),
@@ -1109,43 +1118,7 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   Widget _buildGalleryTab() {
-    return Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        children: [
-          if (_isOwner)
-            ElevatedButton.icon(
-              onPressed: () => _pickAndUploadImage(isGallery: true),
-              icon: const Icon(Icons.add_a_photo, color: Colors.black),
-              label: const Text(
-                'Adicionar Foto',
-                style: TextStyle(color: Colors.black),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFE5B80B),
-              ),
-            ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-              ),
-              itemCount: _galleryUrls.length,
-              itemBuilder: (context, index) => ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: CachedNetworkImage(
-                  imageUrl: _galleryUrls[index],
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    return WorkListWidget(userId: widget.userId, isOwner: _isOwner);
   }
 
   Widget _buildTextField({

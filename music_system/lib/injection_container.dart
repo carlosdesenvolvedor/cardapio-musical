@@ -4,13 +4,19 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:dio/dio.dart';
 import 'core/services/storage_service.dart';
+
+import 'core/services/backend_storage_service.dart';
 import 'core/services/cloudinary_service.dart';
+
 import 'core/services/notification_service.dart';
 import 'core/services/livekit_service.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
 import 'features/auth/domain/repositories/auth_repository.dart';
+import 'features/auth/domain/repositories/work_repository.dart';
+import 'features/auth/data/repositories/work_repository_impl.dart';
 import 'features/auth/domain/usecases/log_profile_view.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
+import 'features/auth/presentation/bloc/works/works_bloc.dart';
 import 'features/client_menu/data/datasources/song_remote_data_source.dart';
 import 'features/musician_dashboard/data/repositories/repertoire_repository_impl.dart';
 import 'features/musician_dashboard/domain/repositories/repertoire_repository.dart';
@@ -100,6 +106,16 @@ Future<void> init() async {
     () => AuthRepositoryImpl(firebaseAuth: sl(), firestore: sl()),
   );
   sl.registerLazySingleton(() => LogProfileView(sl()));
+
+  sl.registerLazySingleton<WorkRepository>(
+    () => WorkRepositoryImpl(
+      firestore: sl(),
+      storage: sl(),
+      backendStorage: sl(),
+    ),
+  );
+
+  sl.registerFactory(() => WorksBloc(repository: sl()));
 
   //! Features - Song Requests
   sl.registerFactory(
@@ -223,6 +239,7 @@ Future<void> init() async {
     () => StoryUploadBloc(
       cloudinaryService: sl(),
       storageService: sl(),
+      backendStorageService: sl(),
       storyRepository: sl(),
     ),
   );
@@ -231,6 +248,7 @@ Future<void> init() async {
     () => PostUploadBloc(
       cloudinaryService: sl(),
       storageService: sl(),
+      backendStorageService: sl(),
       postRepository: sl(),
       authRepository: sl(),
     ),
@@ -285,7 +303,9 @@ Future<void> init() async {
   );
 
   //! External
+  sl.registerLazySingleton(() => BackendStorageService());
   sl.registerLazySingleton(() => StorageService());
+
   sl.registerLazySingleton(() => CloudinaryService());
   sl.registerLazySingleton(() => PushNotificationService());
   sl.registerLazySingleton(() => LiveKitService());

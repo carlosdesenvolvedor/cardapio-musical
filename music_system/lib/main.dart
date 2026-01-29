@@ -217,30 +217,41 @@ class _SplashPageState extends State<SplashPage> {
     });
   }
 
+  bool _isRedirecting = false;
+
   void _handleState(AuthState state) {
-    if (!mounted) return;
+    if (!mounted || _isRedirecting) return;
 
-    // Wait a brief moment to allow the router to process any deep links
-    // that might be pushed on top of this initial splash route on Web.
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (!mounted) return;
+    if (state is Authenticated ||
+        (state is ProfileLoaded && state.currentUser != null) ||
+        state is Unauthenticated) {
+      _isRedirecting = true;
 
-      final bool isCurrent = ModalRoute.of(context)?.isCurrent ?? false;
-      final String path = Uri.base.path;
-      final bool isActuallyAtRoot =
-          path == '/' || path == '/index.html' || path.isEmpty;
+      // We still use a small delay on Web to ensure the engine is ready
+      // and deep links are processed, but we make it more robust.
+      Future.delayed(const Duration(milliseconds: 50), () {
+        if (!mounted) return;
 
-      if (!isCurrent || !isActuallyAtRoot) {
-        return;
-      }
+        final bool isCurrent = ModalRoute.of(context)?.isCurrent ?? false;
+        final String path = Uri.base.path;
+        final bool isActuallyAtRoot =
+            path == '/' || path == '/index.html' || path.isEmpty;
 
-      if (state is Authenticated ||
-          (state is ProfileLoaded && state.currentUser != null)) {
-        Navigator.pushReplacementNamed(context, '/network');
-      } else if (state is Unauthenticated) {
-        Navigator.pushReplacementNamed(context, '/home');
-      }
-    });
+        if (!isCurrent || !isActuallyAtRoot) {
+          _isRedirecting = false;
+          return;
+        }
+
+        if (state is Authenticated ||
+            (state is ProfileLoaded && state.currentUser != null)) {
+          Navigator.pushReplacementNamed(context, '/network');
+        } else if (state is Unauthenticated) {
+          Navigator.pushReplacementNamed(context, '/musician');
+        } else {
+          _isRedirecting = false;
+        }
+      });
+    }
   }
 
   @override

@@ -41,6 +41,8 @@ class UserProfile extends Equatable {
   final bool isParentalConsentGranted;
   final bool isDobVisible;
   final bool isPixVisible;
+  final String? profileType; // Artista, Contratador, Maesta, etc.
+  final String? subType; // Músico, Cantor, Banda, Outros, etc.
 
   const UserProfile({
     required this.id,
@@ -68,12 +70,16 @@ class UserProfile extends Equatable {
     this.isParentalConsentGranted = false,
     this.isDobVisible = true,
     this.isPixVisible = true,
+    this.profileType,
+    this.subType,
   });
 
   @override
   List<Object?> get props => [
         isDobVisible,
         isPixVisible,
+        profileType,
+        subType,
       ];
 
   UserProfile copyWith({
@@ -102,6 +108,8 @@ class UserProfile extends Equatable {
     bool? isParentalConsentGranted,
     bool? isDobVisible,
     bool? isPixVisible,
+    String? profileType,
+    String? subType,
   }) {
     return UserProfile(
       id: id ?? this.id,
@@ -130,6 +138,8 @@ class UserProfile extends Equatable {
           isParentalConsentGranted ?? this.isParentalConsentGranted,
       isDobVisible: isDobVisible ?? this.isDobVisible,
       isPixVisible: isPixVisible ?? this.isPixVisible,
+      profileType: profileType ?? this.profileType,
+      subType: subType ?? this.subType,
     );
   }
 }

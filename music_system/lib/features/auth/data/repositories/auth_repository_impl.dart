@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:dartz/dartz.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/user_entity.dart';
 import '../../domain/entities/user_profile.dart';
@@ -108,8 +108,32 @@ class AuthRepositoryImpl implements AuthRepository {
         email: email,
         password: password,
       );
-      await credential.user?.updateDisplayName(name);
-      return Right(_mapFirebaseUser(credential.user!));
+      final user = credential.user!;
+      await user.updateDisplayName(name);
+
+      // Create profile document in Firestore
+      final profile = UserProfileModel(
+        id: user.uid,
+        email: user.email ?? '',
+        artisticName: name,
+        pixKey: '',
+        followersCount: 0,
+        followingCount: 0,
+        profileViewsCount: 0,
+        isLive: false,
+        verificationLevel: VerificationLevel.none,
+      );
+      await firestore.collection('users').doc(user.uid).set(profile.toJson());
+
+      // Force token refresh to ensure context-aware services (FCM, Firestore Rules)
+      // see the new user session immediately.
+      try {
+        await user.getIdToken(true);
+      } catch (e) {
+        debugPrint('Non-critical: Token refresh failed in signUp: $e');
+      }
+
+      return Right(_mapFirebaseUser(user));
     } on FirebaseAuthException catch (e) {
       return Left(ServerFailure(e.message ?? 'Erro ao criar conta'));
     } catch (e) {

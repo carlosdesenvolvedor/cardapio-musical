@@ -1,29 +1,36 @@
 import 'package:livekit_client/livekit_client.dart';
 import 'package:flutter/foundation.dart';
-import 'package:cloud_functions/cloud_functions.dart';
+import 'package:dio/dio.dart';
 
 class LiveKitService {
   Room? _room;
   EventsListener<RoomEvent>? _listener;
+  final Dio _dio = Dio();
 
   Room? get room => _room;
 
   Future<Map<String, String>> getToken(
       String roomName, String participantName) async {
     try {
-      final HttpsCallable callable =
-          FirebaseFunctions.instance.httpsCallable('getLiveKitToken');
-      final result = await callable.call({
+      // In a real production app, this URL should be in a configuration file or environment variable
+      const String apiUrl = 'http://137.131.245.16/api/live/token';
+
+      final response = await _dio.post(apiUrl, data: {
         'roomName': roomName,
         'participantName': participantName,
       });
 
-      return {
-        'token': result.data['token'] as String,
-        'serverUrl': result.data['serverUrl'] as String,
-      };
+      if (response.statusCode == 200) {
+        final data = response.data;
+        return {
+          'token': data['token'] as String,
+          'serverUrl': data['serverUrl'] as String,
+        };
+      } else {
+        throw Exception('Failed to get token: ${response.statusCode}');
+      }
     } catch (e) {
-      debugPrint('Error calling Cloud Function: $e');
+      debugPrint('Error calling backend for LiveKit token: $e');
       rethrow;
     }
   }
