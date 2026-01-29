@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Livekit.Server.Sdk.Dotnet;
-using Livekit.Proto;
+using Livekit;
 
 namespace MusicSystem.Backend.Controllers;
 
@@ -23,21 +22,16 @@ public class LiveController : ControllerBase
             return BadRequest("RoomName and ParticipantName are required.");
         }
 
-        // In a real scenario, these should come from appsettings.json or Environment Variables
-        // For development/initial setup as per docker-compose:
         var apiKey = _configuration["LiveKit:ApiKey"] ?? "devkey";
         var apiSecret = _configuration["LiveKit:ApiSecret"] ?? "secret";
         var serverUrl = _configuration["LiveKit:ServerUrl"] ?? "http://localhost:7880";
 
         try
         {
-            var tokenGenerator = new AccessToken(apiKey, apiSecret);
-            // Em algumas versões do SDK as propriedades são Identity e Name
-            // Verificando os erros, o compilador não as encontrou. 
-            // Vamos usar os métodos ou propriedades corretas baseados no SDK .NET
-            
-            tokenGenerator.SetIdentity(request.ParticipantName);
-            tokenGenerator.SetName(request.ParticipantName);
+            // Forçando o namespace Livekit para garantir o uso da classe correta
+            var tokenGenerator = new Livekit.AccessToken(apiKey, apiSecret);
+            tokenGenerator.Identity = request.ParticipantName;
+            tokenGenerator.Name = request.ParticipantName;
             
             var videoGrant = new VideoGrant
             {
