@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 class BackendStorageService {
   // Use 10.0.2.2 for Android Emulator, localhost for Web/iOS Simulator.
   // Ideally this should be in an environment config.
-  static const String baseUrl = 'http://137.131.245.169/api/storage';
+  static const String baseUrl = 'http://136.248.64.90/api/storage';
   final Dio _dio = Dio();
 
   Future<String> uploadBytes(

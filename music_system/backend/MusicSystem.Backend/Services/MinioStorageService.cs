@@ -157,12 +157,12 @@ namespace MusicSystem.Backend.Services
             if (bucketIndex != -1)
             {
                 var objectAndParams = url.Substring(bucketIndex + bucketPrefix.Length);
-                return $"http://136.248.64.909/media/{objectAndParams}";
+                return $"http://136.248.64.90/media/{objectAndParams}";
             }
 
             // Fallback: simple replace if the robust one fails
-            return url.Replace("http://minio:9000/music-system-media/", "http://136.248.64.909/media/")
-                      .Replace("minio:9000", "136.248.64.909/media");
+            return url.Replace("http://minio:9000/music-system-media/", "http://136.248.64.90/media/")
+                      .Replace("minio:9000", "136.248.64.90/media");
         }
 
         private async Task EnsureBucketExistsAsync()

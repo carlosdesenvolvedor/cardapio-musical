@@ -1,5 +1,5 @@
 class UrlSanitizer {
-  static const String serverIp = '137.131.245.169';
+  static const String serverIp = '136.248.64.90';
 
   static String sanitize(String url) {
     if (url.isEmpty) return url;
