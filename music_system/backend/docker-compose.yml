@@ -27,7 +27,7 @@ services:
       - Minio__BucketName=music-system-media
       - Minio__ForcePathStyle=true
       - LiveKit__ApiKey=devkey
-      - LiveKit__ApiSecret=secret
+      - LiveKit__ApiSecret=LiveKit_Secret_Key_At_Least_32_Chars_Long_Secure
       - LiveKit__ServerUrl=http://136.248.64.90/livekit/
     depends_on:
       - minio
@@ -52,7 +52,7 @@ services:
       - "7881:7881"
       - "7882:7882/udp"
     environment:
-      LIVEKIT_KEYS: "devkey: secret"
+      LIVEKIT_KEYS: "devkey: LiveKit_Secret_Key_At_Least_32_Chars_Long_Secure"
     volumes:
       - ./livekit.yaml:/etc/livekit.yaml:ro
 
