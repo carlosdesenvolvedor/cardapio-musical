@@ -149,6 +149,9 @@ class CloudinarySanitizer {
       }
     }
 
+    if (sanitized != url) {
+      print('Sanitized URL: $url -> $sanitized');
+    }
     return sanitized;
   }
 }

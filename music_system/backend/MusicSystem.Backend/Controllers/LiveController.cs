@@ -44,6 +44,7 @@ public class LiveController : ControllerBase
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[CRITICAL] Error generating token: {ex}");
             return StatusCode(500, $"Error generating token: {ex.Message}");
         }
     }
