@@ -9,7 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="AWSSDK.S3" Version="4.0.17.3" />
-    <PackageReference Include="Livekit.Server.Sdk.Dotnet" Version="1.1.0" />
+    <PackageReference Include="Livekit.Server.Sdk.Dotnet" Version="1.2.0" />
   </ItemGroup>
 
 </Project>

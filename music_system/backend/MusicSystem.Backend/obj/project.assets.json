@@ -44,7 +44,7 @@
           }
         }
       },
-      "Livekit.Server.Sdk.Dotnet/1.2.0": {
+      "Livekit.Server.Sdk.Dotnet/1.1.0": {
         "type": "package",
         "dependencies": {
           "Google.Protobuf": "3.32.1",
@@ -61,25 +61,6 @@
             "related": ".xml"
           }
         }
-      },
-      "Microsoft.AspNetCore.OpenApi/9.0.10": {
-        "type": "package",
-        "dependencies": {
-          "Microsoft.OpenApi": "1.6.17"
-        },
-        "compile": {
-          "lib/net9.0/Microsoft.AspNetCore.OpenApi.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net9.0/Microsoft.AspNetCore.OpenApi.dll": {
-            "related": ".xml"
-          }
-        },
-        "frameworkReferences": [
-          "Microsoft.AspNetCore.App"
-        ]
       },
       "Microsoft.Extensions.DependencyInjection.Abstractions/8.0.0": {
         "type": "package",
@@ -175,19 +156,6 @@
         "runtime": {
           "lib/net9.0/Microsoft.IdentityModel.Tokens.dll": {
             "related": ".xml"
-          }
-        }
-      },
-      "Microsoft.OpenApi/1.6.17": {
-        "type": "package",
-        "compile": {
-          "lib/netstandard2.0/Microsoft.OpenApi.dll": {
-            "related": ".pdb;.xml"
-          }
-        },
-        "runtime": {
-          "lib/netstandard2.0/Microsoft.OpenApi.dll": {
-            "related": ".pdb;.xml"
           }
         }
       },
@@ -302,34 +270,18 @@
         "lib/netstandard2.0/Google.Protobuf.xml"
       ]
     },
-    "Livekit.Server.Sdk.Dotnet/1.2.0": {
-      "sha512": "rq0agmz1wBj+VmSRvu5kht8C962Ohhjy3RK3o1vEjTeJZB0QeFrXl0nza69miqyoF0WlNaV/Ozkoq/oFqQhtyA==",
+    "Livekit.Server.Sdk.Dotnet/1.1.0": {
+      "sha512": "Zyz27Al4m8iLY9nrktWcYPbRwXqv1zSsc4IBwvXuuTwImqsaQ8mahIojoKyxBu35Q+/vSKI5Lhv5EwkUPl32SQ==",
       "type": "package",
-      "path": "livekit.server.sdk.dotnet/1.2.0",
+      "path": "livekit.server.sdk.dotnet/1.1.0",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "README.md",
         "lib/netstandard2.0/LivekitApi.dll",
         "lib/netstandard2.0/LivekitApi.xml",
-        "livekit.server.sdk.dotnet.1.2.0.nupkg.sha512",
+        "livekit.server.sdk.dotnet.1.1.0.nupkg.sha512",
         "livekit.server.sdk.dotnet.nuspec"
-      ]
-    },
-    "Microsoft.AspNetCore.OpenApi/9.0.10": {
-      "sha512": "yAv5EDEi0Nkk75Vhxh6ppuXd/QIO8hzjGpAt/fGInMZWIX/mVwZ1IM50YFIWeLCVM8KDj0oFPQdcLeQ+9hEJsw==",
-      "type": "package",
-      "path": "microsoft.aspnetcore.openapi/9.0.10",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "Icon.png",
-        "PACKAGE.md",
-        "THIRD-PARTY-NOTICES.TXT",
-        "lib/net9.0/Microsoft.AspNetCore.OpenApi.dll",
-        "lib/net9.0/Microsoft.AspNetCore.OpenApi.xml",
-        "microsoft.aspnetcore.openapi.9.0.10.nupkg.sha512",
-        "microsoft.aspnetcore.openapi.nuspec"
       ]
     },
     "Microsoft.Extensions.DependencyInjection.Abstractions/8.0.0": {
@@ -533,21 +485,6 @@
         "microsoft.identitymodel.tokens.nuspec"
       ]
     },
-    "Microsoft.OpenApi/1.6.17": {
-      "sha512": "Le+kehlmrlQfuDFUt1zZ2dVwrhFQtKREdKBo+rexOwaCoYP0/qpgT9tLxCsZjsgR5Itk1UKPcbgO+FyaNid/bA==",
-      "type": "package",
-      "path": "microsoft.openapi/1.6.17",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "README.md",
-        "lib/netstandard2.0/Microsoft.OpenApi.dll",
-        "lib/netstandard2.0/Microsoft.OpenApi.pdb",
-        "lib/netstandard2.0/Microsoft.OpenApi.xml",
-        "microsoft.openapi.1.6.17.nupkg.sha512",
-        "microsoft.openapi.nuspec"
-      ]
-    },
     "Newtonsoft.Json/13.0.4": {
       "sha512": "pdgNNMai3zv51W5aq268sujXUyx7SNdE2bj1wZcWjAQrKMFZV260lbqYop1d2GM67JI1huLRwxo9ZqnfF/lC6A==",
       "type": "package",
@@ -606,8 +543,7 @@
   "projectFileDependencyGroups": {
     "net9.0": [
       "AWSSDK.S3 >= 4.0.17.3",
-      "Livekit.Server.Sdk.Dotnet >= 1.2.0",
-      "Microsoft.AspNetCore.OpenApi >= 9.0.10"
+      "Livekit.Server.Sdk.Dotnet >= 1.1.0"
     ]
   },
   "packageFolders": {
@@ -666,11 +602,7 @@
           },
           "Livekit.Server.Sdk.Dotnet": {
             "target": "Package",
-            "version": "[1.2.0, )"
-          },
-          "Microsoft.AspNetCore.OpenApi": {
-            "target": "Package",
-            "version": "[9.0.10, )"
+            "version": "[1.1.0, )"
           }
         },
         "imports": [
