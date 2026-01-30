@@ -60,6 +60,7 @@ class BackendStorageService {
       data: formData,
       queryParameters: {'folder': folder},
     );
+    print('DEBUG: BackendStorageService upload response: ${response.data}');
     if (response.statusCode == 200) {
       return response.data['path'];
     } else {
@@ -123,7 +124,7 @@ class BackendStorageService {
 
     // 3. Complete
     final completeResponse = await _dio.post(
-      '$baseUrl/multipart/complete',
+      '$baseUrl/complete',
       data: {
         "Key": key,
         "UploadId": uploadId,
@@ -131,6 +132,8 @@ class BackendStorageService {
       },
     );
 
+    print(
+        'DEBUG: BackendStorageService complete response: ${completeResponse.data}');
     if (completeResponse.statusCode == 200) {
       return completeResponse.data['path'];
     } else {

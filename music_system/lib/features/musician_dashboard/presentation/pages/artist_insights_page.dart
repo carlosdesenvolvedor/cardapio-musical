@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:music_system/config/theme/app_theme.dart';
+import 'package:music_system/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:music_system/features/auth/domain/entities/user_profile.dart';
 
 class ArtistInsightsPage extends StatelessWidget {
   const ArtistInsightsPage({super.key});
@@ -10,51 +13,60 @@ class ArtistInsightsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width > 900;
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: Text(
-          'INSIGHTS DO ARTISTA',
-          style: GoogleFonts.outfit(
-            fontWeight: FontWeight.bold,
-            letterSpacing: 2,
-            fontSize: 18,
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        UserProfile? profile;
+        if (state is ProfileLoaded) {
+          profile = state.profile;
+        }
+
+        return Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            title: Text(
+              'INSIGHTS DO ARTISTA',
+              style: GoogleFonts.outfit(
+                fontWeight: FontWeight.bold,
+                letterSpacing: 2,
+                fontSize: 18,
+              ),
+            ),
+            backgroundColor: Colors.black,
+            elevation: 0,
           ),
-        ),
-        backgroundColor: Colors.black,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionHeader(
-              'Resumo de Performance',
-              Icons.analytics_outlined,
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSectionHeader(
+                  'Resumo de Performance',
+                  Icons.analytics_outlined,
+                ),
+                const SizedBox(height: 20),
+                _buildMetricsGrid(isDesktop, profile),
+                const SizedBox(height: 40),
+                _buildSectionHeader(
+                  'Músicas mais Pedidas',
+                  Icons.leaderboard_outlined,
+                ),
+                const SizedBox(height: 20),
+                _buildMusicCharts(isDesktop),
+                const SizedBox(height: 40),
+                _buildSectionHeader(
+                  'IA - Feedback & Estratégia',
+                  Icons.auto_awesome_outlined,
+                ),
+                const SizedBox(height: 20),
+                _buildAISuggestions(isDesktop),
+                const SizedBox(height: 40),
+                _buildAITerrainReady(),
+                const SizedBox(height: 40),
+              ],
             ),
-            const SizedBox(height: 20),
-            _buildMetricsGrid(isDesktop),
-            const SizedBox(height: 40),
-            _buildSectionHeader(
-              'Músicas mais Pedidas',
-              Icons.leaderboard_outlined,
-            ),
-            const SizedBox(height: 20),
-            _buildMusicCharts(isDesktop),
-            const SizedBox(height: 40),
-            _buildSectionHeader(
-              'IA - Feedback & Estratégia',
-              Icons.auto_awesome_outlined,
-            ),
-            const SizedBox(height: 20),
-            _buildAISuggestions(isDesktop),
-            const SizedBox(height: 40),
-            _buildAITerrainReady(),
-            const SizedBox(height: 40),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -75,7 +87,7 @@ class ArtistInsightsPage extends StatelessWidget {
     ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.1);
   }
 
-  Widget _buildMetricsGrid(bool isDesktop) {
+  Widget _buildMetricsGrid(bool isDesktop, UserProfile? profile) {
     return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -85,14 +97,33 @@ class ArtistInsightsPage extends StatelessWidget {
       childAspectRatio: 1.2,
       children: [
         _buildStatCard(
-          'Total Gorjetas',
-          'R\$ 1.250,00',
-          '+12%',
-          Colors.greenAccent,
+          'Seguidores',
+          profile?.followersCount.toString() ?? '0',
+          'Tempo Real',
+          profile != null && profile.followersCount > 0
+              ? Colors.greenAccent
+              : Colors.white24,
         ),
-        _buildStatCard('Pedidos Mes', '48', '+5', Colors.blueAccent),
-        _buildStatCard('Taxa Aceite', '92%', '+2%', Colors.orangeAccent),
-        _buildStatCard('Sujestões IA', '15', 'Nível: 5', Colors.purpleAccent),
+        _buildStatCard(
+          'Visualizações',
+          profile?.profileViewsCount.toString() ?? '0',
+          'Total Histórico',
+          profile != null && profile.profileViewsCount > 0
+              ? Colors.blueAccent
+              : Colors.white24,
+        ),
+        _buildStatCard(
+          'Taxa Aceite',
+          'N/D',
+          'Próxima Live',
+          Colors.orangeAccent,
+        ),
+        _buildStatCard(
+          'Nível IA',
+          'Beta',
+          'MixArt Engine',
+          Colors.purpleAccent,
+        ),
       ],
     );
   }
@@ -143,10 +174,10 @@ class ArtistInsightsPage extends StatelessWidget {
         ],
       ),
     ).animate().scale(
-      delay: 100.ms,
-      duration: 400.ms,
-      curve: Curves.easeOutBack,
-    );
+          delay: 100.ms,
+          duration: 400.ms,
+          curve: Curves.easeOutBack,
+        );
   }
 
   Widget _buildMusicCharts(bool isDesktop) {
@@ -162,11 +193,8 @@ class ArtistInsightsPage extends StatelessWidget {
           ),
           child: Column(
             children: [
-              _buildMusicRankItem('Bohemian Rhapsody', 25, 0.9),
-              _buildMusicRankItem('Evidências', 22, 0.8),
-              _buildMusicRankItem('Sweet Child O Mine', 18, 0.6),
-              _buildMusicRankItem('Wonderwall', 15, 0.5),
-              _buildMusicRankItem('Hotel California', 12, 0.4),
+              _buildMusicRankItem('Dados Sugeridos pelo App', 0, 0.1),
+              _buildMusicRankItem('Interaja mais para gerar métricas', 0, 0.05),
             ],
           ),
         );
@@ -185,10 +213,11 @@ class ArtistInsightsPage extends StatelessWidget {
                 style: const TextStyle(color: Colors.white, fontSize: 14),
               ),
             ),
-            Text(
-              '$requests pedidos',
-              style: const TextStyle(color: Colors.white54, fontSize: 12),
-            ),
+            if (requests > 0)
+              Text(
+                '$requests pedidos',
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
+              ),
           ],
         ),
         const SizedBox(height: 8),
@@ -213,13 +242,13 @@ class ArtistInsightsPage extends StatelessWidget {
       children: [
         _buildSuggestionCard(
           'Tática de Engajamento',
-          'Tente interagir mais com os donos de mesas que pedem sertanejo, eles tendem a dar mais gorjetas após o 3º pedido.',
+          'Sua Rede de Artistas está ativa! Continue postando stories para aumentar as visualizações e o nível de engajamento da IA.',
           Icons.tips_and_updates,
           Colors.orangeAccent,
         ),
         _buildSuggestionCard(
           'Melhoria de Repertório',
-          'O público dessa região está pedindo muito "Pisadinha". Adicione 3 músicas do Barões da Pisadinha para aumentar as chances de gorjetas.',
+          'Em breve, a IA analisará os pedidos realizados no seu Painel de Músico para sugerir novas faixas que bombam na sua região.',
           Icons.library_add,
           Colors.blueAccent,
         ),
@@ -300,7 +329,7 @@ class ArtistInsightsPage extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           const Text(
-            'Este painel está pronto para receber telemetria em tempo real do seu backend de IA. As táticas e sugestões serão sincronizadas dinamicamente.',
+            'Este painel agora está conectado ao seu perfil dinâmico. As métricas de Seguidores e Visualizações são reais e sincronizadas automaticamente.',
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.white38, fontSize: 12),
           ),
@@ -316,7 +345,7 @@ class ArtistInsightsPage extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
             child: const Text(
-              'Conectar Agente de IA',
+              'Agente de IA Ativo',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ),

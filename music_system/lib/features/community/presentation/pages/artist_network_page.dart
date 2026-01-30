@@ -22,6 +22,12 @@ import 'package:music_system/features/community/presentation/widgets/glass_nav_b
 import 'package:music_system/features/community/presentation/widgets/artist_feed_card.dart';
 import 'package:music_system/features/community/presentation/widgets/feed_shimmer.dart';
 import 'package:music_system/features/live/presentation/widgets/live_stream_viewer.dart';
+import 'package:music_system/features/live/presentation/pages/live_page.dart';
+import 'package:music_system/features/wallet/presentation/pages/wallet_page.dart';
+import 'package:music_system/features/musician_dashboard/presentation/pages/manage_repertoire_page.dart';
+import 'package:music_system/features/bands/presentation/pages/my_bands_page.dart';
+import 'package:music_system/features/musician_dashboard/presentation/pages/artist_insights_page.dart';
+import 'package:music_system/core/services/notification_service.dart';
 import 'package:music_system/injection_container.dart';
 
 import 'package:music_system/features/auth/domain/repositories/auth_repository.dart';
@@ -257,31 +263,41 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
           BlocBuilder<NotificationsBloc, NotificationsState>(
             builder: (context, state) {
               final hasUnread = state.notifications.any((n) => !n.isRead);
-              return IconButton(
-                icon: Stack(
-                  children: [
-                    const Icon(Icons.bolt, color: Colors.white, size: 28),
-                    if (hasUnread)
-                      Positioned(
-                          right: 0,
-                          top: 0,
-                          child: Container(
-                              width: 10,
-                              height: 10,
-                              decoration: const BoxDecoration(
-                                  color: AppTheme.primaryColor,
-                                  shape: BoxShape.circle))),
-                  ],
-                ),
-                onPressed: () {
-                  if (profile != null) {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) =>
-                                ActivityPage(userId: profile.id)));
-                  }
-                },
+              return Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.music_note,
+                        color: AppTheme.primaryColor),
+                    tooltip: 'Meus Pedidos',
+                    onPressed: () => Navigator.pushNamed(context, '/dashboard'),
+                  ),
+                  IconButton(
+                    icon: Stack(
+                      children: [
+                        const Icon(Icons.bolt, color: Colors.white, size: 28),
+                        if (hasUnread)
+                          Positioned(
+                              right: 0,
+                              top: 0,
+                              child: Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: const BoxDecoration(
+                                      color: AppTheme.primaryColor,
+                                      shape: BoxShape.circle))),
+                      ],
+                    ),
+                    onPressed: () {
+                      if (profile != null) {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) =>
+                                    ActivityPage(userId: profile.id)));
+                      }
+                    },
+                  ),
+                ],
               );
             },
           ),
@@ -903,7 +919,12 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
             title: const Text('Insights & Estatísticas'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.pushNamed(context, '/insights');
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ArtistInsightsPage(),
+                ),
+              );
             },
           ),
           ListTile(
@@ -925,8 +946,93 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
             },
           ),
           ListTile(
+            leading: const Icon(Icons.account_balance_wallet_rounded,
+                color: Color(0xFFE5B80B)),
+            title: const Text('Minha Carteira'),
+            onTap: () {
+              Navigator.pop(context);
+              if (user != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => WalletPage(userId: user!.id),
+                  ),
+                );
+              }
+            },
+          ),
+          ListTile(
+            leading: const Icon(
+              Icons.library_music,
+              color: Color(0xFFE5B80B),
+            ),
+            title: const Text('Gerenciar Repertório'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ManageRepertoirePage(),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.group, color: Color(0xFFE5B80B)),
+            title: const Text('Minhas Bandas'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const MyBandsPage(),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.live_tv, color: Colors.redAccent),
+            title: const Text('Iniciar Transmissão'),
+            onTap: () {
+              Navigator.pop(context);
+              if (user != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => LivePage(
+                      liveId: user!.id,
+                      isHost: true,
+                      userId: user.id,
+                      userName: user.displayName,
+                    ),
+                  ),
+                );
+              }
+            },
+          ),
+          ListTile(
+            leading: const Icon(
+              Icons.notifications_active,
+              color: Color(0xFFE5B80B),
+            ),
+            title: const Text('Ativar Notificações'),
+            onTap: () async {
+              Navigator.pop(context);
+              await sl<PushNotificationService>().initialize();
+              if (mounted) {
+                messengerKey.currentState?.showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Tentando ativar notificações... Verifique o pop-up do navegador.',
+                    ),
+                  ),
+                );
+              }
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.dashboard, color: Color(0xFFE5B80B)),
-            title: const Text('Dashboard do Músico'),
+            title: const Text('Painel de Pedidos'),
             onTap: () {
               Navigator.pop(context);
               Navigator.pushNamed(context, '/dashboard');

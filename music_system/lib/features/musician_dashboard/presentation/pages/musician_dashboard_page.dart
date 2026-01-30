@@ -1,22 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:music_system/main.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'manage_repertoire_page.dart';
 import 'share_page.dart';
-import 'artist_insights_page.dart';
-import '../../../bands/presentation/pages/my_bands_page.dart';
 import 'package:music_system/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:music_system/features/auth/domain/entities/user_entity.dart';
-import 'package:music_system/features/auth/presentation/pages/profile_page.dart';
 import 'package:music_system/features/smart_lyrics/presentation/pages/lyrics_view_page.dart';
 import 'package:music_system/features/song_requests/domain/entities/song_request.dart';
 import 'package:music_system/features/song_requests/presentation/bloc/song_request_bloc.dart';
 import 'package:music_system/features/song_requests/presentation/bloc/song_request_event.dart';
 import 'package:music_system/features/song_requests/presentation/bloc/song_request_state.dart';
-
-import 'package:music_system/core/services/notification_service.dart';
-import 'package:music_system/injection_container.dart';
-import 'package:music_system/features/live/presentation/pages/live_page.dart';
 
 class MusicianDashboardPage extends StatefulWidget {
   const MusicianDashboardPage({super.key});
@@ -78,129 +70,12 @@ class _MusicianDashboardPageState extends State<MusicianDashboardPage> {
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.analytics, color: Color(0xFFE5B80B)),
-              title: const Text('Insights & Estatísticas'),
-              subtitle: const Text(
-                'IA Feedback Ready',
-                style: TextStyle(color: Colors.white38, fontSize: 10),
-              ),
+              leading: const Icon(Icons.home, color: Color(0xFFE5B80B)),
+              title: const Text('Voltar para Rede'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ArtistInsightsPage(),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.person, color: Color(0xFFE5B80B)),
-              title: const Text('Meu Perfil'),
-              onTap: () {
-                Navigator.pop(context);
-                final user = _getCurrentUser(context.read<AuthBloc>().state);
-                if (user != null) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ProfilePage(
-                        userId: user.id,
-                        email: user.email,
-                      ),
-                    ),
-                  );
-                }
-              },
-            ),
-            ListTile(
-              leading: const Icon(
-                Icons.library_music,
-                color: Color(0xFFE5B80B),
-              ),
-              title: const Text('Gerenciar Repertório'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ManageRepertoirePage(),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.people, color: Color(0xFFE5B80B)),
-              title: const Text('Rede de Artistas'),
-              subtitle: const Text(
-                'Comunidade & Stories',
-                style: TextStyle(color: Colors.white38, fontSize: 10),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/network');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.group, color: Color(0xFFE5B80B)),
-              title: const Text('Minhas Bandas'),
-              subtitle: const Text(
-                'Gestão de Equipe & Agenda',
-                style: TextStyle(color: Colors.white38, fontSize: 10),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const MyBandsPage(),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.live_tv, color: Colors.redAccent),
-              title: const Text('Iniciar Transmissão'),
-              subtitle: const Text(
-                'Modo Músico (High Quality)',
-                style: TextStyle(color: Colors.white38, fontSize: 10),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                final user = _getCurrentUser(context.read<AuthBloc>().state);
-                if (user != null) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => LivePage(
-                        liveId: user.id,
-                        isHost: true,
-                        userId: user.id,
-                        userName: user.displayName,
-                      ),
-                    ),
-                  );
-                }
-              },
-            ),
-            ListTile(
-              leading: const Icon(
-                Icons.notifications_active,
-                color: Color(0xFFE5B80B),
-              ),
-              title: const Text('Ativar Notificações'),
-              onTap: () async {
-                Navigator.pop(context);
-                await sl<PushNotificationService>().initialize();
-                if (mounted) {
-                  messengerKey.currentState?.showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Tentando ativar notificações... Verifique o pop-up do navegador.',
-                      ),
-                    ),
-                  );
-                }
+                Navigator.pushNamedAndRemoveUntil(
+                    context, '/network', (route) => false);
               },
             ),
             const Divider(color: Colors.white10),
@@ -239,11 +114,11 @@ class _MusicianDashboardPageState extends State<MusicianDashboardPage> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.exit_to_app),
+            tooltip: 'Voltar para Rede',
             onPressed: () {
-              context.read<AuthBloc>().add(SignOutRequested());
-              Navigator.of(context)
-                  .pushNamedAndRemoveUntil('/', (route) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/network', (route) => false);
             },
           ),
         ],

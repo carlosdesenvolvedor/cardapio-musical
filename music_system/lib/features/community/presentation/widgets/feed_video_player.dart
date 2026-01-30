@@ -30,7 +30,7 @@ class _FeedVideoPlayerState extends State<FeedVideoPlayer> {
       ..initialize().then((_) {
         if (mounted) {
           setState(() => _isInitialized = true);
-          _controller.setLooping(true);
+          _controller.setLooping(false);
           if (widget.autoPlay) {
             _controller.play();
           }

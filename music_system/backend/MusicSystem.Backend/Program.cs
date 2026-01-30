@@ -9,6 +9,9 @@ builder.Services.AddControllers();
 // Register Storage Service
 builder.Services.AddSingleton<MusicSystem.Backend.Services.IStorageService, MusicSystem.Backend.Services.MinioStorageService>();
 
+// Register Wallet Service
+builder.Services.AddSingleton<MusicSystem.Backend.Services.IWalletService, MusicSystem.Backend.Services.WalletService>();
+
 // Configure Kestrel limits for large uploads (500MB)
 builder.Services.Configure<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions>(options =>
 {

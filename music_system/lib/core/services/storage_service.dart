@@ -11,6 +11,7 @@ class StorageService {
     required String contentType,
   }) async {
     try {
+      print('DEBUG: Starting upload for $fileName ($contentType)...');
       final Reference ref = _storage.ref().child(fileName);
 
       final UploadTask task = ref.putData(
@@ -18,13 +19,12 @@ class StorageService {
         SettableMetadata(contentType: contentType),
       );
 
-      final TaskSnapshot snapshot = await task.timeout(
-        const Duration(seconds: 120),
-      );
-
-      return await snapshot.ref.getDownloadURL();
+      final TaskSnapshot snapshot = await task;
+      final String downloadUrl = await snapshot.ref.getDownloadURL();
+      print('DEBUG: Upload successful! URL: $downloadUrl');
+      return downloadUrl;
     } catch (e) {
-      print('Firebase Storage Error: $e');
+      print('Firebase Storage Error during upload of $fileName: $e');
       rethrow;
     }
   }

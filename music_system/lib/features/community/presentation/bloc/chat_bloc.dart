@@ -46,9 +46,14 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     MessageSentRequested event,
     Emitter<ChatState> emit,
   ) async {
-    if (_currentSenderId == null || _currentReceiverId == null) return;
+    if (_currentSenderId == null || _currentReceiverId == null) {
+      print(
+          'DEBUG: ChatBloc error - IDs are null (Sender: $_currentSenderId, Receiver: $_currentReceiverId)');
+      return;
+    }
 
-    await sendMessage(
+    print('DEBUG: ChatBloc sending message - Type: ${event.type}');
+    final result = await sendMessage(
       senderId: _currentSenderId!,
       receiverId: _currentReceiverId!,
       text: event.text,
@@ -56,6 +61,12 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       mediaUrl: event.mediaUrl,
       senderName: event.senderName,
       senderPhoto: event.senderPhoto,
+    );
+
+    result.fold(
+      (failure) => print(
+          'DEBUG: ChatBloc error - sendMessage failed: ${failure.toString()}'),
+      (_) => print('DEBUG: ChatBloc success - message sent'),
     );
   }
 

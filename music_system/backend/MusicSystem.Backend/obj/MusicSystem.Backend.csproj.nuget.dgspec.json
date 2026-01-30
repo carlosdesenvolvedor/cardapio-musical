@@ -54,9 +54,17 @@
               "target": "Package",
               "version": "[4.0.17.3, )"
             },
-            "Livekit.Server.Sdk.Dotnet": {
+            "Microsoft.AspNetCore.OpenApi": {
               "target": "Package",
-              "version": "[1.2.0, )"
+              "version": "[9.0.10, )"
+            },
+            "System.IdentityModel.Tokens.Jwt": {
+              "target": "Package",
+              "version": "[8.3.0, )"
+            },
+            "mercadopago-sdk": {
+              "target": "Package",
+              "version": "[2.11.0, )"
             }
           },
           "imports": [
