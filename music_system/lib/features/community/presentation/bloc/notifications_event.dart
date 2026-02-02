@@ -22,6 +22,14 @@ class NotificationsUpdated extends NotificationsEvent {
   List<Object?> get props => [notifications];
 }
 
+class UnreadChatCountUpdated extends NotificationsEvent {
+  final int count;
+  UnreadChatCountUpdated(this.count);
+
+  @override
+  List<Object?> get props => [count];
+}
+
 class MarkNotificationAsRead extends NotificationsEvent {
   final String userId;
   final String notificationId;

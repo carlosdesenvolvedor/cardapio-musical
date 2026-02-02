@@ -13,7 +13,7 @@ class LiveKitService {
       String roomName, String participantName) async {
     try {
       // In a real production app, this URL should be in a configuration file or environment variable
-      const String apiUrl = 'https://136.248.64.90.nip.io/api/live/token';
+      const String apiUrl = 'http://localhost/api/live/token';
 
       final response = await _dio.post(apiUrl, data: {
         'roomName': roomName,

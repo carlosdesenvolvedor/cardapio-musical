@@ -4,7 +4,18 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:dio/dio.dart';
 import 'core/services/storage_service.dart';
+import 'features/service_provider/data/datasources/service_provider_remote_data_source.dart';
+import 'features/service_provider/data/repositories/service_provider_repository_impl.dart';
+import 'features/service_provider/domain/repositories/service_provider_repository.dart';
+import 'features/service_provider/domain/usecases/get_provider_services.dart';
+import 'features/service_provider/domain/usecases/register_service.dart';
+import 'features/service_provider/domain/usecases/update_service_status.dart';
+import 'features/service_provider/domain/usecases/delete_service.dart';
+import 'features/service_provider/domain/usecases/update_service.dart';
+import 'features/service_provider/presentation/bloc/service_dashboard_bloc.dart';
+import 'features/service_provider/presentation/bloc/service_registration_bloc.dart';
 
+import 'core/services/backend_api_service.dart';
 import 'core/services/backend_storage_service.dart';
 import 'core/services/cloudinary_service.dart';
 
@@ -93,6 +104,8 @@ import 'features/calendar/presentation/bloc/calendar_bloc.dart';
 final sl = GetIt.instance;
 
 Future<void> init() async {
+  if (sl.isRegistered<AuthRepository>()) return;
+
   //! Features - Auth
   sl.registerFactory(
     () => AuthBloc(
@@ -208,7 +221,8 @@ Future<void> init() async {
     () => NotificationRepositoryImpl(firestore: sl()),
   );
 
-  sl.registerFactory(() => NotificationsBloc(repository: sl()));
+  sl.registerFactory(
+      () => NotificationsBloc(repository: sl(), chatRepository: sl()));
 
   sl.registerLazySingleton<ChatRepository>(
     () => ChatRepositoryImpl(firestore: sl(), notificationRepository: sl()),
@@ -226,7 +240,8 @@ Future<void> init() async {
     ),
   );
 
-  sl.registerFactory(() => ChatBloc(sendMessage: sl(), streamMessages: sl()));
+  sl.registerFactory(() =>
+      ChatBloc(sendMessage: sl(), streamMessages: sl(), chatRepository: sl()));
   sl.registerFactory(
     () => ConversationsBloc(
       streamConversations: sl(),
@@ -302,7 +317,34 @@ Future<void> init() async {
     () => CalendarRemoteDataSourceImpl(firestore: sl()),
   );
 
+  //! Features - Service Provider
+  sl.registerFactory(
+    () => ServiceDashboardBloc(
+      getProviderServices: sl(),
+      updateServiceStatus: sl(),
+      deleteService: sl(),
+    ),
+  );
+  sl.registerFactory(
+    () => ServiceRegistrationBloc(
+      registerService: sl(),
+      updateService: sl(),
+    ),
+  );
+  sl.registerLazySingleton(() => GetProviderServices(sl()));
+  sl.registerLazySingleton(() => RegisterService(sl()));
+  sl.registerLazySingleton(() => UpdateServiceStatus(sl()));
+  sl.registerLazySingleton(() => DeleteService(sl()));
+  sl.registerLazySingleton(() => UpdateService(sl()));
+  sl.registerLazySingleton<IServiceProviderRepository>(
+    () => ServiceProviderRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerLazySingleton<IServiceProviderRemoteDataSource>(
+    () => ServiceProviderRemoteDataSourceImpl(apiService: sl()),
+  );
+
   //! External
+  sl.registerLazySingleton(() => BackendApiService(sl()));
   sl.registerLazySingleton(() => BackendStorageService());
   sl.registerLazySingleton(() => StorageService());
 

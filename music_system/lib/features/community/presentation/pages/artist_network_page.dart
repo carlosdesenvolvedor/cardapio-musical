@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:music_system/features/auth/domain/entities/user_profile.dart';
 import 'package:music_system/features/auth/presentation/bloc/auth_bloc.dart';
@@ -20,11 +19,14 @@ import 'package:music_system/features/community/presentation/bloc/notifications_
 import 'package:music_system/features/community/presentation/bloc/notifications_state.dart';
 import 'package:music_system/features/community/presentation/widgets/glass_nav_bar.dart';
 import 'package:music_system/features/community/presentation/widgets/artist_feed_card.dart';
+import 'package:music_system/core/presentation/widgets/app_network_image.dart';
 import 'package:music_system/features/community/presentation/widgets/feed_shimmer.dart';
 import 'package:music_system/features/live/presentation/widgets/live_stream_viewer.dart';
 import 'package:music_system/features/live/presentation/pages/live_page.dart';
+import 'package:music_system/features/community/presentation/pages/chat_list_page.dart';
 import 'package:music_system/features/wallet/presentation/pages/wallet_page.dart';
 import 'package:music_system/features/musician_dashboard/presentation/pages/manage_repertoire_page.dart';
+import 'package:music_system/features/service_provider/presentation/pages/service_provider_dashboard_page.dart';
 import 'package:music_system/features/bands/presentation/pages/my_bands_page.dart';
 import 'package:music_system/features/musician_dashboard/presentation/pages/artist_insights_page.dart';
 import 'package:music_system/core/services/notification_service.dart';
@@ -264,6 +266,7 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
             builder: (context, state) {
               final hasUnread = state.notifications.any((n) => !n.isRead);
               return Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
                     icon: const Icon(Icons.music_note,
@@ -271,6 +274,7 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
                     tooltip: 'Meus Pedidos',
                     onPressed: () => Navigator.pushNamed(context, '/dashboard'),
                   ),
+                  _ChatBadge(userId: profile?.id ?? entity?.id ?? ''),
                   IconButton(
                     icon: Stack(
                       children: [
@@ -604,7 +608,7 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
                                         body: Center(
                                             child: LiveStreamViewer(
                                           streamUrl:
-                                              "https://136.248.64.90.nip.io:8888/live/mystream/index.m3u8",
+                                              "http://localhost:8888/live/mystream/index.m3u8",
                                           isLive: true,
                                         )))));
                           }),
@@ -833,7 +837,7 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
                   return ListTile(
                     leading: CircleAvatar(
                         backgroundImage: data['photoUrl'] != null
-                            ? CachedNetworkImageProvider(data['photoUrl'])
+                            ? AppNetworkImage.provider(data['photoUrl'])
                             : null),
                     title: Text(data['artisticName'] ?? 'Artista',
                         style: const TextStyle(color: Colors.white)),
@@ -890,7 +894,7 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
             decoration: const BoxDecoration(color: Color(0xFFE5B80B)),
             currentAccountPicture: CircleAvatar(
               backgroundImage: user?.photoUrl != null
-                  ? CachedNetworkImageProvider(user!.photoUrl!)
+                  ? AppNetworkImage.provider(user!.photoUrl!)
                   : null,
               child: user?.photoUrl == null
                   ? const Icon(Icons.person, size: 40, color: Colors.black)
@@ -1036,6 +1040,23 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
             onTap: () {
               Navigator.pop(context);
               Navigator.pushNamed(context, '/dashboard');
+            },
+          ),
+          ListTile(
+            leading:
+                const Icon(Icons.home_repair_service, color: Color(0xFFE5B80B)),
+            title: const Text('Prestação de Serviço'),
+            onTap: () {
+              Navigator.pop(context);
+              if (user != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        ServiceProviderDashboardPage(providerId: user!.id),
+                  ),
+                );
+              }
             },
           ),
           const Divider(color: Colors.white10),
@@ -1229,6 +1250,73 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
           );
         }
         return const SizedBox.shrink();
+      },
+    );
+  }
+}
+
+class _ChatBadge extends StatelessWidget {
+  final String userId;
+
+  const _ChatBadge({required this.userId});
+
+  @override
+  Widget build(BuildContext context) {
+    if (userId.isEmpty) {
+      return IconButton(
+        icon:
+            const Icon(Icons.chat_bubble_outline, color: AppTheme.primaryColor),
+        tooltip: 'Conversas',
+        onPressed: () {},
+      );
+    }
+
+    return BlocBuilder<NotificationsBloc, NotificationsState>(
+      buildWhen: (previous, current) =>
+          previous.unreadMessageCount != current.unreadMessageCount,
+      builder: (context, state) {
+        final unreadCount = state.unreadMessageCount;
+        return Stack(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.chat_bubble_outline,
+                  color: AppTheme.primaryColor),
+              tooltip: 'Conversas',
+              onPressed: () {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) =>
+                            ChatListPage(currentUserId: userId)));
+              },
+            ),
+            if (unreadCount > 0)
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 16,
+                    minHeight: 16,
+                  ),
+                  child: Text(
+                    unreadCount > 99 ? '99+' : '$unreadCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
+        );
       },
     );
   }

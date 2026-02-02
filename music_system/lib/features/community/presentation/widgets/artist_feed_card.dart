@@ -108,153 +108,157 @@ class _ArtistFeedCardState extends State<ArtistFeedCard> {
           // Header
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ProfilePage(
-                          userId: widget.post.authorId,
-                          email: '', // Not needed for viewing
-                          showAppBar: true,
-                        ),
-                      ),
-                    );
-                  },
-                  child: Row(
-                    children: [
-                      ArtistAvatar(
-                        photoUrl: widget.post.authorPhotoUrl,
-                        radius: 16,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final bool canShowFollow = constraints.maxWidth > 200;
+                return Row(
+                  children: [
+                    ArtistAvatar(
+                      photoUrl: widget.post.authorPhotoUrl,
+                      radius: 16,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ProfilePage(
+                              userId: widget.post.authorId,
+                              email: '',
+                              showAppBar: true,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: GestureDetector(
                         onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => ProfilePage(
                                 userId: widget.post.authorId,
-                                email: '',
+                                email: '', // Not needed for viewing
                                 showAppBar: true,
                               ),
                             ),
                           );
                         },
-                      ),
-                      const SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            (widget.post.authorName == 'Artista Sem Nome' ||
-                                    widget.post.authorName.isEmpty)
-                                ? 'MixArter'
-                                : widget.post.authorName,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const Text(
-                            'Música & Arte',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.white54,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const Spacer(),
-                if (widget.currentUserId != widget.post.authorId &&
-                    widget.currentUserId.isNotEmpty)
-                  TextButton(
-                    onPressed: () {
-                      if (widget.isFollowing) {
-                        context.read<AuthBloc>().add(UnfollowUserRequested(
-                            widget.currentUserId, widget.post.authorId));
-                      } else {
-                        context.read<AuthBloc>().add(FollowUserRequested(
-                            widget.currentUserId, widget.post.authorId));
-                      }
-                    },
-                    child: Text(
-                      widget.isFollowing ? 'Sou fã' : 'Virar fã',
-                      style: const TextStyle(
-                        color: AppTheme.primaryColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, size: 20),
-                  onSelected: (value) {
-                    if (value == 'report') {
-                      _showReportDialog(context);
-                    } else if (value == 'unfollow') {
-                      context.read<AuthBloc>().add(UnfollowUserRequested(
-                          widget.currentUserId, widget.post.authorId));
-                    } else if (value == 'like') {
-                      _toggleLike();
-                    } else if (value == 'comment') {
-                      _showCommentsSheet(context);
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'like',
-                      child: Row(
-                        children: [
-                          Icon(Icons.favorite_border,
-                              color: Colors.white70, size: 20),
-                          SizedBox(width: 10),
-                          Text('Curtir'),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'comment',
-                      child: Row(
-                        children: [
-                          Icon(Icons.chat_bubble_outline,
-                              color: Colors.white70, size: 20),
-                          SizedBox(width: 10),
-                          Text('Comentar'),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'report',
-                      child: Row(
-                        children: [
-                          Icon(Icons.report_problem_outlined,
-                              color: Colors.redAccent, size: 20),
-                          SizedBox(width: 10),
-                          Text('Denunciar'),
-                        ],
-                      ),
-                    ),
-                    if (widget.isFollowing)
-                      const PopupMenuItem(
-                        value: 'unfollow',
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.person_remove_outlined,
-                                color: Colors.white70, size: 20),
-                            SizedBox(width: 10),
-                            Text('Deixar de ser fã'),
+                            Text(
+                              (widget.post.authorName == 'Artista Sem Nome' ||
+                                      widget.post.authorName.isEmpty)
+                                  ? 'MixArter'
+                                  : widget.post.authorName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const Text(
+                              'Música & Arte',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.white54,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ],
                         ),
                       ),
+                    ),
+                    if (canShowFollow &&
+                        widget.currentUserId != widget.post.authorId &&
+                        widget.currentUserId.isNotEmpty)
+                      TextButton(
+                        onPressed: () {
+                          if (widget.isFollowing) {
+                            context.read<AuthBloc>().add(UnfollowUserRequested(
+                                widget.currentUserId, widget.post.authorId));
+                          } else {
+                            context.read<AuthBloc>().add(FollowUserRequested(
+                                widget.currentUserId, widget.post.authorId));
+                          }
+                        },
+                        child: Text(
+                          widget.isFollowing ? 'Sou fã' : 'Virar fã',
+                          style: const TextStyle(
+                            color: AppTheme.primaryColor,
+                          ),
+                        ),
+                      ),
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert, size: 20),
+                      onSelected: (value) {
+                        if (value == 'report') {
+                          _showReportDialog(context);
+                        } else if (value == 'unfollow') {
+                          context.read<AuthBloc>().add(UnfollowUserRequested(
+                              widget.currentUserId, widget.post.authorId));
+                        } else if (value == 'like') {
+                          _toggleLike();
+                        } else if (value == 'comment') {
+                          _showCommentsSheet(context);
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'like',
+                          child: Row(
+                            children: [
+                              Icon(Icons.favorite_border,
+                                  color: Colors.white70, size: 20),
+                              const SizedBox(width: 10),
+                              const Text('Curtir'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'comment',
+                          child: Row(
+                            children: [
+                              Icon(Icons.chat_bubble_outline,
+                                  color: Colors.white70, size: 20),
+                              const SizedBox(width: 10),
+                              const Text('Comentar'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'report',
+                          child: Row(
+                            children: [
+                              Icon(Icons.report_problem_outlined,
+                                  color: Colors.redAccent, size: 20),
+                              const SizedBox(width: 10),
+                              const Text('Denunciar'),
+                            ],
+                          ),
+                        ),
+                        if (widget.isFollowing)
+                          PopupMenuItem(
+                            value: 'unfollow',
+                            child: Row(
+                              children: [
+                                Icon(Icons.person_remove_outlined,
+                                    color: Colors.white70, size: 20),
+                                const SizedBox(width: 10),
+                                const Text('Deixar de ser fã'),
+                              ],
+                            ),
+                          ),
+                      ],
+                      color: Colors.grey[900],
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
                   ],
-                  color: Colors.grey[900],
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-              ],
+                );
+              },
             ),
           ),
 
@@ -440,36 +444,45 @@ class _ArtistFeedCardState extends State<ArtistFeedCard> {
           // Toolbar
           Padding(
             padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: _toggleLike,
-                  child: Icon(
-                    _isLiked ? Icons.favorite : Icons.favorite_border,
-                    color: _isLiked ? Colors.red : Colors.white,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                GestureDetector(
-                  onTap: () => _showCommentsSheet(context),
-                  child: const Icon(Icons.chat_bubble_outline, size: 24),
-                ),
-                const SizedBox(width: 16),
-                GestureDetector(
-                  onTap: () => _confirmRepost(context),
-                  child: const Icon(Icons.repeat, size: 28), // Repost icon
-                ),
-                const Spacer(),
-                GestureDetector(
-                  onTap: () => _showSaveOptions(context),
-                  child: Icon(
-                    _isSaved ? Icons.bookmark : Icons.bookmark_outline,
-                    size: 26,
-                    color: _isSaved ? AppTheme.primaryColor : Colors.white,
-                  ),
-                ),
-              ],
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final double spacing = constraints.maxWidth < 250 ? 8.0 : 16.0;
+                final double iconSize =
+                    constraints.maxWidth < 200 ? 20.0 : 28.0;
+
+                return Row(
+                  children: [
+                    GestureDetector(
+                      onTap: _toggleLike,
+                      child: Icon(
+                        _isLiked ? Icons.favorite : Icons.favorite_border,
+                        color: _isLiked ? Colors.red : Colors.white,
+                        size: iconSize,
+                      ),
+                    ),
+                    SizedBox(width: spacing),
+                    GestureDetector(
+                      onTap: () => _showCommentsSheet(context),
+                      child: Icon(Icons.chat_bubble_outline,
+                          size: iconSize * 0.85),
+                    ),
+                    SizedBox(width: spacing),
+                    GestureDetector(
+                      onTap: () => _confirmRepost(context),
+                      child: Icon(Icons.repeat, size: iconSize), // Repost icon
+                    ),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () => _showSaveOptions(context),
+                      child: Icon(
+                        _isSaved ? Icons.bookmark : Icons.bookmark_outline,
+                        size: iconSize * 0.9,
+                        color: _isSaved ? AppTheme.primaryColor : Colors.white,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
 

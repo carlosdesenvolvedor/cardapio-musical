@@ -2,18 +2,23 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/usecases/send_message.dart';
 import '../../domain/usecases/stream_messages.dart';
+import '../../domain/repositories/chat_repository.dart';
 import 'chat_event.dart';
 import 'chat_state.dart';
 
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final SendMessage sendMessage;
   final StreamMessages streamMessages;
+  final ChatRepository chatRepository;
   StreamSubscription? _messagesSubscription;
 
   String? _currentSenderId;
   String? _currentReceiverId;
 
-  ChatBloc({required this.sendMessage, required this.streamMessages})
+  ChatBloc(
+      {required this.sendMessage,
+      required this.streamMessages,
+      required this.chatRepository})
       : super(const ChatState()) {
     on<ChatStarted>(_onChatStarted);
     on<MessagesUpdated>(_onMessagesUpdated);
@@ -36,6 +41,14 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     ).listen((messages) {
       add(MessagesUpdated(messages));
     });
+
+    // Mark as read
+    // currentSenderId is the one OPENING the chat (ME)
+    // currentReceiverId is the OTHER person.
+    // Wait... ChatStarted(senderId: widget.currentUserId, receiverId: widget.targetUserId)
+    // So 'senderId' passed to Bloc is ME. 'receiverId' passed to Bloc is THEM.
+    // markChatAsRead(userId, otherUserId) -> userId is ME (receiver of messages), otherUserId is THEM (sender of messages).
+    await chatRepository.markChatAsRead(event.senderId, event.receiverId);
   }
 
   void _onMessagesUpdated(MessagesUpdated event, Emitter<ChatState> emit) {

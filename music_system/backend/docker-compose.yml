@@ -31,6 +31,8 @@ services:
       - LiveKit__ServerUrl=https://136.248.64.90.nip.io/livekit/
     depends_on:
       - minio
+    volumes:
+      - ./MusicSystem.Backend/Data:/app/Data
 
   mediamtx:
     image: bluenviron/mediamtx:latest

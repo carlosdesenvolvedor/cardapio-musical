@@ -18,6 +18,7 @@ import '../../../../injection_container.dart';
 import '../bloc/chat_bloc.dart';
 import '../bloc/chat_event.dart';
 import '../bloc/chat_state.dart';
+import '../widgets/chat_audio_player.dart';
 
 class ChatPage extends StatefulWidget {
   final String currentUserId;
@@ -53,6 +54,7 @@ class _ChatPageState extends State<ChatPage> {
   bool _isJolting = false;
   bool _showActions = false;
   String? _lastInteractionId;
+  String? _currentPlayingUrl;
 
   @override
   void initState() {
@@ -120,7 +122,7 @@ class _ChatPageState extends State<ChatPage> {
       // Construct full URL (ensuring slash and /media/ prefix)
       final url = uploadPath.startsWith('http')
           ? uploadPath
-          : 'https://136.248.64.90.nip.io/media/${uploadPath.startsWith('/') ? uploadPath.substring(1) : uploadPath}';
+          : 'http://localhost/media/${uploadPath.startsWith('/') ? uploadPath.substring(1) : uploadPath}';
 
       debugPrint('DEBUG: Final Message URL: $url');
 
@@ -179,7 +181,7 @@ class _ChatPageState extends State<ChatPage> {
         // Construct full URL (ensuring slash and /media/ prefix)
         final url = uploadPath.startsWith('http')
             ? uploadPath
-            : 'https://136.248.64.90.nip.io/media/${uploadPath.startsWith('/') ? uploadPath.substring(1) : uploadPath}';
+            : 'http://localhost/media/${uploadPath.startsWith('/') ? uploadPath.substring(1) : uploadPath}';
 
         debugPrint('DEBUG: Final Message URL: $url');
 
@@ -391,20 +393,14 @@ class _ChatPageState extends State<ChatPage> {
                 ),
               )
             else if (type == 'audio' && mediaUrl != null)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      Icons.play_arrow,
-                      color: isMe ? Colors.black : Colors.white,
-                    ),
-                    onPressed: () async {
-                      await _audioPlayer.play(UrlSource(mediaUrl));
-                    },
-                  ),
-                  const Text('Mensagem de voz', style: TextStyle(fontSize: 12)),
-                ],
+              ChatAudioPlayer(
+                mediaUrl: mediaUrl,
+                isMe: isMe,
+                audioPlayer: _audioPlayer,
+                isPlayingCurrent: _currentPlayingUrl == mediaUrl,
+                onPlay: () {
+                  setState(() => _currentPlayingUrl = mediaUrl);
+                },
               )
             else if (type == 'nudge')
               Column(

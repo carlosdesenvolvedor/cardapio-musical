@@ -153,4 +153,28 @@ class ChatRepositoryImpl implements ChatRepository {
       return Left(ServerFailure(e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, void>> markChatAsRead(
+      String userId, String otherUserId) async {
+    final chatId = _getChatId(userId, otherUserId);
+    return markAsRead(chatId, userId);
+  }
+
+  @override
+  Stream<int> streamUnreadCount(String userId) {
+    // This is a bit complex in Firestore structure.
+    // Ideally, we'd have a 'unreadCounts' collection or field on the user profile.
+    // Querying all messages across all chats is too expensive.
+    // Optimization: Query 'chats' where user is participant, then listen to unread messages? Too many listeners.
+    // Alternative: We can count unread messages by querying the 'chats' collection if we duplicated unread counts there.
+    // But currently structure is chats/{chatId}/messages/{messageId} with isRead=false and receiverId=userId.
+    // Query group is best here.
+    return firestore
+        .collectionGroup('messages')
+        .where('receiverId', isEqualTo: userId)
+        .where('isRead', isEqualTo: false)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
 }

@@ -12,6 +12,9 @@ builder.Services.AddSingleton<MusicSystem.Backend.Services.IStorageService, Musi
 // Register Wallet Service
 builder.Services.AddSingleton<MusicSystem.Backend.Services.IWalletService, MusicSystem.Backend.Services.WalletService>();
 
+// Register Service Provider Service
+builder.Services.AddSingleton<MusicSystem.Backend.Services.IServiceProviderService, MusicSystem.Backend.Services.LocalServiceProviderService>();
+
 // Configure Kestrel limits for large uploads (500MB)
 builder.Services.Configure<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions>(options =>
 {
@@ -21,11 +24,12 @@ builder.Services.Configure<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServe
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", builder =>
+    options.AddPolicy("AllowAll", policy =>
     {
-        builder.AllowAnyOrigin()
-               .AllowAnyMethod()
-               .AllowAnyHeader();
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .WithExposedHeaders("Content-Disposition");
     });
 });
 
@@ -48,7 +52,7 @@ app.MapControllers();
 
 
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 
 var summaries = new[]
 {

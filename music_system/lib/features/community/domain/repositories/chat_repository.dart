@@ -22,4 +22,7 @@ abstract class ChatRepository {
   Stream<List<ConversationEntity>> streamConversations(String userId);
 
   Future<Either<Failure, void>> markAsRead(String chatId, String userId);
+  Future<Either<Failure, void>> markChatAsRead(
+      String userId, String otherUserId);
+  Stream<int> streamUnreadCount(String userId);
 }

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
+import 'package:flutter/foundation.dart';
 import 'core/services/notification_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'config/theme/app_theme.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
@@ -35,7 +37,13 @@ final GlobalKey<ScaffoldMessengerState> messengerKey =
 
 void main() async {
   // Configures the URL strategy to remove the '#' from the URL
-  usePathUrlStrategy();
+  if (kIsWeb) {
+    try {
+      usePathUrlStrategy();
+    } catch (e) {
+      debugPrint('UrlStrategy already set or failed: $e');
+    }
+  }
 
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -45,6 +53,13 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+
+    // Specific logic for Web to handle potential persistence locks during development
+    if (kIsWeb) {
+      FirebaseFirestore.instance.settings = const Settings(
+        persistenceEnabled: false,
+      );
+    }
 
     await di.init();
 
@@ -89,27 +104,13 @@ class MusicSystemApp extends StatelessWidget {
         scaffoldMessengerKey: messengerKey,
         builder: (context, child) {
           if (child == null) return const SizedBox.shrink();
-          return BlocListener<AuthBloc, AuthState>(
-            listener: (context, state) {
-              if (state is ProfileLoaded) {
-                if (context.mounted) {
-                  context.read<NotificationsBloc>().add(
-                        NotificationsStarted(state.profile.id),
-                      );
-                  context.read<ConversationsBloc>().add(
-                        ConversationsStarted(state.profile.id),
-                      );
-                }
-              }
-            },
-            child: ResponsiveBreakpoints.builder(
-              child: child,
-              breakpoints: [
-                const Breakpoint(start: 0, end: 450, name: MOBILE),
-                const Breakpoint(start: 451, end: 800, name: TABLET),
-                const Breakpoint(start: 801, end: 1920, name: DESKTOP),
-              ],
-            ),
+          return ResponsiveBreakpoints.builder(
+            child: child,
+            breakpoints: [
+              const Breakpoint(start: 0, end: 450, name: MOBILE),
+              const Breakpoint(start: 451, end: 800, name: TABLET),
+              const Breakpoint(start: 801, end: 1920, name: DESKTOP),
+            ],
           );
         },
         onGenerateRoute: (settings) {
@@ -222,34 +223,24 @@ class _SplashPageState extends State<SplashPage> {
   void _handleState(AuthState state) {
     if (!mounted || _isRedirecting) return;
 
-    if (state is Authenticated ||
-        (state is ProfileLoaded && state.currentUser != null) ||
-        state is Unauthenticated) {
+    if (state is ProfileLoaded && state.currentUser != null) {
       _isRedirecting = true;
+      if (mounted) {
+        context.read<NotificationsBloc>().add(
+              NotificationsStarted(state.profile.id),
+            );
+        context.read<ConversationsBloc>().add(
+              ConversationsStarted(state.profile.id),
+            );
+      }
 
-      // We still use a small delay on Web to ensure the engine is ready
-      // and deep links are processed, but we make it more robust.
-      Future.delayed(const Duration(milliseconds: 50), () {
-        if (!mounted) return;
-
-        final bool isCurrent = ModalRoute.of(context)?.isCurrent ?? false;
-        final String path = Uri.base.path;
-        final bool isActuallyAtRoot =
-            path == '/' || path == '/index.html' || path.isEmpty;
-
-        if (!isCurrent || !isActuallyAtRoot) {
-          _isRedirecting = false;
-          return;
-        }
-
-        if (state is Authenticated ||
-            (state is ProfileLoaded && state.currentUser != null)) {
-          Navigator.pushReplacementNamed(context, '/network');
-        } else if (state is Unauthenticated) {
-          Navigator.pushReplacementNamed(context, '/musician');
-        } else {
-          _isRedirecting = false;
-        }
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) Navigator.pushReplacementNamed(context, '/network');
+      });
+    } else if (state is Unauthenticated) {
+      _isRedirecting = true;
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) Navigator.pushReplacementNamed(context, '/musician');
       });
     }
   }
