@@ -33,86 +33,43 @@ class StoryUploadBloc extends Bloc<StoryUploadEvent, StoryUploadState> {
     emit(state.copyWith(status: StoryUploadStatus.uploading, progress: 0.1));
 
     try {
-      String? url;
+      String url;
       final timestamp = DateTime.now().millisecondsSinceEpoch;
 
       if (event.mediaType == 'image') {
-        try {
-          // MIGRATION: Using Self-Hosted Backend (MinIO)
-          final path = await backendStorageService.uploadBytes(event.mediaBytes,
-              'story_${event.profile.id}_$timestamp.jpg', 'stories/images');
-          url = "http://localhost/media/$path";
-          add(const UploadProgressUpdated(0.8));
-
-          /* OLD LOGIC
-          url = await cloudinaryService.uploadImage(
-            event.mediaBytes,
-            'story_${event.profile.id}_$timestamp',
-            onProgress: (p) => add(UploadProgressUpdated(
-                p * 0.8)), // Reserved 20% for metadata save
-          );
-          */
-        } catch (e) {
-          // Fallback
-          url = await storageService.uploadImage(
-            event.mediaBytes,
-            'stories/${event.profile.id}_$timestamp.jpg',
-          );
-        }
+        // MIGRATION: Using Self-Hosted Backend (MinIO)
+        final path = await backendStorageService.uploadBytes(event.mediaBytes,
+            'story_${event.profile.id}_$timestamp.jpg', 'stories/images');
+        url = "https://136.248.64.90.nip.io/media/$path";
+        add(const UploadProgressUpdated(0.8));
       } else {
-        try {
-          // MIGRATION: Using Self-Hosted Backend (MinIO)
-          final path = await backendStorageService.uploadBytes(event.mediaBytes,
-              'story_${event.profile.id}_$timestamp.mp4', 'stories/videos');
-          url = "http://localhost/media/$path";
-          add(const UploadProgressUpdated(0.8));
-
-          /* OLD LOGIC
-          url = await cloudinaryService.uploadVideo(
-            event.mediaBytes,
-            'story_${event.profile.id}_$timestamp',
-            onProgress: (p) => add(UploadProgressUpdated(
-                p * 0.8)), // Reserved 20% for metadata save
-          );
-          */
-        } catch (e) {
-          url = await storageService.uploadFile(
-            fileBytes: event.mediaBytes,
-            fileName: 'stories/${event.profile.id}_$timestamp.mp4',
-            contentType: 'video/mp4',
-          );
-        }
+        // MIGRATION: Using Self-Hosted Backend (MinIO)
+        final path = await backendStorageService.uploadBytes(event.mediaBytes,
+            'story_${event.profile.id}_$timestamp.mp4', 'stories/videos');
+        url = "https://136.248.64.90.nip.io/media/$path";
+        add(const UploadProgressUpdated(0.8));
       }
 
-      if (url != null) {
-        emit(state.copyWith(progress: 0.8));
+      emit(state.copyWith(progress: 0.8));
 
-        // No sanitization needed for MinIO.
-        // If reusing CloudinarySanitizer for something, keep it, but here it was mainly for Cloudinary URLs.
-        final sanitizedUrl = url;
+      final story = StoryModel(
+        id: '',
+        authorId: event.profile.id,
+        authorName: event.profile.artisticName,
+        authorPhotoUrl: event.profile.photoUrl,
+        mediaUrl: url,
+        mediaType: event.mediaType,
+        createdAt: DateTime.now(),
+        expiresAt: DateTime.now().add(const Duration(hours: 24)),
+        viewers: const [],
+        effects: event.filterId != null
+            ? StoryEffects(filterId: event.filterId)
+            : null,
+        caption: event.caption,
+      );
 
-        final story = StoryModel(
-          id: '',
-          authorId: event.profile.id,
-          authorName: event.profile.artisticName,
-          authorPhotoUrl: event.profile.photoUrl,
-          mediaUrl: sanitizedUrl,
-          mediaType: event.mediaType,
-          createdAt: DateTime.now(),
-          expiresAt: DateTime.now().add(const Duration(hours: 24)),
-          viewers: const [],
-          effects: event.filterId != null
-              ? StoryEffects(filterId: event.filterId)
-              : null,
-          caption: event.caption,
-        );
-
-        await storyRepository.createStory(story);
-        add(const UploadFinished(success: true));
-      } else {
-        add(const UploadFinished(
-            success: false, error: 'Erro ao obter URL da mídia'));
-      }
+      await storyRepository.createStory(story);
+      add(const UploadFinished(success: true));
     } catch (e) {
       add(UploadFinished(success: false, error: e.toString()));
     }
