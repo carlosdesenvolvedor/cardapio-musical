@@ -10,27 +10,27 @@ class CloudinarySanitizer {
   }) {
     if (url.startsWith('http://minio:9000/music-system-media/')) {
       url = url.replaceFirst('http://minio:9000/music-system-media/',
-          'http://136.248.64.90.nip.io/media/');
+          'https://136.248.64.90.nip.io/media/');
     } else if (url.contains('minio:9000/music-system-media/')) {
       url = url.replaceFirst('minio:9000/music-system-media/',
-          'http://136.248.64.90.nip.io/media/');
+          'https://136.248.64.90.nip.io/media/');
     } else if (url.contains('localhost') || url.contains('127.0.0.1')) {
       url = url.replaceFirst(
           RegExp(r'.*(localhost|127\.0\.0\.1)(:\d+)?/media/'),
-          'http://136.248.64.90.nip.io/media/');
+          'https://136.248.64.90.nip.io/media/');
       // Handle cases where it was just localhost/api or similar
       if (url.startsWith('http://localhost') ||
           url.startsWith('http://127.0.0.1')) {
         url = url.replaceFirst(
             RegExp(r'http://(localhost|127\.0\.0\.1)(:\d+)?/'),
-            'http://136.248.64.90.nip.io/');
+            'https://136.248.64.90.nip.io/');
       }
     } else if (!url.startsWith('http') &&
         (url.contains('posts/') ||
             url.contains('stories/') ||
             url.contains('avatars/'))) {
       // Prepend production domain if it's just a path
-      url = 'http://136.248.64.90.nip.io/media/$url';
+      url = 'https://136.248.64.90.nip.io/media/$url';
     } else if (url.contains('firebasestorage.googleapis.com')) {
       try {
         // Pattern: https://firebasestorage.googleapis.com/v0/b/BUCKET/o/PATH?alt=media&token=TOKEN
@@ -48,7 +48,7 @@ class CloudinarySanitizer {
           // Reconstruct with our local proxy
           // We keep query params as is
           final query = uri.hasQuery ? '?${uri.query}' : '';
-          return 'http://136.248.64.90.nip.io/firebase/$bucket/$filePath$query';
+          return 'https://136.248.64.90.nip.io/firebase/$bucket/$filePath$query';
         }
       } catch (e) {
         debugPrint('Error parsing Firebase URL for proxy: $e');
@@ -57,12 +57,12 @@ class CloudinarySanitizer {
       // Fallback: simple replace if structure is different
       return url
           .replaceFirst('https://firebasestorage.googleapis.com/v0/b/',
-              'http://136.248.64.90.nip.io/firebase/')
+              'https://136.248.64.90.nip.io/firebase/')
           .replaceFirst('/o/', '/');
     } else if (url.contains('136.248.64.90.nip.io')) {
-      // Force http for production domain until SSL is ready
-      if (url.startsWith('https://')) {
-        url = url.replaceFirst('https://', 'http://');
+      // Force HTTPS for production domain
+      if (url.startsWith('http://')) {
+        url = url.replaceFirst('http://', 'https://');
       }
       return url;
     } else if (url.contains('nip.io')) {
