@@ -14,6 +14,9 @@ import '../../../../injection_container.dart';
 import 'package:music_system/features/community/domain/repositories/post_repository.dart';
 import 'package:music_system/features/community/presentation/widgets/artist_feed_card.dart';
 import 'package:music_system/features/community/presentation/widgets/artist_avatar.dart';
+import 'package:music_system/features/service_provider/domain/entities/service_entity.dart';
+import 'package:music_system/features/service_provider/presentation/pages/service_preview_page.dart';
+import 'package:music_system/features/service_provider/presentation/bloc/service_dashboard_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:dartz/dartz.dart' hide State;
 import 'package:music_system/core/error/failures.dart';
@@ -68,13 +71,14 @@ class _ProfilePageState extends State<ProfilePage>
   bool _isDobVisible = true;
   bool _isPixVisible = true;
   bool _isEditingSocial = false;
+  bool _showProfessionalBadge = true;
 
   bool get _isOwner => FirebaseAuth.instance.currentUser?.uid == widget.userId;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _isOwner ? 5 : 4, vsync: this);
+    _tabController = TabController(length: _isOwner ? 6 : 5, vsync: this);
     if (!_isOwner) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _logVisit());
     }
@@ -164,6 +168,7 @@ class _ProfilePageState extends State<ProfilePage>
                   _verificationLevel = state.profile.verificationLevel;
                   _isParentalConsentGranted =
                       state.profile.isParentalConsentGranted;
+                  _showProfessionalBadge = state.profile.showProfessionalBadge;
                 }
               }
             },
@@ -240,6 +245,7 @@ class _ProfilePageState extends State<ProfilePage>
                                         const Tab(text: 'Posts'),
                                         const Tab(text: 'Social'),
                                         const Tab(text: 'Work'),
+                                        const Tab(text: 'Serviços'),
                                         if (_isOwner)
                                           const Tab(text: 'Visitas'),
                                       ],
@@ -256,6 +262,7 @@ class _ProfilePageState extends State<ProfilePage>
                               _buildPostsTab(),
                               _buildSocialTab(),
                               _buildGalleryTab(),
+                              _buildServicesTab(),
                               if (_isOwner) _buildVisitorsTab(),
                             ],
                           ),
@@ -439,6 +446,7 @@ class _ProfilePageState extends State<ProfilePage>
               isParentalConsentGranted: _isParentalConsentGranted,
               isDobVisible: _isDobVisible,
               isPixVisible: _isPixVisible,
+              showProfessionalBadge: _showProfessionalBadge,
             ),
           ),
         );
@@ -460,11 +468,23 @@ class _ProfilePageState extends State<ProfilePage>
             ),
           ),
           const SizedBox(height: 12),
-          Text(
-            _artisticNameController.text.isEmpty
-                ? 'Artista'
-                : _artisticNameController.text,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                _artisticNameController.text.isEmpty
+                    ? 'Artista'
+                    : _artisticNameController.text,
+                style:
+                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              if (state.profile.professionalLevel != null &&
+                  state.profile.showProfessionalBadge) ...[
+                const SizedBox(width: 8),
+                _buildProfessionalBadge(state.profile.professionalLevel!,
+                    minCache: state.profile.minSuggestedCache),
+              ],
+            ],
           ),
           if (state.profile.nickname != null &&
               state.profile.nickname!.isNotEmpty)
@@ -694,6 +714,32 @@ class _ProfilePageState extends State<ProfilePage>
                 style: const TextStyle(color: Colors.grey, fontSize: 14),
               ),
             ),
+          if (_isOwner) ...[
+            const SizedBox(height: 16),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white10),
+              ),
+              child: SwitchListTile(
+                title: const Text(
+                  'Mostrar Selo Profissional',
+                  style: TextStyle(color: Colors.white, fontSize: 14),
+                ),
+                subtitle: const Text(
+                  'Exibe seu nível e sugestão de cachê',
+                  style: TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+                value: _showProfessionalBadge,
+                onChanged: (value) {
+                  setState(() => _showProfessionalBadge = value);
+                  _saveProfile();
+                },
+                activeColor: const Color(0xFFE5B80B),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1413,6 +1459,136 @@ class _ProfilePageState extends State<ProfilePage>
           },
         );
       },
+    );
+  }
+
+  Widget _buildServicesTab() {
+    return BlocProvider(
+      create: (context) =>
+          sl<ServiceDashboardBloc>()..add(FetchServices(widget.userId)),
+      child: BlocBuilder<ServiceDashboardBloc, ServiceDashboardState>(
+        builder: (context, state) {
+          if (state is ServiceDashboardLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          List<ServiceEntity> services = [];
+          if (state is ServiceDashboardLoaded) {
+            services = state.services;
+          }
+
+          if (services.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.business_center_outlined,
+                      size: 64, color: Colors.white10),
+                  const SizedBox(height: 16),
+                  Text(
+                    _isOwner
+                        ? 'Você ainda não cadastrou serviços.'
+                        : 'Este artista ainda não cadastrou serviços.',
+                    style: const TextStyle(color: Colors.white54),
+                  ),
+                ],
+              ),
+            );
+          }
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: services.length,
+            itemBuilder: (context, index) {
+              final service = services[index];
+              return Card(
+                color: const Color(0xFF1E1E1E),
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: Colors.white.withOpacity(0.05)),
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.all(16),
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFC107).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.star, color: Color(0xFFFFC107)),
+                  ),
+                  title: Text(
+                    service.name,
+                    style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    'A partir de ${NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$').format(service.basePrice)}',
+                    style:
+                        const TextStyle(color: Color(0xFFFFC107), fontSize: 13),
+                  ),
+                  trailing:
+                      const Icon(Icons.chevron_right, color: Colors.white24),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            ServicePreviewPage(service: service),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildProfessionalBadge(String level, {double? minCache}) {
+    Color color;
+    IconData icon = Icons.stars;
+
+    switch (level) {
+      case 'Bronze':
+        color = const Color(0xFFCD7F32);
+        break;
+      case 'Prata':
+        color = const Color(0xFFC0C0C0);
+        break;
+      case 'Ouro':
+        color = const Color(0xFFFFD700);
+        break;
+      case 'Diamante':
+        color = const Color(0xFFB9F2FF);
+        icon = Icons.diamond;
+        break;
+      default:
+        color = Colors.grey;
+    }
+
+    return Tooltip(
+      message:
+          'Nível Profissional: $level${minCache != null ? ' (Cachê Sugerido: R\$ ${minCache.toInt()}+)' : ''}',
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 20),
+          if (minCache != null) ...[
+            const SizedBox(width: 4),
+            Text(
+              'R\$ ${minCache.toInt()}+',
+              style: TextStyle(
+                color: color,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

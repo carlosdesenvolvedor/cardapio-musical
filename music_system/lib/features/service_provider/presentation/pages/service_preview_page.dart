@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/service_entity.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../bookings/presentation/bloc/budget_cart_bloc.dart';
 
 class ServicePreviewPage extends StatelessWidget {
   final ServiceEntity service;
@@ -306,28 +308,44 @@ class ServicePreviewPage extends StatelessWidget {
               ),
             ],
           ),
-          child: ElevatedButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('Este é apenas um modo de prévia.')),
+          child: BlocBuilder<BudgetCartBloc, BudgetCartState>(
+            builder: (context, state) {
+              final isInCart = state.items.any((item) => item.id == service.id);
+              return ElevatedButton(
+                onPressed: () {
+                  if (isInCart) {
+                    context
+                        .read<BudgetCartBloc>()
+                        .add(RemoveServiceFromCart(service.id));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Removido do orçamento')),
+                    );
+                  } else {
+                    context
+                        .read<BudgetCartBloc>()
+                        .add(AddServiceToCart(service));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Adicionado ao orçamento!')),
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+                child: Text(
+                  isInCart ? 'REMOVER DO ORÇAMENTO' : 'ADICIONAR AO ORÇAMENTO',
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.5,
+                  ),
+                ),
               );
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              shadowColor: Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
-              ),
-            ),
-            child: const Text(
-              'SOLICITAR ORÇAMENTO',
-              style: TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.5,
-              ),
-            ),
           ),
         ),
         const SizedBox(height: 16),

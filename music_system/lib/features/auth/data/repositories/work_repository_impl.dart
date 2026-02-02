@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dartz/dartz.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -61,7 +62,10 @@ class WorkRepositoryImpl implements WorkRepository {
         // Assuming BackendStorageService.baseUrl is reachable.
         // Actually, we should store the Path and let the UI resolve the streaming URL.
         // BUT to keep compatibility with existing Code that expects a full URL (http...), let's construct it.
-        fileUrl = "http://localhost/media/$path";
+        final String baseMediaUrl = (kDebugMode && !kIsWeb)
+            ? "http://localhost/media/"
+            : "https://136.248.64.90.nip.io/media/";
+        fileUrl = "$baseMediaUrl$path";
       }
 
       final workModel = WorkModel(

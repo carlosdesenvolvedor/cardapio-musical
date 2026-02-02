@@ -30,5 +30,27 @@
       "genre": "Gospel"
     },
     "createdAt": "2026-02-01T20:21:38.216"
+  },
+  {
+    "id": "39883420-14ac-43d5-bb24-11992dbbd3ec",
+    "providerId": "Vrkgg7x5SkgksH8HgqpJawnmwUo1",
+    "name": "montagem som",
+    "description": "eu fa\u00E7o instala\u00E7\u00E3o de som pesado, dos melhores esse teste \u00E9 apanas fack",
+    "category": "infrastructure",
+    "basePrice": 200,
+    "priceDescription": "2 horas",
+    "status": "active",
+    "technicalDetails": {
+      "powerRequirements": {
+        "110v": false,
+        "220v": true,
+        "380v": false
+      },
+      "kva": 0,
+      "vehicleHeight": 0,
+      "loadInTime": "2 horas",
+      "implementationMapUrl": "http://localhost/media/service_docs/67c6049c-a196-4d55-ab29-ba7e9f64f0fc.png"
+    },
+    "createdAt": "2026-02-02T09:51:45.616"
   }
 ]

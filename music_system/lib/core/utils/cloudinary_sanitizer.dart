@@ -189,7 +189,9 @@ class CloudinarySanitizer {
     }
 
     if (sanitized != url) {
-      debugPrint('CloudinarySanitizer: $url -> $sanitized');
+      if (kDebugMode) {
+        // debugPrint('CloudinarySanitizer: $url -> $sanitized');
+      }
     }
     return sanitized;
   }

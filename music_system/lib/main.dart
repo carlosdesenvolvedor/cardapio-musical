@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'features/service_provider/presentation/pages/artist_cache_page.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:flutter/foundation.dart';
 import 'core/services/notification_service.dart';
@@ -23,12 +24,14 @@ import 'features/community/presentation/bloc/notifications_event.dart';
 import 'features/community/presentation/bloc/conversations_event.dart';
 import 'features/community/presentation/bloc/story_upload_bloc.dart';
 import 'features/community/presentation/bloc/post_upload_bloc.dart';
+import 'features/bookings/presentation/bloc/budget_cart_bloc.dart';
 import 'firebase_options.dart';
 import 'injection_container.dart' as di;
 import 'features/community/presentation/pages/artist_network_page.dart';
 import 'features/bands/presentation/pages/band_public_profile_page.dart';
 import 'features/bands/presentation/bloc/band_bloc.dart';
 import 'features/calendar/presentation/bloc/calendar_bloc.dart';
+import 'features/bookings/presentation/pages/budget_cart_page.dart';
 import 'core/constants/app_version.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
@@ -96,6 +99,7 @@ class MusicSystemApp extends StatelessWidget {
         BlocProvider(create: (_) => di.sl<CalendarBloc>()),
         BlocProvider(create: (_) => di.sl<StoryUploadBloc>()),
         BlocProvider(create: (_) => di.sl<PostUploadBloc>()),
+        BlocProvider(create: (_) => di.sl<BudgetCartBloc>()),
       ],
       child: MaterialApp(
         title: 'MusicRequest System',
@@ -187,6 +191,18 @@ class MusicSystemApp extends StatelessWidget {
             return MaterialPageRoute(
               settings: settings,
               builder: (context) => const MusicianDashboardPage(),
+            );
+          }
+          if (path == '/cart') {
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (context) => const BudgetCartPage(),
+            );
+          }
+          if (path == '/artist-cache') {
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (context) => const ArtistCachePage(),
             );
           }
 

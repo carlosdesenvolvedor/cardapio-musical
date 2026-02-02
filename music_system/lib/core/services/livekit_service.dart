@@ -13,7 +13,7 @@ class LiveKitService {
       String roomName, String participantName) async {
     try {
       // In a real production app, this URL should be in a configuration file or environment variable
-      const String apiUrl = 'http://localhost/api/live/token';
+      const String apiUrl = 'https://136.248.64.90.nip.io/api/live/token';
 
       final response = await _dio.post(apiUrl, data: {
         'roomName': roomName,
@@ -22,6 +22,14 @@ class LiveKitService {
 
       if (response.statusCode == 200) {
         final data = response.data;
+        // Prepend base URL for display/access
+        // Note: The 'url' variable used in the original instruction's snippet
+        // was not defined in this context. Assuming it was meant to be
+        // a placeholder or related to a different part of the application.
+        // The instruction's intent regarding "FileUploadWidget" suggests
+        // this logic might be for a different service or widget.
+        // For now, only the original return values are kept as the snippet
+        // did not modify them.
         return {
           'token': data['token'] as String,
           'serverUrl': data['serverUrl'] as String,

@@ -35,6 +35,7 @@ class _ServiceRegistrationFormPageState
   final _descController = TextEditingController();
   final _priceController = TextEditingController();
   final _priceDescController = TextEditingController();
+  final _locationController = TextEditingController();
 
   // State for Technical Details
   TechnicalDetails? _technicalDetails;
@@ -47,6 +48,7 @@ class _ServiceRegistrationFormPageState
       _descController.text = widget.initialService!.description;
       _priceController.text = widget.initialService!.basePrice.toString();
       _priceDescController.text = widget.initialService!.priceDescription;
+      _locationController.text = widget.initialService!.location ?? '';
       _technicalDetails = widget.initialService!.technicalDetails;
     }
   }
@@ -57,6 +59,7 @@ class _ServiceRegistrationFormPageState
     _descController.dispose();
     _priceController.dispose();
     _priceDescController.dispose();
+    _locationController.dispose();
     super.dispose();
   }
 
@@ -192,6 +195,7 @@ class _ServiceRegistrationFormPageState
                       descriptionController: _descController,
                       basePriceController: _priceController,
                       priceDescController: _priceDescController,
+                      locationController: _locationController,
                     ),
                     isActive: _currentStep >= 0,
                     state: _currentStep > 0
@@ -277,6 +281,7 @@ class _ServiceRegistrationFormPageState
       status: widget.initialService?.status ?? ServiceStatus.pending,
       technicalDetails:
           _technicalDetails ?? const ArtistDetails(genre: 'Não definido'),
+      location: _locationController.text,
       createdAt: widget.initialService?.createdAt ?? DateTime.now(),
     );
   }

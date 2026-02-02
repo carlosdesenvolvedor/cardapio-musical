@@ -86,6 +86,10 @@ class PushNotificationService {
           break;
         }
       } catch (e) {
+        if (e.toString().contains('permission-blocked')) {
+          debugPrint("FCM Permission blocked, giving up save");
+          break;
+        }
         debugPrint(
             "Error saving token to Firestore (retry ${4 - retries}): $e");
         retries--;

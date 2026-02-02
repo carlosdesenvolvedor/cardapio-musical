@@ -30,6 +30,11 @@ class UserProfileModel extends UserProfile {
     super.isPixVisible = true,
     super.profileType,
     super.subType,
+    super.artistScore,
+    super.professionalLevel,
+    super.minSuggestedCache,
+    super.maxSuggestedCache,
+    super.showProfessionalBadge = true,
   });
 
   factory UserProfileModel.fromJson(Map<String, dynamic> json, String id) {
@@ -79,6 +84,11 @@ class UserProfileModel extends UserProfile {
       isPixVisible: json['isPixVisible'] ?? true,
       profileType: json['profileType'],
       subType: json['subType'],
+      artistScore: json['artistScore'],
+      professionalLevel: json['professionalLevel'],
+      minSuggestedCache: (json['minSuggestedCache'] as num?)?.toDouble(),
+      maxSuggestedCache: (json['maxSuggestedCache'] as num?)?.toDouble(),
+      showProfessionalBadge: json['showProfessionalBadge'] ?? true,
     );
   }
 
@@ -140,6 +150,11 @@ class UserProfileModel extends UserProfile {
       'isPixVisible': isPixVisible,
       'profileType': profileType,
       'subType': subType,
+      'artistScore': artistScore,
+      'professionalLevel': professionalLevel,
+      'minSuggestedCache': minSuggestedCache,
+      'maxSuggestedCache': maxSuggestedCache,
+      'showProfessionalBadge': showProfessionalBadge,
     };
   }
 }

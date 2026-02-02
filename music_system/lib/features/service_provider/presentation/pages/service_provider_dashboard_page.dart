@@ -6,6 +6,7 @@ import '../bloc/service_dashboard_bloc.dart';
 import '../pages/service_category_selection_page.dart';
 import '../pages/service_registration_form_page.dart';
 import '../pages/service_preview_page.dart';
+import '../pages/artist_cache_page.dart';
 import 'package:get_it/get_it.dart';
 
 class ServiceProviderDashboardPage extends StatelessWidget {
@@ -16,64 +17,85 @@ class ServiceProviderDashboardPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => GetIt.instance<ServiceDashboardBloc>()
+      create: (innerContext) => GetIt.instance<ServiceDashboardBloc>()
         ..add(FetchServices(providerId)),
       child: Builder(
-        builder: (context) {
-          return Scaffold(
-            backgroundColor: const Color(0xFF101010),
-            appBar: AppBar(
-              title: const Text(
-                'MEUS SERVIÇOS',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
-                  fontFamily: 'Outfit',
-                  fontSize: 16,
+        builder: (dashboardContext) {
+          return DefaultTabController(
+            length: 2,
+            child: Scaffold(
+              backgroundColor: const Color(0xFF101010),
+              appBar: AppBar(
+                title: const Text(
+                  'PAINEL DO PRESTADOR',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
+                    fontFamily: 'Outfit',
+                    fontSize: 14,
+                  ),
+                ),
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () => Navigator.pop(dashboardContext),
+                ),
+                bottom: const TabBar(
+                  indicatorColor: Color(0xFFFFC107),
+                  labelColor: Color(0xFFFFC107),
+                  unselectedLabelColor: Colors.white54,
+                  tabs: [
+                    Tab(text: 'SERVIÇOS', icon: Icon(Icons.work)),
+                    Tab(text: 'MEU CACHÊ', icon: Icon(Icons.calculate)),
+                  ],
                 ),
               ),
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
-            body: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              body: TabBarView(
                 children: [
-                  _buildHeader(context),
-                  const SizedBox(height: 32),
-                  Expanded(
-                    child: BlocBuilder<ServiceDashboardBloc,
-                        ServiceDashboardState>(
-                      builder: (context, state) {
-                        if (state is ServiceDashboardLoading) {
-                          return const Center(
-                            child: CircularProgressIndicator(
-                              color: Color(0xFFFFC107),
-                            ),
-                          );
-                        } else if (state is ServiceDashboardLoaded) {
-                          if (state.services.isEmpty) {
-                            return _buildEmptyState();
-                          }
-                          return _buildServiceList(context, state.services);
-                        } else if (state is ServiceDashboardError) {
-                          return Center(
-                            child: Text(
-                              state.message,
-                              style: const TextStyle(color: Colors.redAccent),
-                            ),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
+                  // SERVICES TAB
+                  Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildHeader(dashboardContext),
+                        const SizedBox(height: 32),
+                        Expanded(
+                          child: BlocBuilder<ServiceDashboardBloc,
+                              ServiceDashboardState>(
+                            builder: (blocContext, state) {
+                              if (state is ServiceDashboardLoading) {
+                                return const Center(
+                                  child: CircularProgressIndicator(
+                                    color: Color(0xFFFFC107),
+                                  ),
+                                );
+                              } else if (state is ServiceDashboardLoaded) {
+                                if (state.services.isEmpty) {
+                                  return _buildEmptyState();
+                                }
+                                return _buildServiceList(
+                                    blocContext, state.services);
+                              } else if (state is ServiceDashboardError) {
+                                return Center(
+                                  child: Text(
+                                    state.message,
+                                    style: const TextStyle(
+                                        color: Colors.redAccent),
+                                  ),
+                                );
+                              }
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                  // CACHE TAB
+                  const ArtistCachePage(),
                 ],
               ),
             ),
@@ -83,7 +105,7 @@ class ServiceProviderDashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext dashboardContext) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -113,7 +135,7 @@ class ServiceProviderDashboardPage extends StatelessWidget {
         ElevatedButton.icon(
           onPressed: () {
             Navigator.push(
-              context,
+              dashboardContext,
               MaterialPageRoute(
                 builder: (context) => ServiceCategorySelectionPage(
                   providerId: providerId,
@@ -122,8 +144,8 @@ class ServiceProviderDashboardPage extends StatelessWidget {
             ).then((_) {
               // Refresh list when returning
               // ignore: use_build_context_synchronously
-              if (context.mounted) {
-                context
+              if (dashboardContext.mounted) {
+                dashboardContext
                     .read<ServiceDashboardBloc>()
                     .add(FetchServices(providerId));
               }
@@ -163,17 +185,19 @@ class ServiceProviderDashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _buildServiceList(BuildContext context, List<ServiceEntity> services) {
+  Widget _buildServiceList(
+      BuildContext dashboardContext, List<ServiceEntity> services) {
     return ListView.builder(
       itemCount: services.length,
       itemBuilder: (context, index) {
         final service = services[index];
-        return _buildServiceCard(context, service);
+        return _buildServiceCard(dashboardContext, service);
       },
     );
   }
 
-  Widget _buildServiceCard(BuildContext context, ServiceEntity service) {
+  Widget _buildServiceCard(
+      BuildContext dashboardContext, ServiceEntity service) {
     Color statusColor;
     String statusText;
 
@@ -294,7 +318,7 @@ class ServiceProviderDashboardPage extends StatelessWidget {
               if (service.status == ServiceStatus.pending)
                 TextButton(
                   onPressed: () {
-                    context.read<ServiceDashboardBloc>().add(
+                    dashboardContext.read<ServiceDashboardBloc>().add(
                           UpdateStatus(
                             providerId: providerId,
                             serviceId: service.id,
@@ -319,10 +343,10 @@ class ServiceProviderDashboardPage extends StatelessWidget {
                   icon: const Icon(Icons.more_horiz, color: Colors.white54),
                   onSelected: (value) {
                     if (value == 'delete') {
-                      _showDeleteConfirmation(context, service);
+                      _showDeleteConfirmation(dashboardContext, service);
                     } else if (value == 'edit') {
                       Navigator.push(
-                        context,
+                        dashboardContext,
                         MaterialPageRoute(
                           builder: (context) => ServiceRegistrationFormPage(
                             category: service.category,
@@ -330,10 +354,16 @@ class ServiceProviderDashboardPage extends StatelessWidget {
                             initialService: service,
                           ),
                         ),
-                      );
+                      ).then((_) {
+                        if (dashboardContext.mounted) {
+                          dashboardContext
+                              .read<ServiceDashboardBloc>()
+                              .add(FetchServices(providerId));
+                        }
+                      });
                     } else if (value == 'preview') {
                       Navigator.push(
-                        context,
+                        dashboardContext,
                         MaterialPageRoute(
                           builder: (context) => ServicePreviewPage(
                             service: service,
@@ -383,9 +413,10 @@ class ServiceProviderDashboardPage extends StatelessWidget {
     );
   }
 
-  void _showDeleteConfirmation(BuildContext context, ServiceEntity service) {
+  void _showDeleteConfirmation(
+      BuildContext dashboardContext, ServiceEntity service) {
     showDialog(
-      context: context,
+      context: dashboardContext,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Excluir Serviço'),
         content:
@@ -397,7 +428,7 @@ class ServiceProviderDashboardPage extends StatelessWidget {
           ),
           TextButton(
             onPressed: () {
-              context.read<ServiceDashboardBloc>().add(
+              dashboardContext.read<ServiceDashboardBloc>().add(
                     DeleteServiceEvent(
                       providerId: providerId,
                       serviceId: service.id,

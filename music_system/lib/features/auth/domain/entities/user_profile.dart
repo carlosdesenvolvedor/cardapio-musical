@@ -43,6 +43,11 @@ class UserProfile extends Equatable {
   final bool isPixVisible;
   final String? profileType; // Artista, Contratador, Maesta, etc.
   final String? subType; // Músico, Cantor, Banda, Outros, etc.
+  final int? artistScore;
+  final String? professionalLevel;
+  final double? minSuggestedCache;
+  final double? maxSuggestedCache;
+  final bool showProfessionalBadge;
 
   const UserProfile({
     required this.id,
@@ -72,6 +77,11 @@ class UserProfile extends Equatable {
     this.isPixVisible = true,
     this.profileType,
     this.subType,
+    this.artistScore,
+    this.professionalLevel,
+    this.minSuggestedCache,
+    this.maxSuggestedCache,
+    this.showProfessionalBadge = true,
   });
 
   @override
@@ -80,6 +90,11 @@ class UserProfile extends Equatable {
         isPixVisible,
         profileType,
         subType,
+        artistScore,
+        professionalLevel,
+        minSuggestedCache,
+        maxSuggestedCache,
+        showProfessionalBadge,
       ];
 
   UserProfile copyWith({
@@ -110,6 +125,11 @@ class UserProfile extends Equatable {
     bool? isPixVisible,
     String? profileType,
     String? subType,
+    int? artistScore,
+    String? professionalLevel,
+    double? minSuggestedCache,
+    double? maxSuggestedCache,
+    bool? showProfessionalBadge,
   }) {
     return UserProfile(
       id: id ?? this.id,
@@ -140,6 +160,12 @@ class UserProfile extends Equatable {
       isPixVisible: isPixVisible ?? this.isPixVisible,
       profileType: profileType ?? this.profileType,
       subType: subType ?? this.subType,
+      artistScore: artistScore ?? this.artistScore,
+      professionalLevel: professionalLevel ?? this.professionalLevel,
+      minSuggestedCache: minSuggestedCache ?? this.minSuggestedCache,
+      maxSuggestedCache: maxSuggestedCache ?? this.maxSuggestedCache,
+      showProfessionalBadge:
+          showProfessionalBadge ?? this.showProfessionalBadge,
     );
   }
 }

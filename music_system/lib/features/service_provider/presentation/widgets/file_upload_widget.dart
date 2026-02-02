@@ -65,7 +65,11 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
         }
 
         // Prepend base URL for display/access
-        final fullUrl = "http://localhost/media/$url";
+        // Prepend base URL for display/access
+        const String prodUrl = "https://136.248.64.90.nip.io/media/";
+        final String baseMediaUrl =
+            (kDebugMode && !kIsWeb) ? "http://localhost/media/" : prodUrl;
+        final fullUrl = "$baseMediaUrl$url";
 
         setState(() {
           _isUploading = false;

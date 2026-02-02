@@ -30,6 +30,7 @@ class ServiceEntity extends Equatable {
   final String priceDescription;
   final ServiceStatus status;
   final TechnicalDetails technicalDetails;
+  final String? location;
   final DateTime createdAt;
 
   const ServiceEntity({
@@ -42,6 +43,7 @@ class ServiceEntity extends Equatable {
     required this.priceDescription,
     required this.status,
     required this.technicalDetails,
+    this.location,
     required this.createdAt,
   });
 
@@ -67,10 +69,12 @@ class ArtistDetails extends TechnicalDetails {
   final String? repertoireUrl;
   final String genre;
 
-  const ArtistDetails(
-      {this.stageMapUrl, this.repertoireUrl, required this.genre});
+  const ArtistDetails({
+    this.stageMapUrl,
+    this.repertoireUrl,
+    required this.genre,
+  });
 
-  @override
   Map<String, dynamic> toJson() => {
         'stageMapUrl': stageMapUrl,
         'repertoireUrl': repertoireUrl,

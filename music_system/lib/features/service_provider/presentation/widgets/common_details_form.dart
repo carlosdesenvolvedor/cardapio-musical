@@ -5,6 +5,7 @@ class CommonDetailsForm extends StatelessWidget {
   final TextEditingController descriptionController;
   final TextEditingController basePriceController;
   final TextEditingController priceDescController;
+  final TextEditingController locationController;
   final GlobalKey<FormState> formKey;
 
   const CommonDetailsForm({
@@ -13,6 +14,7 @@ class CommonDetailsForm extends StatelessWidget {
     required this.descriptionController,
     required this.basePriceController,
     required this.priceDescController,
+    required this.locationController,
     required this.formKey,
   });
 
@@ -24,7 +26,7 @@ class CommonDetailsForm extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Informações Básicas',
+            'Informações do Serviço',
             style: TextStyle(
               color: Color(0xFFFFC107),
               fontSize: 18,
@@ -44,6 +46,13 @@ class CommonDetailsForm extends StatelessWidget {
             label: 'Descrição Detalhada',
             icon: Icons.description,
             maxLines: 4,
+            validator: (v) => v?.isEmpty == true ? 'Campo obrigatório' : null,
+          ),
+          const SizedBox(height: 16),
+          _buildTextField(
+            controller: locationController,
+            label: 'Endereço / Região',
+            icon: Icons.location_on,
             validator: (v) => v?.isEmpty == true ? 'Campo obrigatório' : null,
           ),
           const SizedBox(height: 16),

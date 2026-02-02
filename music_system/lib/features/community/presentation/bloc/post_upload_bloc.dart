@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/services/cloudinary_service.dart';
 import '../../../../core/services/storage_service.dart';
@@ -67,12 +68,18 @@ class PostUploadBloc extends Bloc<PostUploadEvent, PostUploadState> {
             // Upload Video
             final path = await backendStorageService.uploadBytes(
                 bytes, name, 'posts/videos');
-            url = "http://localhost/media/$path";
+            final String baseMediaUrl = (kDebugMode && !kIsWeb)
+                ? "http://localhost/media/"
+                : "https://136.248.64.90.nip.io/media/";
+            url = "$baseMediaUrl$path";
           } else {
             // Upload Image
             final path = await backendStorageService.uploadBytes(
                 bytes, name, 'posts/images');
-            url = "http://localhost/media/$path";
+            final String baseMediaUrl = (kDebugMode && !kIsWeb)
+                ? "http://localhost/media/"
+                : "https://136.248.64.90.nip.io/media/";
+            url = "$baseMediaUrl$path";
           }
 
           /* OLD LOGIC

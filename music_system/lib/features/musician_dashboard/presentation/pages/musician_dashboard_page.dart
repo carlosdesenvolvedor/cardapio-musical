@@ -9,6 +9,7 @@ import 'package:music_system/features/song_requests/domain/entities/song_request
 import 'package:music_system/features/song_requests/presentation/bloc/song_request_bloc.dart';
 import 'package:music_system/features/song_requests/presentation/bloc/song_request_event.dart';
 import 'package:music_system/features/song_requests/presentation/bloc/song_request_state.dart';
+import 'package:music_system/features/service_provider/presentation/pages/service_provider_dashboard_page.dart';
 
 class MusicianDashboardPage extends StatefulWidget {
   const MusicianDashboardPage({super.key});
@@ -31,6 +32,7 @@ class _MusicianDashboardPageState extends State<MusicianDashboardPage> {
 
     if (userId != null) {
       context.read<SongRequestBloc>().add(FetchSongRequests(userId));
+      context.read<AuthBloc>().add(ProfileRequested(userId));
     }
   }
 
@@ -69,6 +71,33 @@ class _MusicianDashboardPageState extends State<MusicianDashboardPage> {
                 ),
               ),
             ),
+            ListTile(
+              leading: const Icon(Icons.calculate, color: Color(0xFFE5B80B)),
+              title: const Text('Meu Cachê'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/artist-cache');
+              },
+            ),
+            ListTile(
+              leading:
+                  const Icon(Icons.business_center, color: Color(0xFFE5B80B)),
+              title: const Text('Meus Serviços'),
+              onTap: () {
+                Navigator.pop(context);
+                final user = _getCurrentUser(context.read<AuthBloc>().state);
+                if (user != null) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          ServiceProviderDashboardPage(providerId: user.id),
+                    ),
+                  );
+                }
+              },
+            ),
+            const Divider(color: Colors.white10),
             ListTile(
               leading: const Icon(Icons.home, color: Color(0xFFE5B80B)),
               title: const Text('Voltar para Rede'),

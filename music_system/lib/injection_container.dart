@@ -100,6 +100,7 @@ import 'features/calendar/domain/usecases/get_artist_calendar.dart';
 import 'features/calendar/domain/usecases/save_calendar_event.dart';
 import 'features/calendar/domain/usecases/delete_calendar_event.dart';
 import 'features/calendar/presentation/bloc/calendar_bloc.dart';
+import 'features/bookings/presentation/bloc/budget_cart_bloc.dart';
 
 final sl = GetIt.instance;
 
@@ -298,6 +299,7 @@ Future<void> init() async {
   sl.registerLazySingleton<BookingRemoteDataSource>(
     () => BookingRemoteDataSourceImpl(firestore: sl()),
   );
+  sl.registerFactory(() => BudgetCartBloc());
 
   //! Calendar
   sl.registerFactory(

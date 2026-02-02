@@ -119,10 +119,12 @@ class _ChatPageState extends State<ChatPage> {
       final storage = sl<BackendStorageService>();
       final uploadPath = await storage.uploadBytes(bytes, fileName, 'chats');
 
-      // Construct full URL (ensuring slash and /media/ prefix)
+      final String baseMediaUrl = (kDebugMode && !kIsWeb)
+          ? "http://localhost/media/"
+          : "https://136.248.64.90.nip.io/media/";
       final url = uploadPath.startsWith('http')
           ? uploadPath
-          : 'http://localhost/media/${uploadPath.startsWith('/') ? uploadPath.substring(1) : uploadPath}';
+          : '$baseMediaUrl${uploadPath.startsWith('/') ? uploadPath.substring(1) : uploadPath}';
 
       debugPrint('DEBUG: Final Message URL: $url');
 
@@ -178,10 +180,12 @@ class _ChatPageState extends State<ChatPage> {
         final uploadPath =
             await storage.uploadBytes(fileBytes, cleanName, 'chats');
 
-        // Construct full URL (ensuring slash and /media/ prefix)
+        final String baseMediaUrl = (kDebugMode && !kIsWeb)
+            ? "http://localhost/media/"
+            : "https://136.248.64.90.nip.io/media/";
         final url = uploadPath.startsWith('http')
             ? uploadPath
-            : 'http://localhost/media/${uploadPath.startsWith('/') ? uploadPath.substring(1) : uploadPath}';
+            : '$baseMediaUrl${uploadPath.startsWith('/') ? uploadPath.substring(1) : uploadPath}';
 
         debugPrint('DEBUG: Final Message URL: $url');
 

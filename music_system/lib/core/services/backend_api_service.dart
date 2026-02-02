@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 
 class BackendApiService {
-  static const String baseUrl = 'http://localhost/api/service';
+  static const String baseUrl = 'https://136.248.64.90.nip.io/api/service';
   final Dio _dio;
 
   BackendApiService(this._dio);

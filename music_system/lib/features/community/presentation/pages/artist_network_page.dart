@@ -29,6 +29,7 @@ import 'package:music_system/features/musician_dashboard/presentation/pages/mana
 import 'package:music_system/features/service_provider/presentation/pages/service_provider_dashboard_page.dart';
 import 'package:music_system/features/bands/presentation/pages/my_bands_page.dart';
 import 'package:music_system/features/musician_dashboard/presentation/pages/artist_insights_page.dart';
+import 'package:music_system/features/bookings/presentation/bloc/budget_cart_bloc.dart';
 import 'package:music_system/core/services/notification_service.dart';
 import 'package:music_system/injection_container.dart';
 
@@ -274,6 +275,7 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
                     tooltip: 'Meus Pedidos',
                     onPressed: () => Navigator.pushNamed(context, '/dashboard'),
                   ),
+                  const _BudgetCartBadge(),
                   _ChatBadge(userId: profile?.id ?? entity?.id ?? ''),
                   IconButton(
                     icon: Stack(
@@ -995,6 +997,14 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
             },
           ),
           ListTile(
+            leading: const Icon(Icons.calculate, color: Color(0xFFE5B80B)),
+            title: const Text('Meu Cachê'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/artist-cache');
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.live_tv, color: Colors.redAccent),
             title: const Text('Iniciar Transmissão'),
             onTap: () {
@@ -1044,8 +1054,8 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
           ),
           ListTile(
             leading:
-                const Icon(Icons.home_repair_service, color: Color(0xFFE5B80B)),
-            title: const Text('Prestação de Serviço'),
+                const Icon(Icons.business_center, color: Color(0xFFE5B80B)),
+            title: const Text('Meus Serviços'),
             onTap: () {
               Navigator.pop(context);
               if (user != null) {
@@ -1059,6 +1069,7 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
               }
             },
           ),
+          const SizedBox(height: 40),
           const Divider(color: Colors.white10),
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.redAccent),
@@ -1315,6 +1326,55 @@ class _ChatBadge extends StatelessWidget {
                   ),
                 ),
               ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _BudgetCartBadge extends StatelessWidget {
+  const _BudgetCartBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<BudgetCartBloc, BudgetCartState>(
+      builder: (context, state) {
+        if (state.items.isEmpty) return const SizedBox.shrink();
+        final itemCount = state.items.length;
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.shopping_cart_outlined,
+                  color: AppTheme.primaryColor),
+              tooltip: 'Meu Orçamento',
+              onPressed: () => Navigator.pushNamed(context, '/cart'),
+            ),
+            Positioned(
+              right: 8,
+              top: 8,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+                constraints: const BoxConstraints(
+                  minWidth: 16,
+                  minHeight: 16,
+                ),
+                child: Text(
+                  '$itemCount',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
           ],
         );
       },

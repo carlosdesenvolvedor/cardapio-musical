@@ -228,6 +228,11 @@ class AuthRepositoryImpl implements AuthRepository {
         isParentalConsentGranted: profile.isParentalConsentGranted,
         isDobVisible: profile.isDobVisible,
         isPixVisible: profile.isPixVisible,
+        artistScore: profile.artistScore,
+        professionalLevel: profile.professionalLevel,
+        minSuggestedCache: profile.minSuggestedCache,
+        maxSuggestedCache: profile.maxSuggestedCache,
+        showProfessionalBadge: profile.showProfessionalBadge,
       );
 
       final data = model.toJson();
