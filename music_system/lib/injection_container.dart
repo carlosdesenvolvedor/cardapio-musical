@@ -101,6 +101,7 @@ import 'features/calendar/domain/usecases/get_artist_calendar.dart';
 import 'features/calendar/domain/usecases/save_calendar_event.dart';
 import 'features/calendar/domain/usecases/delete_calendar_event.dart';
 import 'features/calendar/presentation/bloc/calendar_bloc.dart';
+import 'features/bookings/data/datasources/service_contract_remote_data_source.dart';
 import 'features/bookings/presentation/bloc/budget_cart_bloc.dart';
 import 'features/events/domain/repositories/event_repository.dart';
 import 'features/events/data/repositories/event_repository_impl.dart';
@@ -305,6 +306,9 @@ Future<void> init() async {
   );
   sl.registerLazySingleton<BookingRemoteDataSource>(
     () => BookingRemoteDataSourceImpl(firestore: sl()),
+  );
+  sl.registerLazySingleton<ServiceContractRemoteDataSource>(
+    () => ServiceContractRemoteDataSource(firestore: sl()),
   );
   sl.registerFactory(() => BudgetCartBloc());
 

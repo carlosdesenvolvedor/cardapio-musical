@@ -10,6 +10,15 @@ import '../../../bookings/presentation/bloc/budget_cart_bloc.dart';
 import '../../../service_provider/domain/entities/service_entity.dart';
 import '../../../service_provider/domain/usecases/get_all_services.dart';
 import '../../../community/presentation/pages/artist_network_page.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../../auth/domain/repositories/auth_repository.dart';
+import '../../../auth/domain/entities/user_profile.dart';
+import 'package:uuid/uuid.dart';
+import '../../../bookings/domain/entities/service_contract_entity.dart';
+import '../../../bookings/data/models/service_contract_model.dart';
+import '../../../bookings/data/datasources/service_contract_remote_data_source.dart';
+import '../../../community/domain/repositories/notification_repository.dart';
+import '../../../community/domain/entities/notification_entity.dart';
 
 class EventBudgetPlanningPage extends StatefulWidget {
   const EventBudgetPlanningPage({super.key});
@@ -105,7 +114,6 @@ class _EventBudgetPlanningPageState extends State<EventBudgetPlanningPage> {
           IconButton(
             icon: const _CartBadge(),
             onPressed: () {
-              // Show cart bottom sheet for mobile
               _showMobileCart();
             },
           ),
@@ -429,13 +437,13 @@ class _EventBudgetPlanningPageState extends State<EventBudgetPlanningPage> {
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: isDesktop ? 2 : 1,
-                childAspectRatio: isDesktop ? 2.2 : 1.2,
+                childAspectRatio: isDesktop ? 2.2 : 1.3,
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
               ),
               itemCount: filteredServices.length,
               itemBuilder: (context, index) {
-                return _buildProviderCard(filteredServices[index]);
+                return _buildProviderCard(filteredServices[index], isDesktop);
               },
             );
           },
@@ -444,142 +452,211 @@ class _EventBudgetPlanningPageState extends State<EventBudgetPlanningPage> {
     );
   }
 
-  Widget _buildProviderCard(ServiceEntity service) {
+  Widget _buildProviderCard(ServiceEntity service, bool isDesktop) {
     return BlocBuilder<BudgetCartBloc, BudgetCartState>(
       builder: (context, state) {
         final isInCart = state.items.any((i) => i.id == service.id);
 
         return Container(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(isDesktop ? 16 : 12),
           decoration: BoxDecoration(
-            color: const Color(0xFF151515),
-            borderRadius: BorderRadius.circular(20),
+            color: const Color(0xFF1A1A1A), // Sligthly lighter for better depth
+            borderRadius: BorderRadius.circular(isDesktop ? 20 : 24),
             border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
           ),
           child: Row(
             children: [
+              // Avatar Column (Rounded Square with Golden Border)
               Container(
-                width: 80,
-                height: 80,
+                width: isDesktop ? 80 : 85,
+                height: isDesktop ? 80 : 85,
+                padding: const EdgeInsets.all(2), // Thinner border
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
-                  shape: BoxShape.circle,
+                  borderRadius:
+                      BorderRadius.circular(18), // Match inner + padding
+                  gradient: const LinearGradient(
+                    colors: [
+                      Color(0xFFE5B80B),
+                      Color(0xFFFFD700),
+                      Color(0xFFA67C00)
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                 ),
-                child: Icon(
-                  _getCategoryIcon(service.category),
-                  color: AppTheme.primaryColor,
-                  size: 40,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    color: const Color(0xFF151515),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: service.imageUrl != null
+                        ? CachedNetworkImage(
+                            imageUrl: service.imageUrl!,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => const Center(
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                            errorWidget: (context, url, error) => Icon(
+                              _getCategoryIcon(service.category),
+                              color: AppTheme.primaryColor,
+                              size: 40,
+                            ),
+                          )
+                        : FutureBuilder<Either<Failure, UserProfile>>(
+                            future: sl<AuthRepository>()
+                                .getProfile(service.providerId),
+                            builder: (context, snapshot) {
+                              String? photoUrl;
+                              if (snapshot.hasData) {
+                                snapshot.data!.fold(
+                                    (_) => null, (p) => photoUrl = p.photoUrl);
+                              }
+
+                              if (photoUrl != null) {
+                                return CachedNetworkImage(
+                                  imageUrl: photoUrl!,
+                                  fit: BoxFit.cover,
+                                  errorWidget: (context, url, error) => Icon(
+                                    _getCategoryIcon(service.category),
+                                    color: AppTheme.primaryColor,
+                                    size: 40,
+                                  ),
+                                );
+                              }
+
+                              return Icon(
+                                _getCategoryIcon(service.category),
+                                color: AppTheme.primaryColor,
+                                size: 40,
+                              );
+                            },
+                          ),
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
+              // Info Column
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            service.name,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.verified,
-                            color: Colors.blueAccent, size: 16),
-                      ],
+                    Text(
+                      service.name,
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900, // Extra bold
+                          fontSize: isDesktop ? 18 : 16,
+                          letterSpacing: 0.5),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       service.category.toString().split('.').last.toUpperCase(),
-                      style:
-                          const TextStyle(color: Colors.white54, fontSize: 12),
+                      style: TextStyle(
+                        color: Colors.white60,
+                        fontSize: isDesktop ? 12 : 11,
+                        letterSpacing: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    // Rating Stars Row
+                    Row(
+                      children: List.generate(5, (index) {
+                        return const Icon(
+                          Icons.star,
+                          color: Color(0xFFE5B80B),
+                          size: 14,
+                        );
+                      }),
                     ),
                     const SizedBox(height: 4),
-                    const Row(
-                      children: [
-                        Icon(Icons.star, color: Color(0xFFE5B80B), size: 14),
-                        SizedBox(width: 4),
-                        Text(
-                          '4.8',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12),
-                        ),
-                      ],
+                    const Text(
+                      '4.8',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'R\$ ${service.basePrice.toStringAsFixed(2)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                           color: AppTheme.primaryColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      height: 32,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ProfilePage(
-                                userId: service.providerId,
-                                email:
-                                    '', // Email not strictly required for viewing
-                              ),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFE5B80B),
-                          foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          textStyle: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 10),
-                        ),
-                        child: const Text('VER PERFIL'),
-                      ),
+                          fontWeight: FontWeight.w900,
+                          fontSize: isDesktop ? 16 : 15),
                     ),
                   ],
                 ),
               ),
-              IconButton(
-                icon: Icon(
-                  isInCart ? Icons.check_circle : Icons.add_circle,
-                  color: isInCart ? Colors.green : AppTheme.primaryColor,
-                ),
-                onPressed: () {
-                  if (isInCart) {
-                    context
-                        .read<BudgetCartBloc>()
-                        .add(RemoveServiceFromCart(service.id));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('${service.name} removido!')),
-                    );
-                  } else {
-                    context
-                        .read<BudgetCartBloc>()
-                        .add(AddServiceToCart(service));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('${service.name} adicionado!')),
-                    );
-                  }
-                },
+              // Actions Column (Vertical Stack)
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Verification Shield
+                  const Icon(Icons.verified,
+                      color: Colors.blueAccent, size: 20),
+                  const SizedBox(height: 12),
+                  // Add to Cart Button (Stack Style)
+                  _buildActionSquare(
+                    icon: isInCart ? Icons.check : Icons.add,
+                    color: isInCart ? Colors.green : const Color(0xFFE5B80B),
+                    onTap: () {
+                      if (isInCart) {
+                        context
+                            .read<BudgetCartBloc>()
+                            .add(RemoveServiceFromCart(service.id));
+                      } else {
+                        context
+                            .read<BudgetCartBloc>()
+                            .add(AddServiceToCart(service));
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  // Ver Perfil Toggle/Button
+                  _buildActionSquare(
+                    icon: Icons.person_outline,
+                    color: const Color(0xFFE5B80B),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ProfilePage(
+                            userId: service.providerId,
+                            email: '',
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildActionSquare({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        width: 36,
+        height: 24,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Icon(icon, color: Colors.black, size: 16),
+      ),
     );
   }
 
@@ -652,6 +729,32 @@ class _EventBudgetPlanningPageState extends State<EventBudgetPlanningPage> {
                             fontSize: 20,
                             fontWeight: FontWeight.bold)),
                   ],
+                );
+              },
+            ),
+          ),
+          const Divider(color: Colors.white10),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: BlocBuilder<BudgetCartBloc, BudgetCartState>(
+              builder: (context, state) {
+                if (state.items.isEmpty) return const SizedBox.shrink();
+
+                return ElevatedButton(
+                  onPressed: () => _finalizeBudget(state.items),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    minimumSize: const Size(double.infinity, 54),
+                  ),
+                  child: const Text(
+                    'FINALIZAR E SOLICITAR',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
                 );
               },
             ),
@@ -763,6 +866,93 @@ class _EventBudgetPlanningPageState extends State<EventBudgetPlanningPage> {
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (context) => _buildCartPanel(),
     );
+  }
+
+  void _finalizeBudget(List<ServiceEntity> items) async {
+    final authRepo = sl<AuthRepository>();
+    final userRes = await authRepo.getCurrentUser();
+
+    final user = userRes.fold((_) => null, (u) => u);
+
+    if (user == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Faça login para solicitar orçamentos')),
+        );
+      }
+      return;
+    }
+
+    String contractorName = user.displayName;
+    String? senderPhotoUrl = user.photoUrl;
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final contractDataSource = sl<ServiceContractRemoteDataSource>();
+      final notificationRepo = sl<NotificationRepository>();
+      const uuid = Uuid();
+
+      for (var item in items) {
+        final contractId = uuid.v4();
+        final contract = ServiceContractModel(
+          id: contractId,
+          contractorId: user.id,
+          contractorName: contractorName,
+          providerId: item.providerId,
+          serviceId: item.id,
+          serviceName: item.name,
+          price: item.basePrice,
+          status: ContractStatus.pending,
+          createdAt: DateTime.now(),
+        );
+
+        await contractDataSource.createContract(contract);
+
+        // Notify provider
+        await notificationRepo.createNotification(
+          NotificationEntity(
+            id: '',
+            recipientId: item.providerId,
+            senderId: user.id,
+            senderName: contractorName,
+            senderPhotoUrl: senderPhotoUrl,
+            type: NotificationType.budget_request,
+            postId: contractId,
+            message: 'Solicitação de orçamento para ${item.name}',
+            createdAt: DateTime.now(),
+          ),
+        );
+      }
+
+      if (mounted) Navigator.pop(context); // Close loading
+
+      // Clear cart
+      for (var item in items) {
+        context.read<BudgetCartBloc>().add(RemoveServiceFromCart(item.id));
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Solicitações enviadas com sucesso!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        if (Navigator.canPop(context)) Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao enviar solicitações: $e')),
+        );
+      }
+    }
   }
 }
 

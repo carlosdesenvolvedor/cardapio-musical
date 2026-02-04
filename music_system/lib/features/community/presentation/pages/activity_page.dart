@@ -8,6 +8,9 @@ import 'package:music_system/features/auth/presentation/pages/profile_page.dart'
 import '../bloc/notifications_bloc.dart';
 import '../bloc/notifications_event.dart';
 import '../bloc/notifications_state.dart';
+import '../../../../injection_container.dart';
+import '../../../bookings/domain/entities/service_contract_entity.dart';
+import '../../../bookings/data/datasources/service_contract_remote_data_source.dart';
 
 class ActivityPage extends StatelessWidget {
   final String userId;
@@ -128,6 +131,12 @@ class ActivityPage extends StatelessWidget {
         icon = Icons.group_add;
         iconColor = const Color(0xFFE5B80B);
         break;
+      case NotificationType.budget_request:
+        message =
+            'enviou uma nova solicitação de orçamento: "${notification.message}"';
+        icon = Icons.assignment_turned_in;
+        iconColor = const Color(0xFFE5B80B);
+        break;
     }
 
     return ListTile(
@@ -197,7 +206,9 @@ class ActivityPage extends StatelessWidget {
       trailing: notification.type == NotificationType.like &&
               notification.postId != null
           ? const Icon(Icons.image, size: 30, color: Colors.white10)
-          : null,
+          : (notification.type == NotificationType.budget_request
+              ? _buildBudgetActions(context, notification)
+              : null),
       onTap: () {
         context.read<NotificationsBloc>().add(
               MarkNotificationAsRead(userId, notification.id),
@@ -265,6 +276,58 @@ class ActivityPage extends StatelessWidget {
       return '${diff.inHours}h';
     } else {
       return '${diff.inDays}d';
+    }
+  }
+
+  Widget _buildBudgetActions(
+      BuildContext context, NotificationEntity notification) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.check_circle, color: Colors.green),
+          onPressed: () => _updateBudgetStatus(
+              context, notification, ContractStatus.accepted),
+        ),
+        IconButton(
+          icon: const Icon(Icons.cancel, color: Colors.red),
+          onPressed: () => _updateBudgetStatus(
+              context, notification, ContractStatus.declined),
+        ),
+      ],
+    );
+  }
+
+  void _updateBudgetStatus(BuildContext context,
+      NotificationEntity notification, ContractStatus status) async {
+    if (notification.postId == null) return;
+
+    try {
+      await sl<ServiceContractRemoteDataSource>()
+          .updateContractStatus(notification.postId!, status);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(status == ContractStatus.accepted
+                ? 'Orçamento aceito!'
+                : 'Orçamento recusado.'),
+            backgroundColor:
+                status == ContractStatus.accepted ? Colors.green : Colors.red,
+          ),
+        );
+
+        // Mark notification as read
+        context.read<NotificationsBloc>().add(
+              MarkNotificationAsRead(userId, notification.id),
+            );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao atualizar status: $e')),
+        );
+      }
     }
   }
 }

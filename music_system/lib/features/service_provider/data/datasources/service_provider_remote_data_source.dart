@@ -34,8 +34,21 @@ class ServiceProviderRemoteDataSourceImpl
   Future<void> registerService(ServiceModel service) async {
     try {
       print('BACKEND DEBUG: Registrando serviço via API C#');
-      await apiService.registerService(service.toJson());
-      print('BACKEND DEBUG: Registro concluído com sucesso');
+      try {
+        await apiService.registerService(service.toJson());
+        print('BACKEND DEBUG: Registro na API concluído com sucesso');
+      } catch (e) {
+        print(
+            'BACKEND WARNING: Falha no registro via API, prosseguindo com backup: $e');
+      }
+
+      // Always fallback/dual-write to Firestore to ensure availability in contractors global list
+      print('BACKEND DEBUG: Sincronizando com Firestore (Top-level services)');
+      await firestore
+          .collection('services')
+          .doc(service.id)
+          .set(service.toJson());
+      print('BACKEND DEBUG: Backup no Firestore concluído');
     } catch (e) {
       print('BACKEND ERROR: ${e.toString()}');
       rethrow;
@@ -73,11 +86,11 @@ class ServiceProviderRemoteDataSourceImpl
 
       try {
         final snapshot =
-            await firestore.collectionGroup('services').limit(50).get();
+            await firestore.collection('services').limit(100).get();
         final services =
             snapshot.docs.map((doc) => ServiceModel.fromSnapshot(doc)).toList();
         print(
-            'BACKEND DEBUG: Fallback concluído. ${services.length} serviços recuperados do Firestore.');
+            'BACKEND DEBUG: Fallback concluído. ${services.length} serviços recuperados da coleção global.');
         return services;
       } catch (firestoreError) {
         print(
@@ -95,11 +108,23 @@ class ServiceProviderRemoteDataSourceImpl
   }) async {
     try {
       print('BACKEND DEBUG: Atualizando status via API C#');
-      await apiService.updateServiceStatus(
-        serviceId: serviceId,
-        status: status.toString().split('.').last,
-      );
-      print('BACKEND DEBUG: Status atualizado com sucesso');
+      try {
+        await apiService.updateServiceStatus(
+          serviceId: serviceId,
+          status: status.toString().split('.').last,
+        );
+        print('BACKEND DEBUG: Status atualizado na API com sucesso');
+      } catch (e) {
+        print(
+            'BACKEND WARNING: Falha na atualização de status via API, prosseguindo com backup: $e');
+      }
+
+      // Sync to Firestore
+      print('BACKEND DEBUG: Sincronizando status com Firestore (Top-level)');
+      await firestore.collection('services').doc(serviceId).set(
+          {'status': status.toString().split('.').last},
+          SetOptions(merge: true));
+      print('BACKEND DEBUG: Status no Firestore atualizado');
     } catch (e) {
       print('BACKEND ERROR: ${e.toString()}');
       rethrow;
@@ -127,8 +152,22 @@ class ServiceProviderRemoteDataSourceImpl
   Future<void> updateService(ServiceModel service) async {
     try {
       print('BACKEND DEBUG: Atualizando serviço via API C#');
-      await apiService.updateService(service.toJson());
-      print('BACKEND DEBUG: Serviço atualizado com sucesso');
+      try {
+        await apiService.updateService(service.toJson());
+        print('BACKEND DEBUG: Atualização na API concluída com sucesso');
+      } catch (e) {
+        print(
+            'BACKEND WARNING: Falha na atualização via API, prosseguindo com backup: $e');
+      }
+
+      // Sync to Firestore
+      print(
+          'BACKEND DEBUG: Sincronizando atualização com Firestore (Top-level)');
+      await firestore
+          .collection('services')
+          .doc(service.id)
+          .set(service.toJson());
+      print('BACKEND DEBUG: Atualização no Firestore concluída');
     } catch (e) {
       print('BACKEND ERROR: ${e.toString()}');
     }

@@ -66,7 +66,8 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
         chatRepository.streamUnreadCount(event.userId).listen((count) {
       add(UnreadChatCountUpdated(count));
     }, onError: (error) {
-      add(NotificationsErrorOccurred('Chat error: $error'));
+      // Don't stop notifications if unread count fails (likely index error)
+      print('BACKEND ERROR: Unread Chat Count Failed: $error');
     });
   }
 

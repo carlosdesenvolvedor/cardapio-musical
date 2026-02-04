@@ -175,6 +175,12 @@ class ChatRepositoryImpl implements ChatRepository {
         .where('receiverId', isEqualTo: userId)
         .where('isRead', isEqualTo: false)
         .snapshots()
-        .map((snapshot) => snapshot.docs.length);
+        .map((snapshot) => snapshot.docs.length)
+        .handleError((error) {
+      print(
+          'BACKEND ERROR: streamUnreadCount failed. Usually requires a composite index on collectionGroup "messages" (receiverId and isRead).');
+      print('Error details: $error');
+      return 0; // Fallback to 0 unread messages
+    });
   }
 }

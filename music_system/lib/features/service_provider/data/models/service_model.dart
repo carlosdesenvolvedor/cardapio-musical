@@ -12,6 +12,8 @@ class ServiceModel extends ServiceEntity {
     required super.priceDescription,
     required super.status,
     required super.technicalDetails,
+    super.location,
+    super.imageUrl,
     required super.createdAt,
   });
 
@@ -54,6 +56,7 @@ class ServiceModel extends ServiceEntity {
       status: status,
       technicalDetails:
           _technicalDetailsFromJson(json['technicalDetails'], category),
+      imageUrl: json['imageUrl'],
       createdAt: createdAtDate,
     );
   }
@@ -69,6 +72,7 @@ class ServiceModel extends ServiceEntity {
       'priceDescription': priceDescription,
       'status': status.toString().split('.').last,
       'technicalDetails': technicalDetails.toJson(),
+      'imageUrl': imageUrl,
       'createdAt': createdAt.toIso8601String(),
     };
   }

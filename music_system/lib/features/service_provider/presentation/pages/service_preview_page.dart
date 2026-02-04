@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/service_entity.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../bookings/presentation/bloc/budget_cart_bloc.dart';
@@ -62,28 +63,35 @@ class ServicePreviewPage extends StatelessWidget {
         background: Stack(
           fit: StackFit.expand,
           children: [
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    const Color(0xFFFFC107).withOpacity(0.2),
-                    const Color(0xFF101010),
-                  ],
+            if (service.imageUrl != null)
+              CachedNetworkImage(
+                imageUrl: service.imageUrl!,
+                fit: BoxFit.cover,
+              )
+            else
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      const Color(0xFFFFC107).withOpacity(0.2),
+                      const Color(0xFF101010),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            Center(
-              child: Hero(
-                tag: 'service_icon_${service.id}',
-                child: Icon(
-                  _getIconForCategory(service.category),
-                  size: 80,
-                  color: const Color(0xFFFFC107).withOpacity(0.8),
+            if (service.imageUrl == null)
+              Center(
+                child: Hero(
+                  tag: 'service_icon_${service.id}',
+                  child: Icon(
+                    _getIconForCategory(service.category),
+                    size: 80,
+                    color: const Color(0xFFFFC107).withOpacity(0.8),
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),

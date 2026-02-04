@@ -8,6 +8,11 @@ import '../pages/service_registration_form_page.dart';
 import '../pages/service_preview_page.dart';
 import '../pages/artist_cache_page.dart';
 import 'package:get_it/get_it.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dartz/dartz.dart' hide State;
+import '../../../auth/domain/repositories/auth_repository.dart';
+import '../../../auth/domain/entities/user_profile.dart';
+import '../../../../core/error/failures.dart';
 
 class ServiceProviderDashboardPage extends StatelessWidget {
   final String providerId;
@@ -226,17 +231,56 @@ class ServiceProviderDashboardPage extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFC107).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              _getIconForCategory(service.category),
-              color: const Color(0xFFFFC107),
-              size: 30,
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFC107).withOpacity(0.1),
+              ),
+              child: service.imageUrl != null
+                  ? CachedNetworkImage(
+                      imageUrl: service.imageUrl!,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      errorWidget: (context, url, error) => Icon(
+                        _getIconForCategory(service.category),
+                        color: const Color(0xFFFFC107),
+                        size: 30,
+                      ),
+                    )
+                  : FutureBuilder<Either<Failure, UserProfile>>(
+                      future: GetIt.instance<AuthRepository>()
+                          .getProfile(service.providerId),
+                      builder: (context, snapshot) {
+                        String? photoUrl;
+                        if (snapshot.hasData) {
+                          snapshot.data!
+                              .fold((_) => null, (p) => photoUrl = p.photoUrl);
+                        }
+
+                        if (photoUrl != null) {
+                          return CachedNetworkImage(
+                            imageUrl: photoUrl!,
+                            fit: BoxFit.cover,
+                            errorWidget: (context, url, error) => Icon(
+                              _getIconForCategory(service.category),
+                              color: const Color(0xFFFFC107),
+                              size: 30,
+                            ),
+                          );
+                        }
+
+                        return Icon(
+                          _getIconForCategory(service.category),
+                          color: const Color(0xFFFFC107),
+                          size: 30,
+                        );
+                      },
+                    ),
             ),
           ),
           const SizedBox(width: 20),

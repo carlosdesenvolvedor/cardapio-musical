@@ -24,6 +24,8 @@ class ServiceProviderRepositoryImpl implements IServiceProviderRepository {
         priceDescription: service.priceDescription,
         status: service.status,
         technicalDetails: service.technicalDetails,
+        location: service.location,
+        imageUrl: service.imageUrl,
         createdAt: service.createdAt,
       );
       await remoteDataSource.registerService(serviceModel);
@@ -111,6 +113,8 @@ class ServiceProviderRepositoryImpl implements IServiceProviderRepository {
         priceDescription: service.priceDescription,
         status: service.status,
         technicalDetails: service.technicalDetails,
+        location: service.location,
+        imageUrl: service.imageUrl,
         createdAt: service.createdAt,
       );
       await remoteDataSource.updateService(serviceModel);

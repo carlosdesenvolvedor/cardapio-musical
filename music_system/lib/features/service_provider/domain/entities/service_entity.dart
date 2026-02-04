@@ -31,6 +31,7 @@ class ServiceEntity extends Equatable {
   final ServiceStatus status;
   final TechnicalDetails technicalDetails;
   final String? location;
+  final String? imageUrl;
   final DateTime createdAt;
 
   const ServiceEntity({
@@ -44,6 +45,7 @@ class ServiceEntity extends Equatable {
     required this.status,
     required this.technicalDetails,
     this.location,
+    this.imageUrl,
     required this.createdAt,
   });
 
@@ -58,6 +60,8 @@ class ServiceEntity extends Equatable {
         priceDescription,
         status,
         technicalDetails,
+        location,
+        imageUrl,
         createdAt,
       ];
 }
