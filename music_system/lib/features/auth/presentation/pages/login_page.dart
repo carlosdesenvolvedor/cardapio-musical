@@ -139,19 +139,19 @@ class _LoginPageState extends State<LoginPage> {
                           onPressed: () {
                             if (_isSignUp) {
                               context.read<AuthBloc>().add(
-                                SignUpRequested(
-                                  _emailController.text,
-                                  _passwordController.text,
-                                  "Músico",
-                                ),
-                              );
+                                    SignUpRequested(
+                                      _emailController.text,
+                                      _passwordController.text,
+                                      "Músico",
+                                    ),
+                                  );
                             } else {
                               context.read<AuthBloc>().add(
-                                SignInRequested(
-                                  _emailController.text,
-                                  _passwordController.text,
-                                ),
-                              );
+                                    SignInRequested(
+                                      _emailController.text,
+                                      _passwordController.text,
+                                    ),
+                                  );
                             }
                           },
                           style: ElevatedButton.styleFrom(
@@ -163,8 +163,8 @@ class _LoginPageState extends State<LoginPage> {
                         OutlinedButton.icon(
                           onPressed: () {
                             context.read<AuthBloc>().add(
-                              GoogleSignInRequested(),
-                            );
+                                  GoogleSignInRequested(),
+                                );
                           },
                           icon: Image.network(
                             'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_\"G\"_logo.svg/768px-Google_\"G\"_logo.svg.png',
@@ -214,7 +214,7 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 32),
                 Center(
                   child: Text(
-                    'Versão $APP_VERSION',
+                    'Versão $appVersion',
                     style: const TextStyle(color: Colors.white24, fontSize: 12),
                   ),
                 ),

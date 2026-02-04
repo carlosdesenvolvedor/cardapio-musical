@@ -117,5 +117,18 @@ service cloud.firestore {
       allow create: if request.auth != null;
       allow update: if request.auth != null;
     }
+
+    // Regras para Eventos (Contratante)
+    match /events/{eventId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && 
+        (resource.data.ownerId == request.auth.uid || request.auth.uid == eventId); 
+    }
+
+    // Regras para Serviços (Global Fallback - Collection Group)
+    match /{path=**}/services/{serviceId} {
+      allow read: if true;
+    }
   }
 }

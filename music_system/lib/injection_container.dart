@@ -12,6 +12,7 @@ import 'features/service_provider/domain/usecases/register_service.dart';
 import 'features/service_provider/domain/usecases/update_service_status.dart';
 import 'features/service_provider/domain/usecases/delete_service.dart';
 import 'features/service_provider/domain/usecases/update_service.dart';
+import 'features/service_provider/domain/usecases/get_all_services.dart';
 import 'features/service_provider/presentation/bloc/service_dashboard_bloc.dart';
 import 'features/service_provider/presentation/bloc/service_registration_bloc.dart';
 
@@ -101,6 +102,12 @@ import 'features/calendar/domain/usecases/save_calendar_event.dart';
 import 'features/calendar/domain/usecases/delete_calendar_event.dart';
 import 'features/calendar/presentation/bloc/calendar_bloc.dart';
 import 'features/bookings/presentation/bloc/budget_cart_bloc.dart';
+import 'features/events/domain/repositories/event_repository.dart';
+import 'features/events/data/repositories/event_repository_impl.dart';
+import 'features/events/data/datasources/event_remote_data_source.dart';
+import 'features/events/data/datasources/event_firestore_data_source_impl.dart';
+import 'features/events/presentation/bloc/event_bloc.dart';
+import 'features/events/presentation/bloc/questionnaire_bloc.dart';
 
 final sl = GetIt.instance;
 
@@ -338,12 +345,26 @@ Future<void> init() async {
   sl.registerLazySingleton(() => UpdateServiceStatus(sl()));
   sl.registerLazySingleton(() => DeleteService(sl()));
   sl.registerLazySingleton(() => UpdateService(sl()));
+  sl.registerLazySingleton(() => GetAllServices(sl()));
   sl.registerLazySingleton<IServiceProviderRepository>(
     () => ServiceProviderRepositoryImpl(remoteDataSource: sl()),
   );
   sl.registerLazySingleton<IServiceProviderRemoteDataSource>(
-    () => ServiceProviderRemoteDataSourceImpl(apiService: sl()),
+    () => ServiceProviderRemoteDataSourceImpl(
+      apiService: sl(),
+      firestore: sl(),
+    ),
   );
+
+  //! Features - Events
+  sl.registerLazySingleton<IEventRemoteDataSource>(
+    () => EventFirestoreDataSourceImpl(firestore: sl()),
+  );
+  sl.registerLazySingleton<EventRepository>(
+    () => EventRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerFactory(() => EventBloc(repository: sl()));
+  sl.registerFactory(() => QuestionnaireBloc());
 
   //! External
   sl.registerLazySingleton(() => BackendApiService(sl()));

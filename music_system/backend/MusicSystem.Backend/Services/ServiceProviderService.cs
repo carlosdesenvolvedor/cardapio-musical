@@ -9,6 +9,7 @@ namespace MusicSystem.Backend.Services
 {
     public interface IServiceProviderService
     {
+        Task<List<ServiceModel>> GetAllServicesAsync();
         Task<List<ServiceModel>> GetServicesByProviderAsync(string providerId);
         Task<ServiceModel?> GetServiceByIdAsync(string serviceId);
         Task RegisterServiceAsync(ServiceModel service);
@@ -44,6 +45,11 @@ namespace MusicSystem.Backend.Services
         {
             var json = JsonSerializer.Serialize(services, new JsonSerializerOptions { WriteIndented = true });
             await File.WriteAllTextAsync(_fullPath, json);
+        }
+
+        public async Task<List<ServiceModel>> GetAllServicesAsync()
+        {
+            return await LoadAllAsync();
         }
 
         public async Task<List<ServiceModel>> GetServicesByProviderAsync(string providerId)

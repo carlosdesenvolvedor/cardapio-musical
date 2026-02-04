@@ -1,2 +1,2 @@
-const int APP_BUILD_NUMBER = 113;
-const String APP_VERSION = '1.0.$APP_BUILD_NUMBER';
+const String appVersion = '1.0.116';
+const String buildNumber = '116';

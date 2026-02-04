@@ -31,6 +31,20 @@ class BackendApiService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> getAllServices() async {
+    try {
+      final response = await _dio.get('$baseUrl/all');
+      if (response.statusCode == 200) {
+        return List<Map<String, dynamic>>.from(response.data);
+      } else {
+        throw Exception(
+            'Failed to fetch all services: ${response.statusMessage}');
+      }
+    } catch (e) {
+      throw Exception('Error fetching all services: $e');
+    }
+  }
+
   Future<void> updateServiceStatus({
     required String serviceId,
     required String status,

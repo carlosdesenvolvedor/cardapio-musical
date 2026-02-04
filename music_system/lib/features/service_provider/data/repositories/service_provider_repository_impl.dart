@@ -49,6 +49,18 @@ class ServiceProviderRepositoryImpl implements IServiceProviderRepository {
   }
 
   @override
+  Future<Either<Failure, List<ServiceEntity>>> getAllServices() async {
+    try {
+      final services = await remoteDataSource.getAllServices();
+      return Right(services);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message ?? 'Server Failure'));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, void>> updateServiceStatus({
     required String providerId,
     required String serviceId,

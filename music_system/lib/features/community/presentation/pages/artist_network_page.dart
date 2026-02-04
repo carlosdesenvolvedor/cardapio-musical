@@ -30,6 +30,8 @@ import 'package:music_system/features/service_provider/presentation/pages/servic
 import 'package:music_system/features/bands/presentation/pages/my_bands_page.dart';
 import 'package:music_system/features/musician_dashboard/presentation/pages/artist_insights_page.dart';
 import 'package:music_system/features/bookings/presentation/bloc/budget_cart_bloc.dart';
+import 'package:music_system/features/events/presentation/pages/events_list_page.dart';
+import 'package:music_system/features/service_provider/presentation/pages/artist_cache_page.dart';
 import 'package:music_system/core/services/notification_service.dart';
 import 'package:music_system/injection_container.dart';
 
@@ -39,6 +41,7 @@ import 'package:music_system/features/community/presentation/bloc/story_upload_b
 import 'package:music_system/features/community/presentation/bloc/story_upload_state.dart';
 import 'package:music_system/features/community/presentation/bloc/post_upload_bloc.dart';
 import 'package:music_system/features/community/presentation/bloc/post_upload_state.dart';
+import 'package:music_system/features/events/presentation/pages/event_budget_planning_page.dart';
 import 'package:music_system/main.dart'; // Import to use messengerKey
 
 class ArtistNetworkPage extends StatefulWidget {
@@ -998,10 +1001,43 @@ class _ArtistNetworkPageState extends State<ArtistNetworkPage> {
           ),
           ListTile(
             leading: const Icon(Icons.calculate, color: Color(0xFFE5B80B)),
-            title: const Text('Meu Cachê'),
+            title: const Text('Calculadora de Cachê'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.pushNamed(context, '/artist-cache');
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ArtistCachePage(),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading:
+                const Icon(Icons.event_available, color: Color(0xFFE5B80B)),
+            title: const Text('Gestão de Eventos (Contractor)'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const EventsListPage(),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading:
+                const Icon(Icons.account_balance, color: Color(0xFFE5B80B)),
+            title: const Text('Criação de Orçamentos'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const EventBudgetPlanningPage(),
+                ),
+              );
             },
           ),
           ListTile(

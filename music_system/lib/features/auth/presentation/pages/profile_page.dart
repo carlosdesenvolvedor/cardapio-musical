@@ -27,6 +27,10 @@ import '../../domain/repositories/auth_repository.dart';
 import '../../domain/usecases/log_profile_view.dart';
 import '../../presentation/bloc/works/works_bloc.dart';
 import '../../presentation/widgets/work_list_widget.dart';
+import 'package:music_system/features/events/presentation/bloc/event_bloc.dart';
+import 'package:music_system/features/events/presentation/bloc/event_event.dart';
+import 'package:music_system/features/events/presentation/bloc/event_state.dart';
+import 'package:music_system/config/theme/app_theme.dart';
 
 class ProfilePage extends StatefulWidget {
   final String userId;
@@ -678,6 +682,25 @@ class _ProfilePageState extends State<ProfilePage>
                   'Falar com artista',
                   style: TextStyle(
                     color: Color(0xFFE5B80B),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          if (!_isOwner)
+            Padding(
+              padding: const EdgeInsets.only(top: 0),
+              child: TextButton.icon(
+                onPressed: () => _showHireDialog(context, state.profile),
+                icon: const Icon(
+                  Icons.assignment_turned_in,
+                  color: Colors.greenAccent,
+                  size: 18,
+                ),
+                label: const Text(
+                  'Contratar para Evento',
+                  style: TextStyle(
+                    color: Colors.greenAccent,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -1391,10 +1414,10 @@ class _ProfilePageState extends State<ProfilePage>
                   margin: const EdgeInsets.all(16),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE5B80B).withOpacity(0.1),
+                    color: const Color(0xFFE5B80B).withAlpha(25),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                        color: const Color(0xFFE5B80B).withOpacity(0.3)),
+                        color: const Color(0xFFE5B80B).withAlpha(76)),
                   ),
                   child: Column(
                     children: [
@@ -1587,6 +1610,131 @@ class _ProfilePageState extends State<ProfilePage>
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  void _showHireDialog(BuildContext context, UserProfile artist) {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (currentUserId.isEmpty) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A1A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return BlocProvider.value(
+          value: sl<EventBloc>()..add(LoadEventsRequested(currentUserId)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Selecionar Evento',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Para qual evento você deseja contratar ${artist.artisticName}?',
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+                const SizedBox(height: 20),
+                Expanded(
+                  child: BlocBuilder<EventBloc, EventState>(
+                    builder: (context, state) {
+                      if (state.status == EventStatus.loading) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      final events = state.events;
+                      if (events.isEmpty) {
+                        return const Center(
+                          child: Text(
+                            'Você ainda não tem eventos criados.',
+                            style: TextStyle(color: Colors.white54),
+                          ),
+                        );
+                      }
+                      return ListView.builder(
+                        itemCount: events.length,
+                        itemBuilder: (context, index) {
+                          final event = events[index];
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(
+                              event.title,
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                            subtitle: Text(
+                              'Budget Limit: R\$ ' +
+                                  event.budgetLimit.toStringAsFixed(2),
+                              style: const TextStyle(color: Colors.white54),
+                            ),
+                            trailing: const Icon(Icons.add,
+                                color: AppTheme.primaryColor),
+                            onTap: () {
+                              _confirmHiring(context, event.id, artist.id,
+                                  artist.minSuggestedCache ?? 0.0);
+                            },
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _confirmHiring(
+      BuildContext context, String eventId, String artistId, double cost) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2C2C),
+        title: const Text('Confirmar Contratação',
+            style: TextStyle(color: Colors.white)),
+        content: Text(
+          'Deseja adicionar este artista ao evento? O valor estimado de R\$ ' +
+              cost.toStringAsFixed(2) +
+              ' será debitado do budget.',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child:
+                const Text('CANCELAR', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              sl<EventBloc>().add(HireProviderRequested(
+                eventId: eventId,
+                providerId: artistId,
+                cost: cost,
+              ));
+              Navigator.pop(context); // Fecha dialog
+              Navigator.pop(context); // Fecha bottom sheet
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text('Artista contratado com sucesso!')),
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            child: const Text('CONFIRMAR'),
+          ),
         ],
       ),
     );

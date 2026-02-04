@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'core/constants/app_version.dart';
 import 'features/service_provider/presentation/pages/artist_cache_page.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:flutter/foundation.dart';
@@ -34,6 +35,7 @@ import 'features/calendar/presentation/bloc/calendar_bloc.dart';
 import 'features/bookings/presentation/pages/budget_cart_page.dart';
 import 'core/constants/app_version.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'features/events/presentation/bloc/event_bloc.dart';
 
 final GlobalKey<ScaffoldMessengerState> messengerKey =
     GlobalKey<ScaffoldMessengerState>();
@@ -100,6 +102,7 @@ class MusicSystemApp extends StatelessWidget {
         BlocProvider(create: (_) => di.sl<StoryUploadBloc>()),
         BlocProvider(create: (_) => di.sl<PostUploadBloc>()),
         BlocProvider(create: (_) => di.sl<BudgetCartBloc>()),
+        BlocProvider(create: (_) => di.sl<EventBloc>()),
       ],
       child: MaterialApp(
         title: 'MusicRequest System',
@@ -389,7 +392,7 @@ class HomePage extends StatelessWidget {
             ),
             const SizedBox(height: 40),
             Text(
-              'version $APP_VERSION',
+              'version $appVersion',
               style: const TextStyle(color: Colors.white24, fontSize: 12),
             ),
             const SizedBox(height: 20),

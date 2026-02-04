@@ -25,6 +25,13 @@ namespace MusicSystem.Backend.Controllers
             return Ok(new { message = "Service registered successfully" });
         }
 
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAll()
+        {
+            var services = await _serviceProviderService.GetAllServicesAsync();
+            return Ok(services);
+        }
+
         [HttpGet("list/{providerId}")]
         public async Task<IActionResult> GetList(string providerId)
         {

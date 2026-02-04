@@ -5,6 +5,7 @@ import '../entities/service_entity.dart';
 abstract class IServiceProviderRepository {
   Future<Either<Failure, void>> registerService(ServiceEntity service);
   Future<Either<Failure, List<ServiceEntity>>> getServices(String providerId);
+  Future<Either<Failure, List<ServiceEntity>>> getAllServices();
   Future<Either<Failure, void>> updateServiceStatus({
     required String providerId,
     required String serviceId,

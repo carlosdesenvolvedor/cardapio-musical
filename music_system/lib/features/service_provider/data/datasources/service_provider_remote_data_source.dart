@@ -1,10 +1,13 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/services/backend_api_service.dart';
+import '../../../../core/error/exceptions.dart';
 import '../models/service_model.dart';
 import '../../domain/entities/service_entity.dart';
 
 abstract class IServiceProviderRemoteDataSource {
   Future<void> registerService(ServiceModel service);
   Future<List<ServiceModel>> getServices(String providerId);
+  Future<List<ServiceModel>> getAllServices();
   Future<void> updateServiceStatus({
     required String providerId,
     required String serviceId,
@@ -20,8 +23,12 @@ abstract class IServiceProviderRemoteDataSource {
 class ServiceProviderRemoteDataSourceImpl
     implements IServiceProviderRemoteDataSource {
   final BackendApiService apiService;
+  final FirebaseFirestore firestore;
 
-  ServiceProviderRemoteDataSourceImpl({required this.apiService});
+  ServiceProviderRemoteDataSourceImpl({
+    required this.apiService,
+    required this.firestore,
+  });
 
   @override
   Future<void> registerService(ServiceModel service) async {
@@ -49,6 +56,34 @@ class ServiceProviderRemoteDataSourceImpl
     } catch (e) {
       print('BACKEND ERROR: ${e.toString()}');
       rethrow;
+    }
+  }
+
+  @override
+  Future<List<ServiceModel>> getAllServices() async {
+    try {
+      print('BACKEND DEBUG: Tentando buscar serviços via API C# (Global)');
+      final list = await apiService.getAllServices();
+      return list
+          .map((json) => ServiceModel.fromJson(json, json['id'] ?? ''))
+          .toList();
+    } catch (e) {
+      print('BACKEND ERROR: API falhou (Erro 405/Outro): $e');
+      print('BACKEND DEBUG: Iniciando FALLBACK para Firestore...');
+
+      try {
+        final snapshot =
+            await firestore.collectionGroup('services').limit(50).get();
+        final services =
+            snapshot.docs.map((doc) => ServiceModel.fromSnapshot(doc)).toList();
+        print(
+            'BACKEND DEBUG: Fallback concluído. ${services.length} serviços recuperados do Firestore.');
+        return services;
+      } catch (firestoreError) {
+        print(
+            'BACKEND ERROR: Fallback do Firestore também falhou: $firestoreError');
+        throw ServerException('Erro ao buscar serviços na API e no Firestore.');
+      }
     }
   }
 
