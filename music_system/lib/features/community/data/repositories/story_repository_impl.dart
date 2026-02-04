@@ -26,14 +26,19 @@ class StoryRepositoryImpl implements StoryRepository {
       final snapshot = await firestore
           .collection('stories')
           .where('createdAt',
-              isGreaterThan:
-                  Timestamp.fromDate(now.subtract(const Duration(days: 2))))
+              isGreaterThan: Timestamp.fromDate(now.subtract(const Duration(
+                  days: 7)))) // Aumentando para 7 dias para teste
           .get();
+
+      debugPrint('Snapshot size: ${snapshot.docs.length}');
 
       final stories = snapshot.docs
           .map((doc) {
             try {
-              return StoryModel.fromFirestore(doc);
+              final model = StoryModel.fromFirestore(doc);
+              debugPrint(
+                  'Story found: ID=${model.id}, ExpiresAt=${model.expiresAt}, Now=$now');
+              return model;
             } catch (e) {
               debugPrint('Erro ao mapear story ${doc.id}: $e');
               return null;
@@ -41,7 +46,11 @@ class StoryRepositoryImpl implements StoryRepository {
           })
           .whereType<StoryModel>()
           .where((story) {
-            return story.expiresAt.isAfter(now);
+            final isNotExpired = story.expiresAt.isAfter(now);
+            if (!isNotExpired) {
+              debugPrint('Filtering out EXPIRED story: ID=${story.id}');
+            }
+            return isNotExpired;
           })
           .toList();
 

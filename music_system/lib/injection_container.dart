@@ -70,7 +70,7 @@ import 'features/community/data/repositories/story_repository_impl.dart';
 import 'features/community/domain/usecases/get_active_stories.dart';
 import 'features/community/domain/usecases/mark_story_as_viewed.dart';
 import 'features/community/domain/repositories/chat_repository.dart';
-import 'features/community/data/repositories/chat_repository_impl.dart';
+import 'features/community/data/repositories/hybrid_chat_repository_impl.dart';
 import 'features/community/domain/usecases/send_message.dart';
 import 'features/community/domain/usecases/stream_messages.dart';
 import 'features/community/domain/usecases/stream_conversations.dart';
@@ -234,7 +234,12 @@ Future<void> init() async {
       () => NotificationsBloc(repository: sl(), chatRepository: sl()));
 
   sl.registerLazySingleton<ChatRepository>(
-    () => ChatRepositoryImpl(firestore: sl(), notificationRepository: sl()),
+    () => HybridChatRepositoryImpl(
+      firestore: sl(),
+      notificationRepository: sl(),
+      dio: sl(),
+      baseUrl: 'https://136.248.64.90.nip.io',
+    ),
   );
   sl.registerLazySingleton(() => SendMessage(sl()));
   sl.registerLazySingleton(() => StreamMessages(sl()));

@@ -1,0 +1,56 @@
+[
+  {
+    "id": "ecfd6701-037d-487f-bc20-c054e167e817",
+    "providerId": "Vrkgg7x5SkgksH8HgqpJawnmwUo1",
+    "name": "asdfas",
+    "description": "asdfasdfas asdfas fas a",
+    "category": "artist",
+    "basePrice": 1333,
+    "priceDescription": "1",
+    "status": "active",
+    "technicalDetails": {
+      "stageMapUrl": null,
+      "repertoireUrl": null,
+      "genre": "asdfsadf"
+    },
+    "createdAt": "2026-02-01T20:13:38.59"
+  },
+  {
+    "id": "ae34f869-49ff-4577-a7ee-cbb86e5c6b22",
+    "providerId": "Vrkgg7x5SkgksH8HgqpJawnmwUo1",
+    "name": "cantor",
+    "description": "as\u00E7ldfk as\u00E7dflkj as\u00E7dflkasj dflkasjdf\u00E7lkasjd\u00E7f as\u00E7ldkfj as\u00E7dlfkja sdlkfja sd\u00E7lkfajs f\u00E7lkj",
+    "category": "artist",
+    "basePrice": 300,
+    "priceDescription": "1 hora",
+    "status": "active",
+    "technicalDetails": {
+      "stageMapUrl": "https://136.248.64.90.nip.io/media/service_docs/e8832c58-2312-45b9-95ba-95c350ae09ff.png",
+      "repertoireUrl": "https://136.248.64.90.nip.io/media/service_docs/c6b7e2ee-3872-421d-8b04-d4ca1c64b4ea.pdf",
+      "genre": "Gospel"
+    },
+    "createdAt": "2026-02-01T20:21:38.216"
+  },
+  {
+    "id": "39883420-14ac-43d5-bb24-11992dbbd3ec",
+    "providerId": "Vrkgg7x5SkgksH8HgqpJawnmwUo1",
+    "name": "montagem som",
+    "description": "eu fa\u00E7o instala\u00E7\u00E3o de som pesado, dos melhores esse teste \u00E9 apanas fack",
+    "category": "infrastructure",
+    "basePrice": 200,
+    "priceDescription": "2 horas",
+    "status": "active",
+    "technicalDetails": {
+      "powerRequirements": {
+        "110v": false,
+        "220v": true,
+        "380v": false
+      },
+      "kva": 0,
+      "vehicleHeight": 0,
+      "loadInTime": "2 horas",
+      "implementationMapUrl": "http://localhost/media/service_docs/67c6049c-a196-4d55-ab29-ba7e9f64f0fc.png"
+    },
+    "createdAt": "2026-02-02T09:51:45.616"
+  }
+]

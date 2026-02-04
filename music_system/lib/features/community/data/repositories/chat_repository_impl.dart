@@ -72,6 +72,12 @@ class ChatRepositoryImpl implements ChatRepository {
           },
           SetOptions(merge: true));
 
+      // 3. Increment unread count on receiver profile
+      final receiverRef = firestore.collection('users').doc(receiverId);
+      batch.update(receiverRef, {
+        'unreadMessagesCount': FieldValue.increment(1),
+      });
+
       await batch.commit();
 
       // Create Notification
@@ -107,6 +113,7 @@ class ChatRepositoryImpl implements ChatRepository {
         .doc(chatId)
         .collection('messages')
         .orderBy('createdAt', descending: true)
+        .limit(20) // Optimization: limit initial load
         .snapshots()
         .map((snapshot) {
       return snapshot.docs
@@ -147,6 +154,12 @@ class ChatRepositoryImpl implements ChatRepository {
         batch.update(doc.reference, {'isRead': true});
       }
 
+      // Decrement global unread count
+      final userRef = firestore.collection('users').doc(userId);
+      batch.update(userRef, {
+        'unreadMessagesCount': FieldValue.increment(-snapshot.docs.length),
+      });
+
       await batch.commit();
       return const Right(null);
     } catch (e) {
@@ -163,24 +176,18 @@ class ChatRepositoryImpl implements ChatRepository {
 
   @override
   Stream<int> streamUnreadCount(String userId) {
-    // This is a bit complex in Firestore structure.
-    // Ideally, we'd have a 'unreadCounts' collection or field on the user profile.
-    // Querying all messages across all chats is too expensive.
-    // Optimization: Query 'chats' where user is participant, then listen to unread messages? Too many listeners.
-    // Alternative: We can count unread messages by querying the 'chats' collection if we duplicated unread counts there.
-    // But currently structure is chats/{chatId}/messages/{messageId} with isRead=false and receiverId=userId.
-    // Query group is best here.
+    // Optimization: Listen to the cached field on user profile instead of expensive collectionGroup
     return firestore
-        .collectionGroup('messages')
-        .where('receiverId', isEqualTo: userId)
-        .where('isRead', isEqualTo: false)
+        .collection('users')
+        .doc(userId)
         .snapshots()
-        .map((snapshot) => snapshot.docs.length)
-        .handleError((error) {
-      print(
-          'BACKEND ERROR: streamUnreadCount failed. Usually requires a composite index on collectionGroup "messages" (receiverId and isRead).');
-      print('Error details: $error');
-      return 0; // Fallback to 0 unread messages
+        .map((snapshot) {
+      if (!snapshot.exists) return 0;
+      final data = snapshot.data();
+      return (data?['unreadMessagesCount'] as int?) ?? 0;
+    }).handleError((error) {
+      print('BACKEND ERROR: streamUnreadCount (cached) failed: $error');
+      return 0;
     });
   }
 }

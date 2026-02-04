@@ -31,6 +31,7 @@ class UserProfile extends Equatable {
   final String? fcmToken;
   final int followersCount;
   final int followingCount;
+  final int unreadMessagesCount;
   final int profileViewsCount;
   final bool isLive;
   final DateTime? liveUntil;
@@ -65,6 +66,7 @@ class UserProfile extends Equatable {
     this.fcmToken,
     this.followersCount = 0,
     this.followingCount = 0,
+    this.unreadMessagesCount = 0,
     this.profileViewsCount = 0,
     this.isLive = false,
     this.liveUntil,
@@ -113,6 +115,7 @@ class UserProfile extends Equatable {
     String? fcmToken,
     int? followersCount,
     int? followingCount,
+    int? unreadMessagesCount,
     int? profileViewsCount,
     bool? isLive,
     DateTime? liveUntil,
@@ -147,6 +150,7 @@ class UserProfile extends Equatable {
       fcmToken: fcmToken ?? this.fcmToken,
       followersCount: followersCount ?? this.followersCount,
       followingCount: followingCount ?? this.followingCount,
+      unreadMessagesCount: unreadMessagesCount ?? this.unreadMessagesCount,
       profileViewsCount: profileViewsCount ?? this.profileViewsCount,
       isLive: isLive ?? this.isLive,
       liveUntil: liveUntil ?? this.liveUntil,

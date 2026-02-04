@@ -15,6 +15,12 @@ builder.Services.AddSingleton<MusicSystem.Backend.Services.IWalletService, Music
 // Register Service Provider Service
 builder.Services.AddSingleton<MusicSystem.Backend.Services.IServiceProviderService, MusicSystem.Backend.Services.LocalServiceProviderService>();
 
+// Register Chat Service
+builder.Services.AddSingleton<MusicSystem.Backend.Services.IChatService, MusicSystem.Backend.Services.MongoChatService>();
+
+// Add SignalR
+builder.Services.AddSignalR();
+
 // Configure Kestrel limits for large uploads (500MB)
 builder.Services.Configure<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions>(options =>
 {
@@ -26,9 +32,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.SetIsOriginAllowed(_ => true) // Allow any origin with credentials
               .AllowAnyMethod()
               .AllowAnyHeader()
+              .AllowCredentials()
               .WithExposedHeaders("Content-Disposition");
     });
 });
@@ -47,6 +54,7 @@ app.UseCors("AllowAll");
 
 
 app.MapControllers();
+app.MapHub<MusicSystem.Backend.Hubs.ChatHub>("/chathub");
 
 
 

@@ -8,20 +8,21 @@ class CloudinarySanitizer {
     double? startOffset,
     double? endOffset,
   }) {
+    String sanitized = url;
+
     if (url.startsWith('http://minio:9000/music-system-media/')) {
-      url = url.replaceFirst('http://minio:9000/music-system-media/',
+      sanitized = url.replaceFirst('http://minio:9000/music-system-media/',
           'https://136.248.64.90.nip.io/media/');
     } else if (url.contains('minio:9000/music-system-media/')) {
-      url = url.replaceFirst('minio:9000/music-system-media/',
+      sanitized = url.replaceFirst('minio:9000/music-system-media/',
           'https://136.248.64.90.nip.io/media/');
     } else if (url.contains('localhost') || url.contains('127.0.0.1')) {
-      url = url.replaceFirst(
+      sanitized = url.replaceFirst(
           RegExp(r'.*(localhost|127\.0\.0\.1)(:\d+)?/media/'),
           'https://136.248.64.90.nip.io/media/');
-      // Handle cases where it was just localhost/api or similar
-      if (url.startsWith('http://localhost') ||
-          url.startsWith('http://127.0.0.1')) {
-        url = url.replaceFirst(
+      if (sanitized.startsWith('http://localhost') ||
+          sanitized.startsWith('http://127.0.0.1')) {
+        sanitized = sanitized.replaceFirst(
             RegExp(r'http://(localhost|127\.0\.0\.1)(:\d+)?/'),
             'https://136.248.64.90.nip.io/');
       }
@@ -29,51 +30,46 @@ class CloudinarySanitizer {
         (url.contains('posts/') ||
             url.contains('stories/') ||
             url.contains('avatars/'))) {
-      // Prepend production domain if it's just a path
-      url = 'https://136.248.64.90.nip.io/media/$url';
+      sanitized = 'https://136.248.64.90.nip.io/media/$url';
     } else if (url.contains('firebasestorage.googleapis.com')) {
       try {
-        // Pattern: https://firebasestorage.googleapis.com/v0/b/BUCKET/o/PATH?alt=media&token=TOKEN
         final uri = Uri.parse(url);
         final pathSegments = uri.pathSegments;
-
-        // pathSegments: ["v0", "b", "BUCKET", "o", "PATH"]
         if (pathSegments.length >= 5 &&
             pathSegments[1] == 'b' &&
             pathSegments[3] == 'o') {
           final bucket = pathSegments[2];
-          // Rest of path segments joined by /
           final filePath = pathSegments.sublist(4).join('/');
-
-          // Reconstruct with our local proxy
-          // We keep query params as is
           final query = uri.hasQuery ? '?${uri.query}' : '';
-          return 'https://136.248.64.90.nip.io/firebase/$bucket/$filePath$query';
+          sanitized =
+              'https://136.248.64.90.nip.io/firebase/$bucket/$filePath$query';
         }
       } catch (e) {
         debugPrint('Error parsing Firebase URL for proxy: $e');
+        sanitized = url
+            .replaceFirst('https://firebasestorage.googleapis.com/v0/b/',
+                'https://136.248.64.90.nip.io/firebase/')
+            .replaceFirst('/o/', '/');
       }
-
-      // Fallback: simple replace if structure is different
-      return url
-          .replaceFirst('https://firebasestorage.googleapis.com/v0/b/',
-              'https://136.248.64.90.nip.io/firebase/')
-          .replaceFirst('/o/', '/');
     } else if (url.contains('136.248.64.90.nip.io')) {
-      // Force HTTPS for production domain
       if (url.startsWith('http://')) {
-        url = url.replaceFirst('http://', 'https://');
+        sanitized = url.replaceFirst('http://', 'https://');
       }
-      return url;
-    } else if (url.contains('nip.io')) {
-      return url;
     }
 
-    if (!url.contains('cloudinary.com') || !url.contains('/upload/')) {
-      return url;
+    if (sanitized != url) {
+      debugPrint('CloudinarySanitizer FIXED URL: $url -> $sanitized');
+    } else {
+      debugPrint('CloudinarySanitizer UNCHANGED URL: $url');
     }
 
-    String sanitized = url;
+    if (!sanitized.contains('cloudinary.com') ||
+        !sanitized.contains('/upload/')) {
+      return sanitized;
+    }
+
+    // Assign to existing variable instead of re-declaring with String
+    sanitized = url;
 
     // 1. Detect incorrectly mapped media type in URL
     bool isImageResource = sanitized.contains('/image/upload/');
@@ -189,9 +185,9 @@ class CloudinarySanitizer {
     }
 
     if (sanitized != url) {
-      if (kDebugMode) {
-        // debugPrint('CloudinarySanitizer: $url -> $sanitized');
-      }
+      debugPrint('CloudinarySanitizer FIXED URL: $url -> $sanitized');
+    } else {
+      debugPrint('CloudinarySanitizer UNCHANGED URL: $url');
     }
     return sanitized;
   }

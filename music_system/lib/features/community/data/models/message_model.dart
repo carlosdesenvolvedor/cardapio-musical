@@ -27,6 +27,33 @@ class MessageModel extends MessageEntity {
     );
   }
 
+  factory MessageModel.fromJson(Map<String, dynamic> json, String id) {
+    return MessageModel(
+      id: id,
+      senderId: json['senderId'] ?? '',
+      receiverId: json['receiverId'] ?? '',
+      text: json['text'] ?? '',
+      type: json['type'] ?? 'text',
+      mediaUrl: json['mediaUrl'],
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
+          : DateTime.now(),
+      isRead: json['isRead'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'senderId': senderId,
+      'receiverId': receiverId,
+      'text': text,
+      'type': type,
+      'mediaUrl': mediaUrl,
+      'createdAt': createdAt.toIso8601String(),
+      'isRead': isRead,
+    };
+  }
+
   Map<String, dynamic> toFirestore() {
     return {
       'senderId': senderId,

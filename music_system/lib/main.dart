@@ -33,7 +33,6 @@ import 'features/bands/presentation/pages/band_public_profile_page.dart';
 import 'features/bands/presentation/bloc/band_bloc.dart';
 import 'features/calendar/presentation/bloc/calendar_bloc.dart';
 import 'features/bookings/presentation/pages/budget_cart_page.dart';
-import 'core/constants/app_version.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'features/events/presentation/bloc/event_bloc.dart';
 
@@ -41,25 +40,26 @@ final GlobalKey<ScaffoldMessengerState> messengerKey =
     GlobalKey<ScaffoldMessengerState>();
 
 void main() async {
-  // Configures the URL strategy to remove the '#' from the URL
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Guard for double initialization on Web hot starts
   if (kIsWeb) {
     try {
       usePathUrlStrategy();
     } catch (e) {
-      debugPrint('UrlStrategy already set or failed: $e');
+      debugPrint('UrlStrategy skip: $e');
     }
   }
-
-  WidgetsFlutterBinding.ensureInitialized();
 
   await initializeDateFormatting('pt_BR', null);
 
   try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
 
-    // Specific logic for Web to handle potential persistence locks during development
     if (kIsWeb) {
       FirebaseFirestore.instance.settings = const Settings(
         persistenceEnabled: false,
@@ -68,14 +68,13 @@ void main() async {
 
     await di.init();
 
-    // Initialize Push Notifications (can fail on web without proper setup)
     try {
       await di.sl<PushNotificationService>().initialize();
     } catch (e) {
-      debugPrint('Push Notification initialization failed: $e');
+      debugPrint('Push UI Error: $e');
     }
   } catch (e) {
-    debugPrint('App initialization failed: $e');
+    debugPrint('Init Error: $e');
   }
 
   runApp(const MusicSystemApp());

@@ -18,6 +18,7 @@ class UserProfileModel extends UserProfile {
     super.fcmToken,
     super.followersCount = 0,
     super.followingCount = 0,
+    super.unreadMessagesCount = 0,
     super.profileViewsCount = 0,
     super.isLive = false,
     super.liveUntil,
@@ -56,6 +57,7 @@ class UserProfileModel extends UserProfile {
       fcmToken: json['fcmToken'],
       followersCount: json['followersCount'] ?? 0,
       followingCount: json['followingCount'] ?? 0,
+      unreadMessagesCount: json['unreadMessagesCount'] ?? 0,
       profileViewsCount: json['profileViewsCount'] ?? 0,
       isLive: json['isLive'] ?? false,
       liveUntil: json['liveUntil'] != null
@@ -132,6 +134,7 @@ class UserProfileModel extends UserProfile {
       'fcmToken': fcmToken,
       'followersCount': followersCount,
       'followingCount': followingCount,
+      'unreadMessagesCount': unreadMessagesCount,
       'profileViewsCount': profileViewsCount,
       'isLive': isLive,
       'liveUntil': liveUntil != null ? Timestamp.fromDate(liveUntil!) : null,
