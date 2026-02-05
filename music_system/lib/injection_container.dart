@@ -22,7 +22,7 @@ import 'core/services/cloudinary_service.dart';
 
 import 'core/services/notification_service.dart';
 import 'core/services/livekit_service.dart';
-import 'features/auth/data/repositories/auth_repository_impl.dart';
+import 'features/auth/data/repositories/auth_repository_api_impl.dart';
 import 'features/auth/domain/repositories/auth_repository.dart';
 import 'features/auth/domain/repositories/work_repository.dart';
 import 'features/auth/data/repositories/work_repository_impl.dart';
@@ -125,7 +125,10 @@ Future<void> init() async {
   );
   sl.registerFactory(() => ProfileViewBloc(repository: sl()));
   sl.registerLazySingleton<AuthRepository>(
-    () => AuthRepositoryImpl(firebaseAuth: sl(), firestore: sl()),
+    () => AuthRepositoryApiImpl(
+      firebaseAuth: sl(),
+      apiService: sl(),
+    ),
   );
   sl.registerLazySingleton(() => LogProfileView(sl()));
 

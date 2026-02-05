@@ -16,23 +16,39 @@ public class MigrationService : IMigrationService
         _profileService = profileService;
         _configuration = configuration;
 
+        var credentialPath = configuration["Firebase:CredentialPath"] ?? "serviceAccountKey.json";
+
         // Ensure Firebase App is initialized
-        // In a real scenario, you might inject this or initialize it in Program.cs
         if (FirebaseApp.DefaultInstance == null)
         {
-             var credentialPath = configuration["Firebase:CredentialPath"] ?? "serviceAccountKey.json";
              if (File.Exists(credentialPath))
              {
-                 FirebaseApp.Create(new AppOptions()
-                 {
-                     Credential = GoogleCredential.FromFile(credentialPath)
-                 });
+                 try {
+                    FirebaseApp.Create(new AppOptions()
+                    {
+                        Credential = GoogleCredential.FromFile(credentialPath)
+                    });
+                 } catch (Exception ex) {
+                    Console.WriteLine($"Error initializing Firebase: {ex.Message}");
+                 }
              }
         }
         
         // Assuming projectId is available 
         var projectId = configuration["Firebase:ProjectId"] ?? "music-system-421ee";
-        _firestoreDb = FirestoreDb.Create(projectId);
+        
+        if (File.Exists(credentialPath))
+        {
+            _firestoreDb = new FirestoreDbBuilder
+            {
+                ProjectId = projectId,
+                Credential = GoogleCredential.FromFile(credentialPath)
+            }.Build();
+        }
+        else
+        {
+            _firestoreDb = FirestoreDb.Create(projectId);
+        }
     }
 
     public async Task<int> MigrateUsersFromFirestoreAsync()

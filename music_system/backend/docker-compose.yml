@@ -55,6 +55,7 @@ services:
       - postgres
     volumes:
       - ./MusicSystem.Backend/Data:/app/Data
+      - ./MusicSystem.Backend/serviceAccountKey.json:/app/serviceAccountKey.json
 
   mediamtx:
     image: bluenviron/mediamtx:latest
