@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:signalr_netcore/signalr_client.dart';
 import 'package:rxdart/rxdart.dart';
 
@@ -39,6 +40,10 @@ class HybridChatRepositoryImpl implements ChatRepository {
         .withUrl(
           "$baseUrl/chathub",
           options: HttpConnectionOptions(
+            accessTokenFactory: () async {
+              final user = FirebaseAuth.instance.currentUser;
+              return await user?.getIdToken() ?? '';
+            },
             transport: HttpTransportType.WebSockets,
             skipNegotiation: true,
           ),

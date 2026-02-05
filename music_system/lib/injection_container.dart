@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:get_it/get_it.dart';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'core/services/storage_service.dart';
 import 'features/service_provider/data/datasources/service_provider_remote_data_source.dart';
@@ -210,7 +211,11 @@ Future<void> init() async {
 
   //! Features - Community
   sl.registerLazySingleton<PostRepository>(
-    () => PostRepositoryImpl(firestore: sl(), notificationRepository: sl()),
+    () => PostRepositoryImpl(
+      firestore: sl(),
+      notificationRepository: sl(),
+      apiService: sl(),
+    ),
   );
   sl.registerLazySingleton<SocialGraphRepository>(
     () => SocialGraphRepositoryImpl(
@@ -223,7 +228,11 @@ Future<void> init() async {
   sl.registerLazySingleton(() => UnfollowUser(sl()));
 
   sl.registerLazySingleton<StoryRepository>(
-    () => StoryRepositoryImpl(firestore: sl(), notificationRepository: sl()),
+    () => StoryRepositoryImpl(
+      firestore: sl(),
+      notificationRepository: sl(),
+      apiService: sl(),
+    ),
   );
   sl.registerLazySingleton(() => GetActiveStories(sl()));
   sl.registerLazySingleton(() => MarkStoryAsViewed(sl()));
@@ -380,13 +389,32 @@ Future<void> init() async {
 
   //! External
   sl.registerLazySingleton(() => BackendApiService(sl()));
-  sl.registerLazySingleton(() => BackendStorageService());
+  sl.registerLazySingleton(() => BackendStorageService(sl()));
   sl.registerLazySingleton(() => StorageService());
 
   sl.registerLazySingleton(() => CloudinaryService());
   sl.registerLazySingleton(() => PushNotificationService());
   sl.registerLazySingleton(() => LiveKitService());
-  sl.registerLazySingleton(() => Dio());
+  sl.registerLazySingleton(() => Dio(BaseOptions(
+        connectTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(minutes: 10),
+        sendTimeout: kIsWeb ? null : const Duration(minutes: 10),
+      ))
+        ..interceptors.add(LogInterceptor(
+          requestBody: kDebugMode,
+          responseBody: kDebugMode,
+          logPrint: (o) => debugPrint('DIO: $o'),
+        ))
+        ..interceptors.add(InterceptorsWrapper(
+          onRequest: (options, handler) async {
+            final user = FirebaseAuth.instance.currentUser;
+            if (user != null) {
+              final token = await user.getIdToken();
+              options.headers['Authorization'] = 'Bearer $token';
+            }
+            return handler.next(options);
+          },
+        )));
   sl.registerLazySingleton(() => FirebaseFirestore.instance);
   sl.registerLazySingleton(() => FirebaseAuth.instance);
   sl.registerLazySingleton(() => FirebaseStorage.instance);

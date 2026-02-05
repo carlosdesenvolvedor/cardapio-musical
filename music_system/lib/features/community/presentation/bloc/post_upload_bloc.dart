@@ -90,8 +90,16 @@ class PostUploadBloc extends Bloc<PostUploadEvent, PostUploadState> {
           }
           */
         } catch (e) {
-          // Fallback to old storage if MinIO fails (Optional)
-          url = await storageService.uploadImage(bytes, name);
+          // Fallback to old storage if MinIO fails
+          if (event.isVideo) {
+            url = await storageService.uploadFile(
+              fileBytes: bytes,
+              fileName: name,
+              contentType: 'video/mp4',
+            );
+          } else {
+            url = await storageService.uploadImage(bytes, name);
+          }
         }
 
         if (url != null) {

@@ -19,39 +19,58 @@ class StoryModel extends StoryEntity {
 
   factory StoryModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    return StoryModel.fromJson({...data, 'id': doc.id});
+  }
+
+  factory StoryModel.fromJson(Map<String, dynamic> json) {
     return StoryModel(
-      id: doc.id,
-      authorId: data['authorId'] ?? '',
-      authorName: data['authorName'] ?? '',
-      authorPhotoUrl: data['authorPhotoUrl'],
-      mediaUrl: data['mediaUrl'] ?? data['imageUrl'] ?? '',
-      mediaType: data['mediaType'] ?? 'image',
-      createdAt: (data['createdAt'] is Timestamp)
-          ? (data['createdAt'] as Timestamp).toDate()
+      id: json['id'] ?? '',
+      authorId: json['authorId'] ?? '',
+      authorName: json['authorName'] ?? '',
+      authorPhotoUrl: json['authorPhotoUrl'],
+      mediaUrl: json['mediaUrl'] ?? json['imageUrl'] ?? '',
+      mediaType: json['mediaType'] ?? 'image',
+      createdAt: json['createdAt'] != null
+          ? (json['createdAt'] is Timestamp
+              ? (json['createdAt'] as Timestamp).toDate()
+              : DateTime.parse(json['createdAt']))
           : DateTime.now(),
-      expiresAt: (data['expiresAt'] is Timestamp)
-          ? (data['expiresAt'] as Timestamp).toDate()
+      expiresAt: json['expiresAt'] != null
+          ? (json['expiresAt'] is Timestamp
+              ? (json['expiresAt'] as Timestamp).toDate()
+              : DateTime.parse(json['expiresAt']))
           : DateTime.now().add(const Duration(hours: 24)),
-      viewers: List<String>.from(data['viewers'] ?? []),
-      effects: data['effects'] != null
-          ? StoryEffects.fromJson(data['effects'] as Map<String, dynamic>)
+      viewers: List<String>.from(json['viewers'] ?? []),
+      effects: json['effects'] != null
+          ? StoryEffects.fromJson(json['effects'] as Map<String, dynamic>)
           : null,
-      caption: data['caption'],
+      caption: json['caption'],
     );
   }
 
-  Map<String, dynamic> toFirestore() {
-    return {
+  Map<String, dynamic> toJson() {
+    final map = {
       'authorId': authorId,
       'authorName': authorName,
       'authorPhotoUrl': authorPhotoUrl,
       'mediaUrl': mediaUrl,
       'mediaType': mediaType,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'expiresAt': Timestamp.fromDate(expiresAt),
+      'createdAt': createdAt.toIso8601String(),
+      'expiresAt': expiresAt.toIso8601String(),
       'viewers': viewers,
       'effects': effects?.toJson(),
       'caption': caption,
     };
+    if (id.isNotEmpty) {
+      map['id'] = id;
+    }
+    return map;
+  }
+
+  Map<String, dynamic> toFirestore() {
+    final json = toJson();
+    json['createdAt'] = Timestamp.fromDate(createdAt);
+    json['expiresAt'] = Timestamp.fromDate(expiresAt);
+    return json;
   }
 }

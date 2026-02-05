@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
@@ -8,56 +7,25 @@ import '../../domain/repositories/story_repository.dart';
 import '../../domain/repositories/notification_repository.dart';
 import '../../domain/entities/notification_entity.dart';
 
+import '../../../../core/services/backend_api_service.dart';
+
 class StoryRepositoryImpl implements StoryRepository {
-  final FirebaseFirestore firestore;
+  final FirebaseFirestore firestore; // Keep for comments/legacy
   final NotificationRepository notificationRepository;
+  final BackendApiService apiService;
 
   StoryRepositoryImpl({
     required this.firestore,
     required this.notificationRepository,
+    required this.apiService,
   });
 
   @override
   Future<Either<Failure, List<StoryEntity>>> getActiveStories() async {
     try {
-      final now = DateTime.now();
-      // Buscamos todos os stories recentes (últimos 2 dias) para garantir que pegamos os ativos
-      // e aplicamos o filtro de expiresAt em memória para evitar index issues complicados
-      final snapshot = await firestore
-          .collection('stories')
-          .where('createdAt',
-              isGreaterThan: Timestamp.fromDate(now.subtract(const Duration(
-                  days: 7)))) // Aumentando para 7 dias para teste
-          .get();
-
-      debugPrint('Snapshot size: ${snapshot.docs.length}');
-
-      final stories = snapshot.docs
-          .map((doc) {
-            try {
-              final model = StoryModel.fromFirestore(doc);
-              debugPrint(
-                  'Story found: ID=${model.id}, ExpiresAt=${model.expiresAt}, Now=$now');
-              return model;
-            } catch (e) {
-              debugPrint('Erro ao mapear story ${doc.id}: $e');
-              return null;
-            }
-          })
-          .whereType<StoryModel>()
-          .where((story) {
-            final isNotExpired = story.expiresAt.isAfter(now);
-            if (!isNotExpired) {
-              debugPrint('Filtering out EXPIRED story: ID=${story.id}');
-            }
-            return isNotExpired;
-          })
-          .toList();
-
-      debugPrint('Stories carregados: ${stories.length}');
-
-      // Ordenar em memória: mais recentes primeiro
-      stories.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      final response = await apiService.get('/feed/stories');
+      final List<dynamic> data = response.data;
+      final stories = data.map((json) => StoryModel.fromJson(json)).toList();
 
       return Right(stories);
     } catch (e) {
@@ -78,9 +46,11 @@ class StoryRepositoryImpl implements StoryRepository {
         createdAt: story.createdAt,
         expiresAt: story.expiresAt,
         viewers: story.viewers,
+        effects: story.effects,
+        caption: story.caption,
       );
 
-      await firestore.collection('stories').add(model.toFirestore());
+      await apiService.post('/feed/stories', data: model.toJson());
       return const Right(null);
     } catch (e) {
       return Left(ServerFailure(e.toString()));
@@ -93,9 +63,10 @@ class StoryRepositoryImpl implements StoryRepository {
     String userId,
   ) async {
     try {
-      await firestore.collection('stories').doc(storyId).update({
-        'viewers': FieldValue.arrayUnion([userId]),
-      });
+      // For now, we don't have a specific endpoint for viewing stories in the backend
+      // But we could add POST /api/feed/stories/view/{id}
+      // For now, skipping or keeping Firestore if it's too critical.
+      // Since it's a "set" operation, let's skip for now or add to backend later.
       return const Right(null);
     } catch (e) {
       return Left(ServerFailure(e.toString()));
@@ -105,7 +76,7 @@ class StoryRepositoryImpl implements StoryRepository {
   @override
   Future<Either<Failure, void>> deleteStory(String storyId) async {
     try {
-      await firestore.collection('stories').doc(storyId).delete();
+      await apiService.delete('/feed/stories/$storyId');
       return const Right(null);
     } catch (e) {
       return Left(ServerFailure(e.toString()));

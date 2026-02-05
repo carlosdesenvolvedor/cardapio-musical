@@ -71,6 +71,45 @@ class StoryUploadBloc extends Bloc<StoryUploadEvent, StoryUploadState> {
       await storyRepository.createStory(story);
       add(const UploadFinished(success: true));
     } catch (e) {
+      // Fallback to old storage if MinIO fails
+      try {
+        String url;
+        if (event.mediaType == 'image') {
+          url = await storageService.uploadImage(
+                  event.mediaBytes, 'story_${event.profile.id}_fallback.jpg') ??
+              '';
+        } else {
+          url = await storageService.uploadFile(
+                fileBytes: event.mediaBytes,
+                fileName: 'story_${event.profile.id}_fallback.mp4',
+                contentType: 'video/mp4',
+              ) ??
+              '';
+        }
+
+        if (url.isNotEmpty) {
+          final story = StoryModel(
+            id: '',
+            authorId: event.profile.id,
+            authorName: event.profile.artisticName,
+            authorPhotoUrl: event.profile.photoUrl,
+            mediaUrl: url,
+            mediaType: event.mediaType,
+            createdAt: DateTime.now(),
+            expiresAt: DateTime.now().add(const Duration(hours: 24)),
+            viewers: const [],
+            effects: event.filterId != null
+                ? StoryEffects(filterId: event.filterId)
+                : null,
+            caption: event.caption,
+          );
+          await storyRepository.createStory(story);
+          add(const UploadFinished(success: true));
+          return;
+        }
+      } catch (fallbackError) {
+        print('Fallback failed: $fallbackError');
+      }
       add(UploadFinished(success: false, error: e.toString()));
     }
   }

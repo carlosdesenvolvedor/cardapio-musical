@@ -20,27 +20,33 @@ class PostModel extends PostEntity {
 
   factory PostModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    return PostModel.fromJson({...data, 'id': doc.id});
+  }
+
+  factory PostModel.fromJson(Map<String, dynamic> json) {
     return PostModel(
-      id: doc.id,
-      authorId: data['authorId'] ?? '',
-      authorName: data['authorName'] ?? '',
-      authorPhotoUrl: data['authorPhotoUrl'],
-      imageUrl: data['imageUrl'] ?? '',
-      mediaUrls: List<String>.from(data['mediaUrls'] ?? []),
-      postType: data['postType'] ?? 'image',
-      caption: data['caption'] ?? '',
-      likes: List<String>.from(data['likes'] ?? []),
-      createdAt: (data['createdAt'] is Timestamp)
-          ? (data['createdAt'] as Timestamp).toDate()
+      id: json['id'] ?? '',
+      authorId: json['authorId'] ?? '',
+      authorName: json['authorName'] ?? '',
+      authorPhotoUrl: json['authorPhotoUrl'],
+      imageUrl: json['imageUrl'] ?? '',
+      mediaUrls: List<String>.from(json['mediaUrls'] ?? []),
+      postType: json['postType'] ?? 'image',
+      caption: json['caption'] ?? '',
+      likes: List<String>.from(json['likes'] ?? []),
+      createdAt: json['createdAt'] != null
+          ? (json['createdAt'] is Timestamp
+              ? (json['createdAt'] as Timestamp).toDate()
+              : DateTime.parse(json['createdAt']))
           : DateTime.now(),
-      taggedUserIds: List<String>.from(data['taggedUserIds'] ?? []),
-      collaboratorIds: List<String>.from(data['collaboratorIds'] ?? []),
-      musicData: data['musicData'],
+      taggedUserIds: List<String>.from(json['taggedUserIds'] ?? []),
+      collaboratorIds: List<String>.from(json['collaboratorIds'] ?? []),
+      musicData: json['musicData'],
     );
   }
 
-  Map<String, dynamic> toFirestore() {
-    return {
+  Map<String, dynamic> toJson() {
+    final map = {
       'authorId': authorId,
       'authorName': authorName,
       'authorPhotoUrl': authorPhotoUrl,
@@ -49,10 +55,20 @@ class PostModel extends PostEntity {
       'postType': postType,
       'caption': caption,
       'likes': likes,
-      'createdAt': Timestamp.fromDate(createdAt),
+      'createdAt': createdAt.toIso8601String(),
       'taggedUserIds': taggedUserIds,
       'collaboratorIds': collaboratorIds,
       'musicData': musicData,
     };
+    if (id.isNotEmpty) {
+      map['id'] = id;
+    }
+    return map;
+  }
+
+  Map<String, dynamic> toFirestore() {
+    final json = toJson();
+    json['createdAt'] = Timestamp.fromDate(createdAt);
+    return json;
   }
 }

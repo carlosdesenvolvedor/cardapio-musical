@@ -7,7 +7,9 @@ class BackendStorageService {
   // Use 10.0.2.2 for Android Emulator, localhost for Web/iOS Simulator.
   // Ideally this should be in an environment config.
   static const String baseUrl = 'https://136.248.64.90.nip.io/api/storage';
-  final Dio _dio = Dio();
+  final Dio _dio;
+
+  BackendStorageService(this._dio);
 
   Future<String> uploadBytes(
       List<int> bytes, String fileName, String folder) async {
@@ -115,7 +117,7 @@ class BackendStorageService {
 
       parts.add({
         "PartNumber": partNumber,
-        "ETag": partResponse.data['ETag'],
+        "ETag": partResponse.data['eTag'] ?? partResponse.data['ETag'],
       });
 
       offset += thisChunkSize;
@@ -124,7 +126,7 @@ class BackendStorageService {
 
     // 3. Complete
     final completeResponse = await _dio.post(
-      '$baseUrl/complete',
+      '$baseUrl/multipart/complete',
       data: {
         "Key": key,
         "UploadId": uploadId,
