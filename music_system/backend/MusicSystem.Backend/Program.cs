@@ -1,3 +1,7 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -5,6 +9,25 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 
 builder.Services.AddControllers();
+
+// Configure EF Core with PostgreSQL
+builder.Services.AddDbContext<MusicSystem.Backend.Data.AppDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("PostgreSql")));
+
+// Configure Firebase JWT Authentication
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = "https://securetoken.google.com/music-system-421ee";
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = "https://securetoken.google.com/music-system-421ee",
+            ValidateAudience = true,
+            ValidAudience = "music-system-421ee",
+            ValidateLifetime = true
+        };
+    });
 
 // Register Storage Service
 builder.Services.AddSingleton<MusicSystem.Backend.Services.IStorageService, MusicSystem.Backend.Services.MinioStorageService>();
@@ -15,6 +38,12 @@ builder.Services.AddSingleton<MusicSystem.Backend.Services.IWalletService, Music
 // Register Service Provider Service
 builder.Services.AddSingleton<MusicSystem.Backend.Services.IServiceProviderService, MusicSystem.Backend.Services.LocalServiceProviderService>();
 
+// Register Profile Service (Scoped because it uses DbContext)
+builder.Services.AddScoped<MusicSystem.Backend.Services.IProfileService, MusicSystem.Backend.Services.ProfileService>();
+
+// Register Migration Service
+builder.Services.AddScoped<MusicSystem.Backend.Services.IMigrationService, MusicSystem.Backend.Services.MigrationService>();
+
 // Register Chat Service
 builder.Services.AddSingleton<MusicSystem.Backend.Services.IChatService, MusicSystem.Backend.Services.MongoChatService>();
 
@@ -24,7 +53,6 @@ builder.Services.AddSignalR();
 // Configure Kestrel limits for large uploads (500MB)
 builder.Services.Configure<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions>(options =>
 {
-    options.Limits.MaxRequestBodySize = 524288000; // 500 MB
     options.Limits.MaxRequestBodySize = 524288000; // 500 MB
 });
 
@@ -52,10 +80,20 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowAll");
 
+app.UseAuthentication();
+app.UseAuthorization();
+
+// Automatically apply migrations
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<MusicSystem.Backend.Data.AppDbContext>();
+    // Wait a bit for postgres container to be ready in production docker flow
+    // (In a more robust setup, we'd use a retry policy)
+    db.Database.Migrate();
+}
 
 app.MapControllers();
 app.MapHub<MusicSystem.Backend.Hubs.ChatHub>("/chathub");
-
 
 
 

@@ -12,6 +12,18 @@ services:
     volumes:
       - minio_data:/data
 
+  postgres:
+    image: postgres:15
+    container_name: music_system_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: music_system
+      POSTGRES_PASSWORD: music_system_password
+      POSTGRES_DB: music_system_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   mongodb:
     image: mongo:latest
     container_name: music_system_db
@@ -40,6 +52,7 @@ services:
     depends_on:
       - minio
       - mongodb
+      - postgres
     volumes:
       - ./MusicSystem.Backend/Data:/app/Data
 
@@ -87,3 +100,4 @@ volumes:
   minio_data:
   nginx_cache:
   mongo_data:
+  postgres_data:
