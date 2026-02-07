@@ -1,5 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dartz/dartz.dart';
+import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import '../../../../core/error/failures.dart';
 import '../../../../core/services/backend_api_service.dart';
 import '../../domain/entities/user_entity.dart';
@@ -69,7 +72,7 @@ class AuthRepositoryApiImpl implements AuthRepository {
       );
 
       try {
-        await apiService.post('/profile', data: profile.toJson());
+        await apiService.post('/profile', data: profile.toApiJson());
       } catch (e) {
         // If API fails, we might have a consistency issue.
         // In this phase, we might want to dual-write or just fail.
@@ -106,24 +109,67 @@ class AuthRepositoryApiImpl implements AuthRepository {
   @override
   Future<Either<Failure, UserProfile>> getProfile(String userId) async {
     try {
-      // If userId is 'me' or current user, we use /profile/me or /profile/{id}
       final currentUserId = firebaseAuth.currentUser?.uid;
       final endpoint =
           (userId == currentUserId) ? '/profile/me' : '/profile/$userId';
 
-      // Temporary fallback: If it's me, use /me. If not, fail or implement public endpoint.
-      if (userId == currentUserId) {
-        final response = await apiService.get(endpoint);
-        return Right(UserProfileModel.fromJson(response.data, userId));
+      final response = await apiService.get(endpoint);
+      return Right(UserProfileModel.fromJson(response.data, userId));
+    } on DioException catch (e) {
+      // Auto-migrate: if API returns 404, try Firestore and create on API
+      if (e.response?.statusCode == 404) {
+        return _migrateProfileFromFirestore(userId);
       }
-
-      // Retrieve generic profile
-      // final response = await apiService.get('/profile/$userId');
-      // return Right(UserProfileModel.fromJson(response.data, userId));
-      return Left(
-          ServerFailure("Public profile fetching not implemented in API yet"));
+      return Left(ServerFailure(e.toString()));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  /// Auto-migration: fetch profile from Firestore, create it on API, return it
+  Future<Either<Failure, UserProfile>> _migrateProfileFromFirestore(
+      String userId) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+
+      if (!doc.exists) {
+        // Profile doesn't exist anywhere - create a minimal one from Firebase Auth
+        final user = firebaseAuth.currentUser;
+        if (user != null && user.uid == userId) {
+          final profile = UserProfileModel(
+            id: user.uid,
+            email: user.email ?? '',
+            artisticName:
+                user.displayName ?? user.email?.split('@')[0] ?? 'Usuário',
+            pixKey: '',
+            photoUrl: user.photoURL,
+          );
+          try {
+            await apiService.post('/profile', data: profile.toApiJson());
+          } catch (_) {}
+          return Right(profile);
+        }
+        return Left(ServerFailure('Perfil não encontrado'));
+      }
+
+      // Found in Firestore - migrate to API
+      final profile = UserProfileModel.fromJson(doc.data()!, doc.id);
+      debugPrint('Auto-migrating profile from Firestore to API for $userId');
+
+      try {
+        await apiService.post('/profile', data: profile.toApiJson());
+        debugPrint('Profile auto-migration successful for $userId');
+      } catch (e) {
+        debugPrint('Profile auto-migration to API failed: $e');
+        // Still return the Firestore profile even if API write fails
+      }
+
+      return Right(profile);
+    } catch (e) {
+      return Left(ServerFailure('Migration failed: $e'));
     }
   }
 
@@ -137,8 +183,51 @@ class AuthRepositoryApiImpl implements AuthRepository {
   @override
   Future<Either<Failure, void>> updateProfile(UserProfile profile) async {
     try {
-      await apiService.post('/profile',
-          data: (profile as UserProfileModel).toJson());
+      final model = UserProfileModel(
+        id: profile.id,
+        email: profile.email,
+        artisticName: profile.artisticName,
+        nickname: profile.nickname,
+        searchName: profile.searchName,
+        pixKey: profile.pixKey,
+        photoUrl: profile.photoUrl,
+        bio: profile.bio,
+        instagramUrl: profile.instagramUrl,
+        youtubeUrl: profile.youtubeUrl,
+        facebookUrl: profile.facebookUrl,
+        galleryUrls: profile.galleryUrls,
+        fcmToken: profile.fcmToken,
+        isLive: profile.isLive,
+        liveUntil: profile.liveUntil,
+        scheduledShows: profile.scheduledShows,
+        birthDate: profile.birthDate,
+        verificationLevel: profile.verificationLevel,
+        isParentalConsentGranted: profile.isParentalConsentGranted,
+        isDobVisible: profile.isDobVisible,
+        isPixVisible: profile.isPixVisible,
+        followersCount: profile.followersCount,
+        followingCount: profile.followingCount,
+        unreadMessagesCount: profile.unreadMessagesCount,
+        profileViewsCount: profile.profileViewsCount,
+        showProfessionalBadge: profile.showProfessionalBadge,
+      );
+
+      await apiService.post('/profile', data: model.toApiJson());
+
+      // Dual-write: sync isLive to Firestore for real-time reads by visitors
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(profile.id)
+          .set({
+        'isLive': profile.isLive,
+        'liveUntil': profile.liveUntil,
+        'lastActiveAt': FieldValue.serverTimestamp(),
+        'photoUrl': profile.photoUrl,
+        'artisticName': profile.artisticName,
+        'nickname': profile.nickname,
+        'bio': profile.bio,
+      }, SetOptions(merge: true));
+
       return const Right(null);
     } catch (e) {
       return Left(ServerFailure(e.toString()));

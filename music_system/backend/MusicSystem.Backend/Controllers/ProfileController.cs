@@ -36,6 +36,37 @@ public class ProfileController : ControllerBase
         return Ok(profile);
     }
 
+    [HttpGet("{userId}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetPublicProfile(string userId)
+    {
+        var profile = await _profileService.GetProfileByFirebaseUidAsync(userId);
+        if (profile == null)
+        {
+            return NotFound("Profile not found.");
+        }
+
+        // Return limited public data (hide sensitive fields)
+        return Ok(new {
+            profile.FirebaseUid,
+            profile.Name,
+            profile.AvatarUrl,
+            profile.Bio,
+            profile.IsLive,
+            profile.LiveUntil,
+            profile.Nickname,
+            profile.FollowersCount,
+            profile.FollowingCount,
+            profile.VerificationLevel,
+            profile.ProfessionalLevel,
+            profile.ShowProfessionalBadge,
+            profile.InstagramUrl,
+            profile.YoutubeUrl,
+            profile.FacebookUrl,
+            profile.GalleryUrls,
+        });
+    }
+
     [HttpPost]
     public async Task<IActionResult> CreateOrUpdateProfile([FromBody] UserProfile profileData)
     {

@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'core/constants/app_version.dart';
 import 'features/service_provider/presentation/pages/artist_cache_page.dart';
@@ -76,6 +77,27 @@ void main() async {
   } catch (e) {
     debugPrint('Init Error: $e');
   }
+
+  // Global error guard: suppress Flutter Web EngineFlutterView disposed assertion
+  FlutterError.onError = (FlutterErrorDetails details) {
+    final message = details.exceptionAsString();
+    if (message.contains('isDisposed') ||
+        message.contains('EngineFlutterView')) {
+      debugPrint('Suppressed Flutter assertion: $message');
+      return;
+    }
+    FlutterError.presentError(details);
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    final message = error.toString();
+    if (message.contains('isDisposed') ||
+        message.contains('EngineFlutterView')) {
+      debugPrint('Suppressed platform error: $message');
+      return true;
+    }
+    return false;
+  };
 
   runApp(const MusicSystemApp());
 }
@@ -241,7 +263,14 @@ class _SplashPageState extends State<SplashPage> {
   void _handleState(AuthState state) {
     if (!mounted || _isRedirecting) return;
 
-    if (state is ProfileLoaded && state.currentUser != null) {
+    if (state is Authenticated) {
+      _isRedirecting = true;
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted && ModalRoute.of(context)?.isCurrent == true) {
+          Navigator.pushReplacementNamed(context, '/network');
+        }
+      });
+    } else if (state is ProfileLoaded && state.currentUser != null) {
       _isRedirecting = true;
       if (mounted) {
         context.read<NotificationsBloc>().add(

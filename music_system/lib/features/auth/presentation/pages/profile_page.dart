@@ -149,6 +149,11 @@ class _ProfilePageState extends State<ProfilePage>
                 ).showSnackBar(SnackBar(content: Text(state.message)));
               }
               if (state is ProfileViewLoaded) {
+                // Always keep photoUrl synced to avoid losing it on save
+                _currentPhotoUrl ??= state.profile.photoUrl;
+                // Always keep fcmToken synced
+                _fcmToken ??= state.profile.fcmToken;
+                // Only populate form fields if they haven't been set yet
                 if (_artisticNameController.text.isEmpty) {
                   _artisticNameController.text = state.profile.artisticName;
                   _nicknameController.text = state.profile.nickname != null &&
@@ -160,7 +165,6 @@ class _ProfilePageState extends State<ProfilePage>
                   _instagramController.text = state.profile.instagramUrl ?? '';
                   _youtubeController.text = state.profile.youtubeUrl ?? '';
                   _facebookController.text = state.profile.facebookUrl ?? '';
-                  _currentPhotoUrl = state.profile.photoUrl;
                   _galleryUrls = state.profile.galleryUrls ?? [];
                   _lastActiveAt = state.profile.lastActiveAt; // Populate
                   _isLive = state.profile.isLive;

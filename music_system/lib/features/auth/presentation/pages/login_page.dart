@@ -1,6 +1,9 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_sign_in_platform_interface/google_sign_in_platform_interface.dart';
+import 'package:google_sign_in_web/google_sign_in_web.dart' as gsi_web;
 import '../../../../config/theme/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'registration_page.dart';
@@ -24,6 +27,35 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isSignUp = false;
+  bool _googleSignInInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeGoogleSignIn();
+  }
+
+  Future<void> _initializeGoogleSignIn() async {
+    if (kIsWeb) {
+      if (_googleSignInInitialized) return;
+      try {
+        final plugin =
+            GoogleSignInPlatform.instance as gsi_web.GoogleSignInPlugin;
+        await plugin.initWithParams(const SignInInitParameters(
+          clientId:
+              '108435262492-m6as6h713s53k329be92bafmhm88an6g.apps.googleusercontent.com',
+          scopes: ['email', 'profile'],
+        ));
+        if (mounted) {
+          setState(() {
+            _googleSignInInitialized = true;
+          });
+        }
+      } catch (e) {
+        debugPrint('Google Sign-In initialization error: $e');
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -160,37 +192,51 @@ class _LoginPageState extends State<LoginPage> {
                           child: Text(_isSignUp ? 'Cadastrar' : 'Entrar'),
                         ),
                         const SizedBox(height: 16),
-                        OutlinedButton.icon(
-                          onPressed: () {
-                            context.read<AuthBloc>().add(
-                                  GoogleSignInRequested(),
-                                );
-                          },
-                          icon: Image.network(
-                            'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_\"G\"_logo.svg/768px-Google_\"G\"_logo.svg.png',
-                            height: 24,
-                          ),
-                          label: const Text(
-                            'Continuar com Google',
-                            style: TextStyle(
-                              color: AppTheme.primaryColor,
-                              fontWeight: FontWeight.bold,
+                        if (kIsWeb && _googleSignInInitialized)
+                          (GoogleSignInPlatform.instance
+                                  as gsi_web.GoogleSignInPlugin)
+                              .renderButton()
+                        else if (kIsWeb && !_googleSignInInitialized)
+                          const Center(
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        else
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              context.read<AuthBloc>().add(
+                                    GoogleSignInRequested(),
+                                  );
+                            },
+                            icon: Image.network(
+                              'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_\"G\"_logo.svg/768px-Google_\"G\"_logo.svg.png',
+                              height: 24,
+                            ),
+                            label: const Text(
+                              'Continuar com Google',
+                              style: TextStyle(
+                                color: AppTheme.primaryColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              side: const BorderSide(
+                                color: AppTheme.primaryColor,
+                                width: 1.5,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              backgroundColor:
+                                  AppTheme.primaryColor.withOpacity(
+                                0.05,
+                              ),
                             ),
                           ),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            side: const BorderSide(
-                              color: AppTheme.primaryColor,
-                              width: 1.5,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            backgroundColor: AppTheme.primaryColor.withOpacity(
-                              0.05,
-                            ),
-                          ),
-                        ),
                       ],
                     );
                   },

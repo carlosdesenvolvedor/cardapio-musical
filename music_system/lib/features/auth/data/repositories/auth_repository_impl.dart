@@ -12,8 +12,65 @@ import '../models/user_profile_model.dart';
 class AuthRepositoryImpl implements AuthRepository {
   final FirebaseAuth firebaseAuth;
   final FirebaseFirestore firestore;
+  final GoogleSignIn _googleSignIn;
 
-  AuthRepositoryImpl({required this.firebaseAuth, required this.firestore});
+  AuthRepositoryImpl({required this.firebaseAuth, required this.firestore})
+      : _googleSignIn = GoogleSignIn(
+          clientId: kIsWeb
+              ? '108435262492-m6as6h713s53k329be92bafmhm88an6g.apps.googleusercontent.com'
+              : null,
+          scopes: ['email', 'profile'],
+        ) {
+    if (kIsWeb) {
+      _googleSignIn.onCurrentUserChanged.listen((GoogleSignInAccount? account) {
+        if (account != null) {
+          _handleGoogleSignInWeb(account);
+        }
+      });
+    }
+  }
+
+  Future<void> _handleGoogleSignInWeb(GoogleSignInAccount account) async {
+    try {
+      final GoogleSignInAuthentication googleAuth =
+          await account.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      final userCredential =
+          await firebaseAuth.signInWithCredential(credential);
+      final user = userCredential.user;
+      if (user != null) {
+        // Ensure profile exists in Firestore for new Google users
+        final userDoc =
+            await firestore.collection('users').doc(user.uid).get();
+        if (!userDoc.exists) {
+          final profile = UserProfileModel(
+            id: user.uid,
+            email: user.email ?? '',
+            artisticName:
+                user.displayName ?? user.email?.split('@')[0] ?? 'Usuário',
+            pixKey: '',
+            photoUrl: user.photoURL,
+            followersCount: 0,
+            followingCount: 0,
+            unreadMessagesCount: 0,
+            profileViewsCount: 0,
+            isLive: false,
+            verificationLevel: VerificationLevel.none,
+          );
+          await firestore
+              .collection('users')
+              .doc(user.uid)
+              .set(profile.toJson());
+        }
+      }
+      debugPrint('Web Google Sign-In automatic sync successful');
+    } catch (e) {
+      debugPrint('Web Google Sign-In automatic sync failed: $e');
+    }
+  }
 
   @override
   Future<Either<Failure, UserEntity>> signIn(
@@ -36,14 +93,14 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, UserEntity>> signInWithGoogle() async {
     try {
-      final GoogleSignIn googleSignIn = GoogleSignIn(
-        clientId: kIsWeb
-            ? '108435262492-m6as6h713s53k329be92bafmhm88an6g.apps.googleusercontent.com'
-            : null,
-        scopes: ['email', 'profile'],
-      );
-
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      GoogleSignInAccount? googleUser;
+      if (kIsWeb) {
+        // For web, use signInSilently (works with renderButton / GIS SDK)
+        googleUser = await _googleSignIn.signInSilently();
+      } else {
+        // For mobile, keep using signIn (popup-based)
+        googleUser = await _googleSignIn.signIn();
+      }
 
       if (googleUser == null) {
         return Left(ServerFailure('Login cancelado pelo usuário'));

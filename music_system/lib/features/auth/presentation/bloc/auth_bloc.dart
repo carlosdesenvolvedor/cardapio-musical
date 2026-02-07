@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/services/notification_service.dart';
@@ -91,6 +92,13 @@ class LoadFollowedUsersRequested extends AuthEvent {
   List<Object?> get props => [userId];
 }
 
+class AuthStatusChanged extends AuthEvent {
+  final UserEntity? user;
+  AuthStatusChanged(this.user);
+  @override
+  List<Object?> get props => [user];
+}
+
 // States
 abstract class AuthState extends Equatable {
   @override
@@ -131,11 +139,35 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final PushNotificationService notificationService;
   final SocialGraphRepository socialGraphRepository;
 
+  StreamSubscription<UserEntity?>? _authStateSubscription;
+
   AuthBloc({
     required this.repository,
     required this.notificationService,
     required this.socialGraphRepository,
   }) : super(AuthInitial()) {
+    // Subscribe to auth state changes (fires when Google Sign-In completes on web)
+    _authStateSubscription = repository.authStateChanges.listen((user) {
+      add(AuthStatusChanged(user));
+    });
+
+    on<AuthStatusChanged>((event, emit) async {
+      if (event.user != null) {
+        // Only auto-transition from Unauthenticated (e.g., Google Sign-In via renderButton)
+        // Skip AuthInitial — let AppStarted handle the initial state
+        if (state is Unauthenticated || state is AuthError) {
+          notificationService.saveTokenToFirestore(event.user!.id);
+          add(LoadFollowedUsersRequested(event.user!.id));
+          emit(Authenticated(event.user!));
+        }
+      } else {
+        // User signed out externally
+        if (state is! Unauthenticated && state is! AuthInitial) {
+          emit(Unauthenticated());
+        }
+      }
+    });
+
     on<AppStarted>((event, emit) async {
       final result = await repository.getCurrentUser();
       result.fold((_) => emit(Unauthenticated()), (user) {
@@ -199,7 +231,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
       final result = await repository.getProfile(event.userId);
       result.fold(
-        (failure) => emit(AuthError(failure.message)),
+        (failure) {
+          // Don't emit AuthError for profile failures - keep user authenticated
+          if (currentUser != null) {
+            emit(Authenticated(currentUser!));
+          } else {
+            emit(AuthError(failure.message));
+          }
+        },
         (profile) {
           final user = currentUser;
           // If the profile being viewed is the current user's profile, update the user entity data
@@ -276,5 +315,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         },
       );
     });
+  }
+
+  @override
+  Future<void> close() {
+    _authStateSubscription?.cancel();
+    return super.close();
   }
 }

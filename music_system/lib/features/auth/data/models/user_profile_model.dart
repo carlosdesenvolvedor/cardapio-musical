@@ -46,7 +46,7 @@ class UserProfileModel extends UserProfile {
       nickname: json['nickname'],
       searchName: json['searchName'],
       pixKey: json['pixKey'] ?? '',
-      photoUrl: json['photoUrl'],
+      photoUrl: json['photoUrl'] ?? json['avatarUrl'],
       bio: json['bio'],
       instagramUrl: json['instagramUrl'],
       youtubeUrl: json['youtubeUrl'],
@@ -116,6 +116,43 @@ class UserProfileModel extends UserProfile {
       }
     }
     return 'Artista Sem Nome';
+  }
+
+  Map<String, dynamic> toApiJson() {
+    return {
+      'firebaseUid': id,
+      'email': email,
+      'name': artisticName,
+      'avatarUrl': photoUrl,
+      'nickname': nickname,
+      'searchName': searchName,
+      'pixKey': pixKey,
+      'bio': bio,
+      'instagramUrl': instagramUrl,
+      'youtubeUrl': youtubeUrl,
+      'facebookUrl': facebookUrl,
+      'galleryUrls': galleryUrls,
+      'fcmToken': fcmToken,
+      'followersCount': followersCount,
+      'followingCount': followingCount,
+      'unreadMessagesCount': unreadMessagesCount,
+      'profileViewsCount': profileViewsCount,
+      'isLive': isLive,
+      'liveUntil': liveUntil?.toIso8601String(),
+      'lastActiveAt': lastActiveAt?.toIso8601String(),
+      'birthDate': birthDate?.toIso8601String(),
+      'verificationLevel': verificationLevel.name,
+      'isParentalConsentGranted': isParentalConsentGranted,
+      'isDobVisible': isDobVisible,
+      'isPixVisible': isPixVisible,
+      'profileType': profileType,
+      'subType': subType,
+      'artistScore': artistScore,
+      'professionalLevel': professionalLevel,
+      'minSuggestedCache': minSuggestedCache,
+      'maxSuggestedCache': maxSuggestedCache,
+      'showProfessionalBadge': showProfessionalBadge,
+    };
   }
 
   Map<String, dynamic> toJson() {
