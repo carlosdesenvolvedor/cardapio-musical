@@ -253,12 +253,16 @@ class _SplashPageState extends State<SplashPage> {
       }
 
       Future.delayed(const Duration(milliseconds: 100), () {
-        if (mounted) Navigator.pushReplacementNamed(context, '/network');
+        if (mounted && ModalRoute.of(context)?.isCurrent == true) {
+          Navigator.pushReplacementNamed(context, '/network');
+        }
       });
     } else if (state is Unauthenticated) {
       _isRedirecting = true;
       Future.delayed(const Duration(milliseconds: 100), () {
-        if (mounted) Navigator.pushReplacementNamed(context, '/musician');
+        if (mounted && ModalRoute.of(context)?.isCurrent == true) {
+          Navigator.pushReplacementNamed(context, '/musician');
+        }
       });
     }
   }
